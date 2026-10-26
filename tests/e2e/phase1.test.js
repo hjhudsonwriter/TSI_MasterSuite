@@ -440,7 +440,9 @@ async function waitSaved(page) {
     const KEY = 'tsi.dmdoc.layout';
     const box = (p, sel) => p.$eval(sel, e => { const r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
     const rect = p => p.evaluate(() => TSI.dmDoc.rect());
-    const saved = p => p.evaluate(k => TSI.store.ready.then(() => TSI.store.get(k, null)), KEY);
+    /* What is saved is { v: 2, x, y, w, h } (the version tells the old single-column layout apart); most checks only care about the box. */
+    const savedRaw = p => p.evaluate(k => TSI.store.ready.then(() => TSI.store.get(k, null)), KEY);
+    const saved = p => savedRaw(p).then(v => v && { x: v.x, y: v.y, w: v.w, h: v.h });
     const view = p => p.evaluate(() => ({ width: document.documentElement.clientWidth, height: document.documentElement.clientHeight, top: document.querySelector('.tsi-topbar').getBoundingClientRect().bottom }));
     const isOpen = p => p.$eval('[data-test=dmdoc-panel]', d => !d.hidden).catch(() => false);
     const focused = p => p.evaluate(() => document.activeElement && (document.activeElement.dataset.test || document.activeElement.tagName));
@@ -527,7 +529,7 @@ async function waitSaved(page) {
         equal(await focused(page), 'dmdoc-bar');
         const r = await panelMatches(page);
         const v = await view(page);
-        equal(r, { x: v.width - 440 - 24, y: v.top + 24, w: 440, h: 800 }, 'it first opens near the right edge, below the top bar');
+        equal(r, { x: v.width - 1040 - 24, y: v.top + 24, w: 1040, h: 640 }, 'it first opens near the right edge, below the top bar, sized for its four panels');
         await H.shot(page, 'dmdoc-' + size);
       });
 
@@ -539,7 +541,7 @@ async function waitSaved(page) {
         const r = await rect(page);
         const mid = [r.x + r.w / 2, r.y + r.h / 2];
         equal(await top(r.x + 30, r.y + 20), 'dmdoc', 'over the Bastion\'s own bar');
-        /* A full-window overlay at the tools' highest layer (the Ritual's go up to 690; the War Table is at 80). */
+        /* A full-window overlay at the tools' highest layer (the Ritual's go up to 690). */
         await page.evaluate(() => {
           const o = document.createElement('div');
           o.className = 'tsi-dmdoc-test-overlay';
@@ -578,14 +580,15 @@ async function waitSaved(page) {
       });
 
       await check(size + ': dragging the title bar moves it, and it\'s saved', async () => {
-        await moveTo(page, 840, 70);
+        await moveTo(page, 400, 90);
         const start = await panelMatches(page);
-        equal([start.x, start.y], [840, 70]);
+        equal([start.x, start.y], [400, 90]);
         await drag(page, '[data-test=dmdoc-bar]', { dx: -300, dy: 40 }, BAR_GRAB);
         const r = await panelMatches(page);
         equal(r, { x: start.x - 300, y: start.y + 40, w: start.w, h: start.h });
         await page.waitForTimeout(200);
         equal(await saved(page), r);
+        equal((await savedRaw(page)).v, 2, 'saved with the layout version');
       });
 
       await check(size + ': dragging from the close button doesn\'t move it', async () => {
@@ -598,7 +601,7 @@ async function waitSaved(page) {
       await check(size + ': the corner grip resizes it, no smaller than 280 × 200', async () => {
         await moveTo(page, 300, 70);
         const before = await rect(page);
-        equal(before, { x: 300, y: 70, w: 440, h: 800 });
+        equal(before, { x: 300, y: 70, w: 1040, h: 640 });
         await drag(page, '[data-test=dmdoc-grip]', { dx: 80, dy: 40 });
         const r = await panelMatches(page);
         equal(r, { x: before.x, y: before.y, w: before.w + 80, h: before.h + 40 });
@@ -753,8 +756,8 @@ async function waitSaved(page) {
         const b = JSON.parse(d.text);
         const rec = b.records.find(r => r.key === KEY);
         assert(rec, 'not in the backup: ' + b.records.map(r => r.key));
-        equal(rec.value, now);
-        rec.value = { x: 120, y: 150, w: 360, h: 300 };
+        equal(rec.value, Object.assign({ v: 2 }, now));
+        rec.value = { v: 2, x: 120, y: 150, w: 360, h: 300 };
         await H.chooseFile(page, '[data-test=restore]', H.writeTemp('dmdoc-backup-' + size + '.json', b));
         assert(/DM doc: 1 saved item/.test(await H.modalText(page)), await H.modalText(page));
         await page.uncheck('.tsi-modal input[type=checkbox]');
@@ -1502,6 +1505,70 @@ async function waitSaved(page) {
       const d = await H.download(page, '[data-test=backup-everything]');
       const keys = JSON.parse(d.text).records.map(r => r.key);
       equal(keys.filter(k => k.startsWith('tsi.quarantine.')).length, 2);
+    });
+
+    await check('keepCopy puts a copy under a quarantine name and leaves the save itself where it is (never a moment with none)', async () => {
+      const r = await page.evaluate(async () => {
+        TSI.store.set('tsi.demo.state', { count: 7, note: 'keep me' });
+        await TSI.store.flush();
+        let gone = false;
+        /* The live save is checked at every step the copy takes. */
+        const watch = setInterval(() => { if (!TSI.store.has('tsi.demo.state')) gone = true; }, 0);
+        const a = await TSI.store.keepCopy('tsi.demo.state', 'a test');
+        const b = await TSI.store.keepCopy('tsi.demo.state', 'a test again');
+        const none = await TSI.store.keepCopy('tsi.demo.nothing', 'nothing there');
+        clearInterval(watch);
+        await TSI.store.flush();
+        const rows = await new Promise(res => { const rq = indexedDB.open('tsi.test', 1); rq.onsuccess = () => { const g = rq.result.transaction('records', 'readonly').objectStore('records').getAll(); g.onsuccess = () => { rq.result.close(); res(g.result); }; }; });
+        return { a, b, none, gone, live: TSI.store.get('tsi.demo.state'), copyA: TSI.store.get(a), notes: rows.filter(x => x.key === a || x.key === b).map(x => [x.note.from, x.note.reason, x.note.copy]), saved: rows.filter(x => x.key === 'tsi.demo.state').length };
+      });
+      assert(/^tsi\.quarantine\.demo\.state\.\d{8}-\d{6}/.test(r.a), r.a);
+      assert(r.b && r.b !== r.a, 'a second copy in the same second has its own name');
+      equal(r.none, null, 'nothing to copy gives null');
+      equal(r.gone, false, 'the live save was never absent');
+      equal(r.live, { count: 7, note: 'keep me' });
+      equal(r.copyA, { count: 7, note: 'keep me' });
+      equal(r.notes, [['tsi.demo.state', 'a test', true], ['tsi.demo.state', 'a test again', true]]);
+      equal(r.saved, 1, 'and it is saved in the browser\'s database');
+    });
+
+    await check('keepCopy answers about its own copy only: it is really in the browser when the answer comes, even with a big save in flight, and another save failing does not make it fail', async () => {
+      const r = await page.evaluate(async () => {
+        const readRow = key => new Promise(res => { const rq = indexedDB.open('tsi.test', 1); rq.onsuccess = () => { const g = rq.result.transaction('records', 'readonly').objectStore('records').get(key); g.onsuccess = () => { rq.result.close(); res(g.result || null); }; }; });
+        TSI.store.set('tsi.demo.state', { count: 9 });
+        await TSI.store.flush();
+        /* A big save is still going when the copy is asked for. */
+        TSI.store.set('tsi.demo.bulk', { text: 'x'.repeat(400000) });
+        const inFlight = TSI.store.flush();
+        const k1 = await TSI.store.keepCopy('tsi.demo.state', 'while another save is going');
+        const row1 = await readRow(k1);
+        await inFlight;
+        /* Some other save is refused by the browser. */
+        const realPut = IDBObjectStore.prototype.put;
+        IDBObjectStore.prototype.put = function (rec) { if (rec && rec.key === 'tsi.demo.poison') throw new Error('refused on purpose'); return realPut.apply(this, arguments); };
+        let k2 = null, row2 = null, failed = null, problemAfter = null;
+        try {
+          TSI.store.set('tsi.demo.poison', { x: 1 });
+          failed = await TSI.store.flush();
+          k2 = await TSI.store.keepCopy('tsi.demo.state', 'after another save failed');
+          problemAfter = TSI.store.copyProblem();
+          row2 = k2 ? await readRow(k2) : null;
+        } finally {
+          IDBObjectStore.prototype.put = realPut;
+          TSI.store.remove('tsi.demo.poison');
+          TSI.store.remove('tsi.demo.bulk');
+          await TSI.store.flush();
+        }
+        return { k1: !!k1, ok1: !!row1 && row1.value.count === 9 && row1.key === k1, failed, k2: !!k2, ok2: !!row2 && row2.value.count === 9, problemAfter, live: TSI.store.get('tsi.demo.state'), status: TSI.store.status().state };
+      });
+      equal(r.k1, true, 'a copy is reported');
+      equal(r.ok1, true, 'and it was already in the browser, exactly as the save was, when it was reported');
+      equal(r.failed, false, 'the other save really did fail');
+      equal(r.k2, true, 'the copy is still reported as kept');
+      equal(r.ok2, true, 'and it is really there');
+      equal(r.problemAfter, '', 'with no problem said');
+      equal(r.live, { count: 9 });
+      equal(r.status, 'saved', 'the save status is back to normal once the other save is settled');
     });
     await context.close();
   }

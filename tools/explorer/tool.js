@@ -1458,7 +1458,7 @@
           if (preset && free.some(function (r) { return r.port === preset; })) picked.value = preset;
           whyBox = el('input', { type: 'text', maxlength: '120', class: 'tsi-input tsi-exp-charter-why', placeholder: 'What for (optional)', 'aria-label': 'What for (optional)', 'data-test': 'charter-why' });
           var body = [
-            el('p', { text: 'A Port Charter lets the Bastion\'s Dock ship cargo to a port and sell it there. Grant one when the party has won it. The Bastion holds it, then a Register Port Charter order at the Hall of Emissaries (Level 2, 3 days) registers it.' }),
+            el('p', { text: 'A Port Charter lets the Bastion\'s Dock ship cargo to a port and sell it there. Grant one when the party has won it. The Bastion holds it, then a Register Port Charter order at the Dock (3 days) registers it.' }),
             el('ul', { class: 'tsi-exp-charters', 'data-test': 'charter-ports' }, rows.map(function (r) {
               return el('li', { 'data-test': 'charter-row-' + r.port, 'data-status': r.st.kind }, [el('strong', { text: portTitle(r.port) }), ': ' + r.st.line]);
             }))
@@ -1489,12 +1489,13 @@
       }
 
       /* ---------- Grant a creature (pull request 7, Harry, 14 October 2026) ----------
-         The DM grants the Ironbow a griffin or a dire wolf when the party has
-         won one: its kind, a name (optional) and what it's for (optional).
-         The Bastion holds it, waiting for a home, until the Griffin Tower's
-         or the Dire Wolf Den's House order gives it one. Nothing else
-         changes in the Explorer (no companion, nothing in the Travel bags).
-         The rule is J.grantCreature (journey.js). */
+         The DM grants the Ironbow a beast when the party has won one: a
+         wyvern, griffin, dire wolf, buckbear or fellcat (since 22 October
+         2026), its name (optional) and what it's for (optional). The Bastion
+         holds it, waiting for a home, until the Beast Pen's House Beast Here
+         order gives it one (the Pen keeps one beast of each kind). Nothing
+         else changes in the Explorer (no companion, nothing in the Travel
+         bags). The rule is J.grantCreature (journey.js). */
       var onCreature = TSI.oneAtATime(function () { return creatureDialog(); });
       function creatureDialog() {
         var B = TSI.bridge;
@@ -1504,7 +1505,10 @@
         }));
         var or = function (list) { return list.length < 2 ? list.join('') : list.slice(0, -1).join(', ') + ' or ' + list[list.length - 1]; };
         var kindsText = or(kinds.map(function (k) { var n = B.speciesName(k).toLowerCase(); return (/^[aeiou]/.test(n) ? 'an ' : 'a ') + n; }));
-        var homesText = or(kinds.map(function (k) { return 'the ' + B.speciesHomeName(k); }));
+        /* Every kind lives in the same building now: say it once ("the Beast Pen"), not once for each kind. */
+        var homeNames = [];
+        kinds.forEach(function (k) { var h = B.speciesHomeName(k); if (homeNames.indexOf(h) === -1) homeNames.push(h); });
+        var homesText = or(homeNames.map(function (h) { return 'the ' + h; }));
         var cd = window.TSI_DATA && window.TSI_DATA.bastionCreatures;
         var houseDays = cd && typeof cd.houseDays === 'number' ? cd.houseDays : 3;
         var nameMax = B.NAME_MAX || 40;
@@ -1512,7 +1516,7 @@
         var whyBox = el('input', { type: 'text', id: 'tsi-exp-creature-why', maxlength: '120', class: 'tsi-input', placeholder: 'Optional', 'data-test': 'creature-why' });
         kindSel.id = 'tsi-exp-creature-kind';
         var body = [
-          el('p', { text: 'Grant the Ironbow ' + kindsText + ' when the party has won one. The Bastion holds it, waiting for a home, until ' + homesText + ' houses it (that building\'s House order: ' + houseDays + ' days, and one creature for each level of the building). Once housed, it defends the Ironbow whenever the Ironbow is attacked.' }),
+          el('p', { text: 'Grant the Ironbow ' + kindsText + ' when the party has won one. The Bastion holds it, waiting for a home, until ' + homesText + ' houses it (House Beast Here: ' + houseDays + ' days).' + (homeNames.length === 1 ? ' The ' + homeNames[0] + ' keeps one beast of each kind.' : '') + ' A housed beast must pass Acclimatise With Beast with its handler before it can bond.' }),
           el('div', { class: 'tsi-exp-creature-form' }, [
             el('label', { class: 'tsi-exp-muted', for: 'tsi-exp-creature-kind', text: 'Creature:' }), kindSel,
             el('label', { class: 'tsi-exp-muted', for: 'tsi-exp-creature-name', text: 'Its name:' }), nameBox,

@@ -19,6 +19,7 @@ const { section, check, assert, equal } = H;
 const INDEX = H.fileUrl('index.html');
 const pause = page => page.waitForTimeout(400);
 const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.debug.state())));
+const bare = (page, sel) => page.$eval(sel, n => n.textContent.replace(/\s+/g, ' ').trim());
 const exs = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.explorer.debug.state())));
 
 async function context(browser, size) {
@@ -99,10 +100,11 @@ async function waitStatus(ex, statuses, timeout) {
 async function alreadyOpenShown(page) {
   return page.evaluate(() => Array.from(document.querySelectorAll('.tsi-notice')).some(n => /Already open/.test(n.textContent)));
 }
-async function influenceRows(ba) {
-  await ba.evaluate(() => TSI.bastion.debug.reveal('bridge-log'));
-  await ba.waitForSelector('[data-test=bridge-log]');
-  const rows = await ba.$$eval('[data-test=bridge-row]', ns => ns.map(n => ({ r: n.getAttribute('data-result'), text: n.textContent.replace(/\s+/g, ' ').trim() })));
+/* Management's "Changes from the Explorer": its rows, newest first. */
+async function changeRows(ba) {
+  await ba.evaluate(() => TSI.bastion.debug.reveal('explorer-changes-list'));
+  await ba.waitForSelector('[data-test=explorer-changes-list]');
+  const rows = await ba.$$eval('[data-test=explorer-change]', ns => ns.map(n => ({ r: n.getAttribute('data-result'), text: n.textContent.replace(/\s+/g, ' ').trim() })));
   await ba.keyboard.press('Escape');
   await ba.waitForTimeout(150);
   return rows;
@@ -205,7 +207,7 @@ async function influenceRows(ba) {
     const s = await bas(ba);
     assert(s.log.some(l => l.title === 'From the Explorer' && /Clan Farmer/.test(l.body)), 'the Day Log');
     await H.waitForNotice(ba, /From the Explorer: Honour\/Respect \+1 with Clan Farmer/);
-    const rows = await influenceRows(ba);
+    const rows = await changeRows(ba);
     equal(rows.length, 1);
     assert(rows[0].r === 'applied' && /Clan Farmer \+1 \(0 → \+1\)/.test(rows[0].text), rows[0].text);
   });
@@ -228,19 +230,13 @@ async function influenceRows(ba) {
     await waitStatus(ex, ['applied']);
   });
 
-  await check('typing in an Honour/Respect box while a change from the Explorer lands keeps both', async () => {
-    await ba.evaluate(() => TSI.bastion.debug.reveal('hr-slade'));
-    await ba.waitForSelector('[data-test=hr-slade]');
-    await ba.click('[data-test=hr-slade]');
-    await ba.fill('[data-test=hr-slade]', '2');
+  await check('a second change from the Explorer lands once, and there is no Honour/Respect box to type in (S10: only the DM doc\'s Change a score does that)', async () => {
+    equal(await ba.evaluate(() => TSI.bastion.debug.reveal('hr-slade')), false, 'no box to reveal');
     await playT4Won(ex);
     await ba.waitForFunction(() => TSI.bastion.debug.state().honourRespectByClan.slade === 1, null, { timeout: 6000 });
-    equal(await ba.inputValue('[data-test=hr-slade]'), '2', 'what the DM typed stays in the box');
-    await ba.press('[data-test=hr-slade]', 'Tab');
-    await ba.waitForTimeout(200);
-    equal((await bas(ba)).honourRespectByClan.slade, 3, 'the Explorer\'s +1 and the DM\'s +2');
-    equal(await ba.inputValue('[data-test=hr-slade]'), '3');
-    await ba.keyboard.press('Escape');
+    equal(await ba.$('[data-test=hr-slade]'), null, 'no typed box on the screen');
+    await ba.waitForTimeout(300);
+    equal((await bas(ba)).honourRespectByClan.slade, 1, 'counted once');
     await waitStatus(ex, ['applied', 'applied']);
   });
 
@@ -314,9 +310,9 @@ async function influenceRows(ba) {
     const s = await bas(ba3);
     equal(s.honourRespectByClan.slade, 0);
     equal(Object.values(s.bridge.done).map(r => r.r), ['skipped', 'skipped', 'skipped']);
-    const rows = await influenceRows(ba3);
+    const rows = await changeRows(ba3);
     equal(rows.map(r => r.r), ['skipped', 'skipped', 'skipped']);
-    assert(/Type it in above if it should count/.test(rows[0].text), rows[0].text);
+    assert(/Sent before this Bastion started\. Use Change a score in the DM doc if it should count/.test(rows[0].text), rows[0].text);
     await waitStatus(ex3, ['skipped', 'skipped', 'skipped']);
   });
 
@@ -352,6 +348,135 @@ async function influenceRows(ba) {
     equal(await home.evaluate(() => TSI.store.fresh('tsi.explorer.save', null)), null, 'cleared by Restore');
   });
   await D.close();
+
+  /* ------------------------------------------------------------------ */
+  section('A change the Bastion cannot use, and Resolve: told in a notice, listed in Management (Strip Back Overhaul, S02)');
+  const E2 = await context(browser, 'laptop');
+  const ba5 = await open(E2, 'bastion');
+  await ba5.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state, null, { timeout: 8000 });
+  const bad = n => ({ id: 'r' + n + '-1a2b3c4d:won:2', type: 'standing', day: 1, at: '2026-10-13T10:00:00.000Z', from: { code: 'T4', title: 'The Knight-Errant\'s Challenge', step: 'won' }, clan: 'slade', hr: 3, text: 'Too big, number ' + n + '.' });
+  const sendBad = async list => {
+    await ba5.evaluate(async msgs => {
+      TSI.store.set('tsi.explorer.save', { travel: { day: 1 }, journey: { outbox: msgs } });
+      await TSI.store.flush();
+      TSI.bastion.debug.clock();
+    }, list);
+  };
+
+  await check('a refused change: its own warning notice says why, and Management lists it as Refused with the same reason', async () => {
+    await H.dismissNotices(ba5);
+    await sendBad([bad(1)]);
+    await H.waitForNotice(ba5, /A change from the Explorer \(T4, Day 1\) couldn.t be used, so nothing changed: Its change isn.t \+1 or −1\./);
+    const notes = await ba5.$$eval('.tsi-notice', ns => ns.map(n => ({ cls: n.className, text: n.textContent })));
+    const n = notes.find(x => /couldn.t be used/.test(x.text));
+    assert(/tsi-notice--warn/.test(n.cls), n.cls);
+    assert(/Changes from the Explorer, in Management, lists it\./.test(n.text), n.text);
+    assert(!/Clan Influence/.test(n.text), n.text);
+    const rows = await changeRows(ba5);
+    equal(rows.map(r => r.r), ['refused']);
+    assert(/^Refused: Clan Slade · Day 1Too big, number 1\.Its change isn.t \+1 or −1\.$/.test(rows[0].text), rows[0].text);
+    assert(!/Use Change a score/.test(rows[0].text), 'a refused change has nothing to type in');
+    equal((await bas(ba5)).honourRespectByClan.slade, 0, 'nothing changed');
+    await H.dismissNotices(ba5);
+  });
+
+  await check('the list shows the newest ten; "Show all" shows the rest, and the box shows the same again', async () => {
+    await sendBad([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(bad));
+    await ba5.waitForFunction(() => Object.keys(TSI.bastion.debug.state().bridge.done).length === 12, null, { timeout: 8000 });
+    await ba5.evaluate(() => TSI.bastion.debug.reveal('explorer-changes-list'));
+    await ba5.waitForSelector('[data-test=explorer-changes-more]');
+    equal(await ba5.$$eval('[data-test=explorer-change]', n => n.length), 10);
+    equal(await ba5.textContent('[data-test=explorer-changes-more]'), 'Show all 12');
+    await ba5.click('[data-test=explorer-changes-more]');
+    equal(await ba5.$$eval('[data-test=explorer-change]', n => n.length), 12);
+    equal(await ba5.textContent('[data-test=explorer-changes-more]'), 'Show only the newest 10');
+    equal(await ba5.$$eval('[data-test=explorer-change]', ns => ns.every(n => n.getAttribute('data-result') === 'refused')), true);
+    await ba5.click('[data-test=explorer-changes-more]');
+    equal(await ba5.$$eval('[data-test=explorer-change]', n => n.length), 10);
+    await ba5.keyboard.press('Escape');
+    await ba5.waitForTimeout(150);
+  });
+
+  await check('Resolve on a due order: its result comes up as a notice (and is still in the Day Log)', async () => {
+    await H.dismissNotices(ba5);
+    await ba5.evaluate(() => TSI.bastion.debug.change(s => {
+      s.pendingOrders.push({ id: 'p1', facId: 'dock', fnId: 'charter_berth', optionLabel: 'Keelboat', label: 'Dock: Charter Berth (Keelboat)', costGP: 100, issuedDay: 1, dueDay: s.day });
+    }));
+    await ba5.evaluate(() => TSI.bastion.debug.reveal('resolve-0'));
+    await ba5.waitForSelector('[data-test=resolve-0]');
+    await pause(ba5);
+    await ba5.click('[data-test=resolve-0]');
+    await H.waitForNotice(ba5, /Dock: Charter Berth \(Keelboat\) → Added to Warehouse\./);
+    const n = (await ba5.$$eval('.tsi-notice', ns => ns.map(x => ({ cls: x.className, text: x.textContent })))).find(x => /Charter Berth/.test(x.text));
+    assert(/tsi-notice--info/.test(n.cls) && /^Order resolved\./.test(n.text), n.text);
+    const s = await bas(ba5);
+    equal(s.pendingOrders, []);
+    assert(s.log.some(l => l.body === 'Dock: Charter Berth (Keelboat) → Added to Warehouse.'), 'the Day Log line is still written');
+  });
+  await E2.close();
+
+  /* ------------------------------------------------------------------ */
+  section('A change the Bastion cannot use, landing while days are being passed (fix 13 of the Strip Back review)');
+  const E3 = await context(browser, 'laptop');
+  const ba6 = await open(E3, 'bastion');
+  await ba6.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state, null, { timeout: 8000 });
+  const refusedAtDay3 = { id: 'r1-1a2b3c4d:won:2', type: 'standing', day: 3, at: '2026-10-13T10:00:00.000Z', from: { code: 'T4', title: 'The Knight-Errant\'s Challenge', step: 'won' }, clan: 'slade', hr: 3, text: 'Too big, sent on Day 3.' };
+  const REFUSED = /A change from the Explorer \(T4, Day 3\) couldn.t be used, so nothing changed: Its change isn.t \+1 or −1\./;
+  let word = '';
+  let wordKept = [];
+
+  await check('the Bastion on Day 1 and the Explorer on Day 4, with a change dated Day 3 that is refused: the days pass, a warning notice says why, and it comes up once', async () => {
+    await H.dismissNotices(ba6);
+    await ba6.evaluate(async () => {
+      TSI.store.set('tsi.explorer.save', { travel: { day: 1 }, journey: { outbox: [] } });
+      await TSI.store.flush();
+      TSI.bastion.debug.clock();
+    });
+    await ba6.waitForFunction(() => TSI.bastion.debug.state().anchored && TSI.bastion.debug.state().day === 1, null, { timeout: 8000 });
+    await ba6.evaluate(async msg => {
+      TSI.store.set('tsi.explorer.save', { travel: { day: 4 }, journey: { outbox: [msg] } });
+      await TSI.store.flush();
+      TSI.bastion.debug.clock();
+    }, refusedAtDay3);
+    await ba6.waitForSelector('[data-test=ironbow-word]', { timeout: 15000 });
+    word = await bare(ba6, '[data-test=ironbow-word]');
+    wordKept = (await bas(ba6)).word;   /* the news is kept until the box is closed */
+    await H.waitForNotice(ba6, REFUSED);
+    const notes = await ba6.$$eval('.tsi-notice', ns => ns.map(n => ({ cls: n.className, text: n.textContent })));
+    const mine = notes.filter(x => /couldn.t be used/.test(x.text));
+    equal(mine.length, 1, 'one notice, not one for each day');
+    assert(/tsi-notice--warn/.test(mine[0].cls), mine[0].cls);
+    assert(/^Not used\./.test(mine[0].text) && /Changes from the Explorer, in Management, lists it\./.test(mine[0].text), mine[0].text);
+    assert(!/Clan Influence/.test(mine[0].text), mine[0].text);
+  });
+
+  await check('"The Ironbow sends word…" lists the refusal with its reason, among the news of Day 3', async () => {
+    assert(/From the Explorer: a change \(T4, Day 3\) couldn.t be used, so nothing changed: Its change isn.t \+1 or −1\./.test(word), word);
+    await ba6.click('[data-test=ironbow-word] .tsi-modal__foot button.tsi-btn--primary');
+    await ba6.waitForFunction(() => { const s = TSI.bastion.debug.state(); return s.day === 4 && !s.dayInProgress; }, null, { timeout: 8000 });
+    const s = await bas(ba6);
+    const day3 = wordKept.filter(w => w.day === 3);
+    equal(day3.length, 1);
+    assert(day3[0].lines.some(l => /^From the Explorer: a change \(T4, Day 3\) couldn.t be used/.test(l)), JSON.stringify(day3));
+    equal(wordKept.filter(w => w.lines.some(l => /couldn.t be used/.test(l))).length, 1, 'one word line in all');
+    equal(s.honourRespectByClan.slade, 0, 'nothing changed');
+  });
+
+  await check('it is only ever told once: the receipt says Refused once, the Day Log has one line, and no second notice comes later', async () => {
+    await ba6.waitForTimeout(4500);
+    const s = await bas(ba6);
+    equal(Object.values(s.bridge.done).map(r => r.r), ['refused']);
+    equal(s.log.filter(l => /couldn.t be used, so nothing changed/.test(l.body)).length, 1);
+    const notes = await ba6.$$eval('.tsi-notice', ns => ns.map(n => n.textContent));
+    equal(notes.filter(x => /couldn.t be used/.test(x)).length, 1);
+  });
+
+  await check('Management lists it as Refused with the same reason', async () => {
+    const rows = await changeRows(ba6);
+    equal(rows.map(r => r.r), ['refused']);
+    assert(/Its change isn.t \+1 or −1\./.test(rows[0].text), rows[0].text);
+  });
+  await E3.close();
 
   /* ------------------------------------------------------------------ */
   for (const size of ['laptop', 'tv']) {

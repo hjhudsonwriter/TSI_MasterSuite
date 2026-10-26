@@ -124,11 +124,14 @@ async function closePopup(page) {
 }
 /* A Bastion save (in days, following the Explorer) with one order due on
    the given day, for "The Ironbow sends word…" at Make Camp. The Explorer
-   only reads it. */
+   only reads it. It is a version 4 save (the Strip Back Overhaul, 22 October
+   2026): the Explorer reads a version 3 save without the orders of the 13
+   facilities that are going (the Shrines, the Library...), which the Bastion
+   cancels or moves when it next opens (TSI.campaign.RETIRED_FACILITIES). */
 async function seedBastion(page, dueDay, today) {
   await page.evaluate(([due, d]) => TSI.store.set('tsi.bastion.state', {
-    v: 2, day: d, anchored: true, treasuryGP: 0, partyLevel: 7, builtExtras: [], warehouse: [], defenders: { count: 0, armed: false, patrolUntil: 0 },
-    pendingOrders: [{ id: 'o1', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', costGP: 0, issuedDay: d, dueDay: due }]
+    v: 4, day: d, anchored: true, treasuryGP: 0, partyLevel: 7, builtExtras: [], warehouse: [],
+    pendingOrders: [{ id: 'o1', facId: 'dock', fnId: 'charter_berth', label: 'Dock: Charter Berth (Longship)', costGP: 0, issuedDay: d, dueDay: due }]
   }), [dueDay, today]);
 }
 /* Force the event dice: travelChance and campChance (0 to 1). */
@@ -538,7 +541,7 @@ function serve(dir) {
       await page.waitForSelector('[data-test=ironbow-word]');
       v = await eventView(page);
       shown.push(v.meta);
-      equal(await page.$$eval('[data-test=ironbow-word] [data-test=word-lines] li', ls => ls.map(l => l.textContent)), ['Barracks: Recruit Defenders is complete.']);
+      equal(await page.$$eval('[data-test=ironbow-word] [data-test=word-lines] li', ls => ls.map(l => l.textContent)), ['Dock: Charter Berth (Longship) is complete.']);
       await closePopup(page);
       equal(await modalOpen(page), false);
       equal(shown.map(x => x.split(':')[0]), ['Weather', 'The Ironbow sends word…']);
@@ -625,7 +628,7 @@ function serve(dir) {
       await closePopup(page);
       await page.waitForSelector('[data-test=ironbow-word]');
       equal(await page.textContent('[data-test=ironbow-word] .tsi-modal__title'), 'The Ironbow sends word…');
-      equal(await page.$$eval('[data-test=ironbow-word] [data-test=word-lines] li', ls => ls.map(l => l.textContent)), ['Barracks: Recruit Defenders is complete.']);
+      equal(await page.$$eval('[data-test=ironbow-word] [data-test=word-lines] li', ls => ls.map(l => l.textContent)), ['Dock: Charter Berth (Longship) is complete.']);
       equal(await page.$$eval('[data-test=ironbow-word] .tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['Open the Bastion ↗', 'Close']);
       await closeAll(page);
       equal(await page.evaluate(() => TSI.store.get('tsi.bastion.state').pendingOrders.length), 1, 'the Explorer never changes the Bastion');

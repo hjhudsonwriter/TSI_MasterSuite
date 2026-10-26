@@ -8,9 +8,9 @@
    changing. The rules are in tools/bastion/rules.js ("Cargo and Port
    Charters").
 
-   This is separate from the Hall's old trade (Trade Agreements, the Trade
-   Consortium's sea routes and their income), which is unchanged. A cargo
-   voyage never pays route income, and a route never sells cargo. */
+   The Hall of Emissaries' old trade (Trade Agreements, the Trade Consortium's
+   sea routes and their income) ended in the Strip Back Overhaul; this is the
+   only trade now, and the Dock manages all of it. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionCommerce = {
   /* Harry's values are provisional until he has tried trade at the table. */
@@ -141,17 +141,16 @@ window.TSI_DATA.bastionCommerce = {
   },
 
   /* Protection for a voyage: each takes percentage points off the chance
-     (never below 0), all three together if they are all ready. Each is
-     applied to a voyage by itself when it sails and recorded with it.
-     consumes: the protection is used up by the voyage it protects.
-     Convoy (the Barracks' Guard Commercial Convoy: 1 kept, used by the next
-     ship) and Approaches (the Watchtower's Protect Maritime Approaches: 7
-     days, every ship that sails in them) have their orders since 20 October
-     2026; the Blessing of Pelagos since the Shrines. */
+     (never below 0). Each is applied to a voyage by itself when it sails and
+     recorded with it. consumes: the protection is used up by the voyage it
+     protects. Only the Blessing of Pelagos is left (the Temple's Bless
+     Commercial Shipment, which was the Shrine of Pelagos's): the Commercial
+     Convoy (the Barracks) and the Protected Maritime Approaches (the
+     Watchtower) went with the war game on 22 October 2026, and a Bastion's
+     held one is dropped and told about when it is converted
+     (strip-back-rules.js). */
   protections: [
-    { id: 'commercial_convoy', label: 'Commercial Convoy', facId: 'barracks', order: 'Guard Commercial Convoy', cut: 5, consumes: true, available: true },
-    { id: 'maritime_approaches', label: 'Protected Maritime Approaches', facId: 'watchtower', order: 'Protect Maritime Approaches', cut: 5, available: true },
-    { id: 'pelagos_blessing', label: 'Blessing of Pelagos', facId: 'shrine_pelagos', order: 'Bless Commercial Shipment', cut: 10, consumes: true, available: true }
+    { id: 'pelagos_blessing', label: 'Blessing of Pelagos', facId: 'temple', order: 'Bless Commercial Shipment', cut: 10, consumes: true, available: true }
   ],
 
   /* ---------- The Dock ----------

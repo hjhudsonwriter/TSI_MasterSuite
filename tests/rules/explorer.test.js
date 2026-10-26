@@ -412,7 +412,7 @@
   test('"The Ironbow sends word…" comes last, only on a day the Bastion has news for', function (t) {
     var B = TSI.bastion.rules;
     var T = window.TSI_DATA;
-    var b = B.defaultState({ bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents });
+    var b = B.defaultState({ bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools });
     b.day = 7;
     b.anchored = true;
     b.pendingOrders = [{ id: 'a', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', issuedDay: 3, dueDay: 8 }];
@@ -426,7 +426,7 @@
       var q2 = R.makeCamp(s, D, E, dice([0.99]), b);
       if (q2.some(function (x) { return x.kind === 'word'; })) days.push(s.travel.day);
     }
-    t.same(days, [29], 'after Day 8, only the Bastion event on Day 29');
+    t.same(days, [], 'after Day 8 there is nothing more to say: no Bastion event comes on Day 29 any more');
     t.same(R.makeCamp(fresh(), D, E, dice([0.99])).filter(function (x) { return x.kind === 'word'; }), [], 'no Bastion save: no word');
   });
 

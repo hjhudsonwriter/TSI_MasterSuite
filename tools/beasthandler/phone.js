@@ -1,18 +1,26 @@
-/* Scarlett Isles: Beast Handler — the player's phone (BH-3a, the offline code swap).
+/* Scarlett Isles: Beast Handler — the player's phone (BH-3a; read-only since 22 October 2026; QR link and online link S17).
 
-   beasthandler.html loads this with only the companion's own files. There is no
-   internet and no server between this phone and the DM's Bastion, so they swap
-   short pieces of text (pasted, or sent as a small file), each signed with a
-   secret only that handler and the DM's Bastion know (codes.js):
+   beasthandler.html loads this with only the companion's own files. It shows the
+   player's beasts and sends nothing back to the DM.
 
-   1. The DM gives a PAIRING code once. Pasting it links this phone to one handler.
-   2. The DM sends a SNAPSHOT code: what this handler can see. Pasting it shows the beasts.
-   3. A change the player makes becomes a REQUEST code to send back to the DM, who
-      pastes it into the Bastion. The Bastion checks it again, does it once, and
-      the answer comes back in the next snapshot.
-   Nothing here ever changes the Bastion: it only asks. What is kept on this phone
-   (the link, the latest snapshot and the requests not yet answered) is in this
-   browser only, under keys starting "tsi.beasthandler.phone". */
+   LINKING. The DM shows a QR code. The player points the phone's camera at it and taps
+   the link that appears: this page opens with the pairing after the # of its address
+   (codes.js, C.decodeLink). The page reads it, keeps the pairing exactly as a pasted
+   pairing code would be kept, and takes the # part out of the address bar and the
+   history straight away (history.replaceState), so the secret doesn't stay where it
+   can be read over a shoulder or sent on. A browser never sends a # part to any server.
+   An already linked phone asks before it swaps to a different link.
+
+   UPDATING. By default the DM sends a SNAPSHOT code (pasted in under "Offline backup").
+   If the DM has also set up the optional online link (relay-config.js, off until then),
+   the page looks for new snapshots by itself (puller.js) and shows them the same way.
+   Both go through the same check (link-rules.js, L.accept): signed with this handler's
+   secret, for this Bastion save and this handler, and never older than the one held.
+
+   What is kept on this phone (the link, the latest snapshot, and which beasts' first
+   meeting has been shown) is in this browser only, under keys starting
+   "tsi.beasthandler.phone". Unlinking forgets all of it. An iPhone keeps a Home Screen
+   icon's saved link apart from Safari's: see the help on the link screen. */
 (function () {
   'use strict';
 
@@ -26,7 +34,9 @@
   var root = document.getElementById('tsi-bhp-root');
 
   /* ---------- What this phone keeps ---------- */
-  var KEY = { pairing: 'tsi.beasthandler.phone.pairing', snapshot: 'tsi.beasthandler.phone.snapshot', outbox: 'tsi.beasthandler.phone.outbox', draft: 'tsi.beasthandler.phone.draft' };
+  var KEY = { pairing: 'tsi.beasthandler.phone.pairing', snapshot: 'tsi.beasthandler.phone.snapshot', seen: 'tsi.beasthandler.phone.seen' };
+  /* Kept by earlier versions (requests to send, a first-meeting draft): the app sends nothing now, so they are cleared away. */
+  var OLD_KEYS = ['tsi.beasthandler.phone.outbox', 'tsi.beasthandler.phone.draft'];
   var memory = {};   /* used only if the browser won't keep anything */
   var keepsNothing = false;
   function read(key) {
@@ -50,69 +60,19 @@
     return !!sn.handler && typeof sn.handler.id === 'string' && P.handlerKey(sn.handler.id) === P.handlerKey(pairing.handler);
   }
   if (held && !usable(held)) { held = null; write(KEY.snapshot, null); }
-  var outbox = Array.isArray(read(KEY.outbox)) ? read(KEY.outbox).filter(function (o) { return o && typeof o.id === 'string' && typeof o.code === 'string'; }) : [];
+  OLD_KEYS.forEach(function (k) { write(k, null); });
+  var seen = read(KEY.seen);          /* { <creature id>: true }: the first meetings that have been shown on this phone */
+  if (!seen || typeof seen !== 'object' || Array.isArray(seen)) seen = {};
   var view = null;
   var viewRoot = null;
 
   function snapshot() { return held && held.snapshot ? held.snapshot : null; }
-  function saveOutbox() { write(KEY.outbox, outbox); }
-  /* What a waiting request asked for. A request kept by an earlier version of this page has no copy of it, but its code holds the whole request. */
-  function payloadOf(o) {
-    if (o.payload && typeof o.payload === 'object') return o.payload;
-    var peek = C.peekCommand(o.code);
-    return peek.ok && peek.command && peek.command.payload && typeof peek.command.payload === 'object' ? peek.command.payload : undefined;
-  }
-  /* Requests the Bastion has answered leave the list when a snapshot shows their receipt. */
-  function prune() {
-    var s = snapshot();
-    if (!s) return;
-    var answered = {};
-    (Array.isArray(s.receipts) ? s.receipts : []).forEach(function (r) { if (r && typeof r.id === 'string') answered[r.id] = true; });
-    var keep = outbox.filter(function (o) { return !answered[o.id] && Date.now() - o.at < C.MAX_AGE_MS; });
-    if (keep.length !== outbox.length) { outbox = keep; saveOutbox(); }
-  }
-  prune();
 
   /* ---------- Small pieces ---------- */
   function btn(label, onclick, cls, test, attrs) {
     return el('button', Object.assign({ type: 'button', class: 'tsi-btn ' + (cls || ''), 'data-test': test || null, onclick: onclick }, attrs || {}), label);
   }
-  function copy(text, button) {
-    function ok() { if (!button) return; var was = button.textContent; button.textContent = 'Copied ✓'; life.setTimeout(function () { button.textContent = was; }, 1600); }
-    function fallback() {
-      var ta = el('textarea', { style: 'position:fixed;opacity:0;left:-999px', 'aria-hidden': 'true' });
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      var copied = false;
-      try { copied = document.execCommand('copy'); } catch (e) { /* the code is on screen to copy by hand */ }
-      ta.remove();
-      if (copied) ok();
-    }
-    try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fallback); else fallback(); } catch (e) { fallback(); }
-  }
-  function ago(ms) {
-    var m = Math.floor(Math.max(0, Date.now() - ms) / 60000);
-    if (m < 1) return 'just now';
-    if (m < 60) return m + (m === 1 ? ' minute ago' : ' minutes ago');
-    var h = Math.floor(m / 60);
-    if (h < 48) return h + (h === 1 ? ' hour ago' : ' hours ago');
-    return Math.floor(h / 24) + ' days ago';
-  }
-  function showCode(title, intro, code, filename, test) {
-    var box = el('textarea', { class: 'tsi-input tsi-bhp-code', readonly: 'readonly', 'aria-label': title + ' (the code to copy)', 'data-test': test, onfocus: function () { box.select(); } });
-    box.value = code;
-    var copyBtn = btn('Copy', function () { copy(code, copyBtn); }, '', test + '-copy');
-    return TSI.modal.open({
-      title: title,
-      body: el('div', null, [
-        el('p', { text: intro }), box,
-        el('div', { class: 'tsi-bhp-row' }, [copyBtn, btn('Save as a file', function () { TSI.download(filename, code, 'text/plain'); }, '', test + '-save')])
-      ]),
-      actions: [{ label: 'Done', value: true, primary: true }],
-      onOpen: function (parts) { parts.dialog.setAttribute('data-test', test + '-dialog'); }
-    });
-  }
+  var ago = function (ms) { return BH.link.ago(ms); };
   /* A text box with a button to open a file instead. Returns { node, value() }. */
   function codeInput(placeholder, test) {
     var area = el('textarea', { class: 'tsi-input tsi-bhp-code', placeholder: placeholder, 'data-test': test, 'aria-label': placeholder, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
@@ -121,24 +81,81 @@
     }, 'tsi-btn--ghost', test + '-file');
     return { node: el('div', { class: 'tsi-bhp-field' }, [area, el('div', { class: 'tsi-bhp-row' }, file)]), value: function () { return area.value; }, area: area };
   }
+  /* The "Offline backup" box: shut until the player opens it. Everything the old copy-and-paste way needs lives inside it. */
+  function backupBox(summary, children) {
+    return el('details', { class: 'tsi-bhp-backup', 'data-test': 'bhp-backup' }, [
+      el('summary', { class: 'tsi-bhp-backup__summary', 'data-test': 'bhp-backup-toggle', text: summary }),
+      el('div', { class: 'tsi-bhp-backup__body' }, children)
+    ]);
+  }
+  /* Copy some text. Resolves true if it was copied; the caller shows the text for copying by hand if not. */
+  function copyText(text) {
+    return new Promise(function (resolve) {
+      function fallback() {
+        var ta = el('textarea', { style: 'position:fixed;opacity:0;left:-999px', 'aria-hidden': 'true' });
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        var copied = false;
+        try { copied = document.execCommand('copy'); } catch (e) { copied = false; }
+        ta.remove();
+        resolve(copied);
+      }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { resolve(true); }, fallback);
+        else fallback();
+      } catch (e) { fallback(); }
+    });
+  }
 
   /* ---------- Taking in a snapshot ---------- */
-  function takeSnapshot(code) {
-    if (!pairing) return { ok: false, why: 'Link this phone first with the pairing code.' };
-    var d = C.decodeSnapshot(code, pairing.secret);
-    if (!d.ok) return d;
-    var bad = P.check(d.snapshot);
-    if (bad) return { ok: false, why: bad };
-    var s = d.snapshot;
-    if (typeof s.campaign !== 'string' || s.campaign !== pairing.campaign) return { ok: false, why: 'That snapshot is from a different Bastion save. Ask the DM for the right one.' };
-    if (!s.handler || P.handlerKey(s.handler.id) !== P.handlerKey(pairing.handler)) return { ok: false, why: 'That snapshot is for a different handler.' };
-    if (held && held.snapshot && typeof held.snapshot.madeAt === 'number' && typeof s.madeAt === 'number' && s.madeAt < held.snapshot.madeAt) {
-      return { ok: false, why: 'That snapshot is older than the one you already have (' + (held.snapshot.asOfLabel || 'a later day') + '). Ask the DM for a newer one, or press Unlink this phone to start again.' };
-    }
-    held = { snapshot: s, at: Date.now() };
+  /* via: 'code' for one pasted in, 'link' for one that came over the online link. */
+  function takeSnapshot(code, via) {
+    var r = BH.link.accept(pairing, snapshot(), code);
+    if (!r.ok) return r;
+    held = { snapshot: r.snapshot, at: Date.now(), via: via || 'code' };
     write(KEY.snapshot, held);
-    prune();
     return { ok: true };
+  }
+
+  /* ---------- The online link (off unless the DM has set it up: relay-config.js) ---------- */
+  var liveText = '';
+  var live = BH.puller.create({
+    life: life,
+    pairing: function () { return pairing; },
+    held: snapshot,
+    take: function (snap) {
+      held = { snapshot: snap, at: Date.now(), via: 'link' };
+      write(KEY.snapshot, held);
+      if (view) refreshAll(); else start();
+    },
+    onStatus: function () { paintLive(); }
+  });
+  function liveOn() { return live.active(); }
+  function liveWords() {
+    var st = live.status();
+    switch (st.state) {
+      case 'ok': return 'Updates arrive by themselves while this page is open. Last checked ' + (st.checkedAt ? ago(st.checkedAt) : 'just now') + '.';
+      case 'empty': return 'Waiting for your DM\'s Bastion to send your beasts. It sends when it is open.';
+      case 'offline': return 'No connection just now. You will see the latest update when you are back online.';
+      case 'unreadable': return 'An update arrived that this phone could not read. If it keeps happening, ask your DM to take back your code and show you a new QR code.';
+      case 'trouble': return 'Could not reach the update service just now. It will try again.';
+      case 'checking': return liveText || 'Checking for an update…';
+      default: return '';
+    }
+  }
+  function paintLive() {
+    var words = liveWords();
+    if (words) liveText = words;
+    var node = root.querySelector('[data-test="bhp-live"]');
+    if (node) node.textContent = liveText;
+  }
+  function liveRow() {
+    if (!liveOn()) return null;
+    return el('div', { class: 'tsi-bhp-live' }, [
+      el('p', { class: 'tsi-bh-muted', 'data-test': 'bhp-live', role: 'status', text: liveWords() || liveText || 'Checking for an update…' }),
+      el('div', { class: 'tsi-bhp-row' }, btn('Check now', function () { live.check(true); }, 'tsi-btn--ghost', 'bhp-check'))
+    ]);
   }
 
   /* ---------- The host the shared screens use ---------- */
@@ -151,42 +168,55 @@
     syncLine: function () {
       var s = snapshot();
       if (!s) return 'No snapshot yet.';
+      if (held && held.via === 'link') return BH.link.liveLine(s);
       var old = Date.now() - held.at > 24 * 3600 * 1000;
-      var waiting = outbox.length;
-      return 'Snapshot of ' + s.asOfLabel + ', got ' + ago(held.at) + (old ? '. It is more than a day old: ask the DM for a new one' : '') + (waiting ? ' · ' + waiting + (waiting === 1 ? ' request' : ' requests') + ' to send' : '');
+      return 'Snapshot of ' + s.asOfLabel + ', got ' + ago(held.at) + (old ? '. It is more than a day old: ask the DM for a new one' : '');
     },
-    canSubmit: function () {
-      var s = snapshot();
-      if (!pairing) return 'Link this phone first.';
-      if (!s) return 'Get a snapshot from the DM first.';
-      if (!s.campaign || s.campaign !== pairing.campaign) return 'The DM needs to open the Bastion once and send a new snapshot before you can ask for anything.';
-      return '';
-    },
-    /* The first meeting's choices, kept on this phone while a request waits, so a refusal (which can come days later) can put them back. */
-    drafts: {
-      read: function () { var m = read(KEY.draft); return m && typeof m === 'object' && !Array.isArray(m) ? m : {}; },
-      write: function (m) { write(KEY.draft, m && Object.keys(m).length ? m : null); }
-    },
-    outbox: function () { return outbox.map(function (o) { return { id: o.id, type: o.type, creature: o.creature, fac: o.fac, label: o.label, at: o.at, payload: payloadOf(o) }; }); },
-    submit: function (body) {
-      var why = host.canSubmit();
-      if (why) return Promise.resolve({ ok: false, message: why });
-      var s = snapshot();
-      var d = s.creatures[body.creature];
-      var label = !d ? '' : body.type === 'profile.set' ? d.name + ' (profile)' : d.name + ': ' + ((d.orders.available.filter(function (o) { return o.fnId === body.payload.fnId; })[0] || {}).label || body.payload.fnId);
-      var cmd = { v: 1, id: 'p-' + TSI.hmac.randomId(24), campaign: pairing.campaign, handler: pairing.handler, creature: body.creature, fac: body.fac || '', type: body.type, view: body.view || '', label: label, payload: body.payload, at: Date.now() };
-      var code = C.encodeCommand(cmd, pairing.secret);
-      outbox.push({ id: cmd.id, type: cmd.type, creature: cmd.creature, fac: cmd.fac, label: label, at: cmd.at, code: code, payload: cmd.payload });
-      saveOutbox();
-      return Promise.resolve({ ok: true, id: cmd.id, code: code, label: label });
-    },
-    afterSubmit: function (res) {
-      return showCode('Send this to the DM', 'This is your request. Send it to the DM exactly as it is (a message, an email, or save it as a file). It only asks: nothing starts until the DM\'s Bastion checks it and accepts it. Then the DM sends you a new snapshot with the answer.', res.code, 'beast-handler-request.txt', 'bhp-request');
-    },
+    /* Which beasts' first meeting has played on this phone (kept here until the phone is unlinked). */
+    seen: function () { return seen; },
+    markSeen: function (id) { seen = Object.assign({}, seen); seen[id] = true; write(KEY.seen, seen); },
     extraHome: function () { return homeExtras(); }
   };
 
-  /* ---------- Home extras: the snapshot, the requests to send, unlinking ---------- */
+  /* ---------- Linking from a QR code or a link (the # part of the address) ---------- */
+  /* What to tell the player on the next screen: { text, bad }. */
+  var flash = null;
+  /* Take the # part out of the address bar and the history, whatever it held. */
+  function wipeHash() {
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* the address bar keeps it; nothing else is affected */ }
+  }
+  /* Read the # part once, when the page opens. Returns what C.decodeLink made of it, or null if there was none. */
+  function readHash() {
+    var hash = '';
+    try { hash = location.hash || ''; } catch (e) { hash = ''; }
+    if (!hash || hash === '#') return null;
+    var d = C.decodeLink(hash);
+    wipeHash();
+    return d;
+  }
+  /* Make a decoded link this phone's link. If the phone is linked already to someone else, ask first. Resolves true if it changed. */
+  function adoptPairing(next) {
+    if (pairing && pairing.secret === next.secret && P.handlerKey(pairing.handler) === P.handlerKey(next.handler) && pairing.campaign === next.campaign) {
+      flash = { text: 'This phone is already linked to ' + pairing.name + '\'s beasts.' };
+      return Promise.resolve(false);
+    }
+    function apply() {
+      var sameBastion = pairing && pairing.campaign === next.campaign && P.handlerKey(pairing.handler) === P.handlerKey(next.handler);
+      if (pairing && !sameBastion) { held = null; seen = {}; write(KEY.snapshot, null); write(KEY.seen, null); }
+      pairing = next;
+      write(KEY.pairing, pairing);
+      if (held && !usable(held)) { held = null; write(KEY.snapshot, null); }
+      flash = { text: 'Linked. This phone now shows ' + pairing.name + '\'s beasts.' };
+      return true;
+    }
+    if (!pairing) return Promise.resolve(apply());
+    return TSI.modal.confirm({ title: 'Replace the link?', message: 'This phone is linked to ' + pairing.name + '\'s beasts. Replace that with the link for ' + next.name + '\'s beasts?', okLabel: 'Replace the link', cancelLabel: 'Keep what I have' }).then(function (go) {
+      if (!go) return false;   /* the player chose to keep it: nothing more to say */
+      return apply();
+    });
+  }
+
+  /* ---------- Home extras: the snapshot, the link and unlinking ---------- */
   var onUpdate = TSI.oneAtATime(function () {
     var input = codeInput('Paste the snapshot code here (it starts BHS1.)', 'bhp-snap-input');
     var problem = el('p', { class: 'tsi-bhp-error', hidden: true, role: 'alert', 'data-test': 'bhp-snap-problem' });
@@ -196,74 +226,111 @@
       onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'bhp-snap-dialog'); }
     }).then(function (ok) {
       if (!ok) return null;
-      var r = takeSnapshot(input.value());
+      var r = takeSnapshot(input.value(), 'code');
       if (!r.ok) return TSI.modal.alert({ title: 'That didn\'t work', message: r.why }).then(function () { return null; });
       refreshAll();
       return null;
     });
   });
   var onUnlink = TSI.oneAtATime(function () {
-    return TSI.modal.confirm({ title: 'Unlink this phone', message: 'This forgets the link to your beasts, the snapshot and any requests you have not sent. You would need a new pairing code from the DM. Unlink?', okLabel: 'Unlink', cancelLabel: 'Keep it' }).then(function (go) {
+    return TSI.modal.confirm({ title: 'Unlink this phone', message: 'This forgets the link to your beasts and the snapshot. You would need your DM\'s QR code again, and each beast\'s first meeting would play again. Unlink?', okLabel: 'Unlink', cancelLabel: 'Keep it' }).then(function (go) {
       if (!go) return;
-      pairing = null; held = null; outbox = [];
-      write(KEY.pairing, null); write(KEY.snapshot, null); write(KEY.outbox, null); write(KEY.draft, null);
+      pairing = null; held = null; seen = {};
+      write(KEY.pairing, null); write(KEY.snapshot, null); write(KEY.seen, null);
       start();
     });
   });
-
-  /* A request that was never sent (a lost code, a closed chat) would otherwise block new ones for up to 30 days.
-     Forgetting it only clears this phone's list: if the code did reach the DM, the Bastion can still apply it. */
-  var onForget = TSI.oneAtATime(function (o) {
-    return TSI.modal.confirm({ title: 'Forget this request', message: 'Forget "' + o.label + '"? Only do this if you never sent it. If the DM has the code, it can still be applied, and the answer will show in your next snapshot.', okLabel: 'Forget it', cancelLabel: 'Keep it' }).then(function (go) {
-      if (!go) return;
-      outbox = outbox.filter(function (x) { return x.id !== o.id; });
-      saveOutbox();
-      refreshAll();
+  /* This page's own address with the pairing after the #: for moving the link to another place on the same phone (an iPhone Home Screen icon). */
+  function myLink() {
+    var base = '';
+    try { base = location.href.split('#')[0].split('?')[0]; } catch (e) { base = ''; }
+    return base + '#' + C.encodeLink(pairing);
+  }
+  var onCopyLink = TSI.oneAtATime(function () {
+    var text = myLink();
+    return copyText(text).then(function (done) {
+      if (done) return TSI.modal.alert({ title: 'Link copied', message: 'Your link is copied. It links a phone to your beasts, so only share it with yourself (for example, paste it into the Home Screen icon\'s page).' });
+      var box = el('textarea', { class: 'tsi-input tsi-bhp-code', readonly: 'readonly', 'aria-label': 'Your link', 'data-test': 'bhp-mylink', onfocus: function () { box.select(); } });
+      box.value = text;
+      return TSI.modal.open({ title: 'Your link', body: el('div', null, [el('p', { text: 'Copy this by hand. It links a phone to your beasts, so keep it to yourself.' }), box]), actions: [{ label: 'Done', value: true, primary: true }] });
     });
   });
 
   function homeExtras() {
     var s = snapshot();
     var parts = [];
-    if (outbox.length) {
-      parts.push(el('section', { class: 'tsi-bh-panel', 'data-test': 'bhp-outbox' }, [
-        el('h2', { class: 'tsi-bh-panel__title', text: 'Requests to send to the DM' }),
-        el('p', { class: 'tsi-bh-muted', text: 'Send each code to the DM. It leaves this list once a snapshot shows the Bastion\'s answer.' }),
-        el('ul', { class: 'tsi-bhp-sendlist' }, outbox.map(function (o) {
-          var copyBtn = btn('Copy the code', function () { copy(o.code, copyBtn); }, '', 'bhp-copy-' + o.id);
-          return el('li', { class: 'tsi-bhp-send', 'data-id': o.id }, [
-            el('span', { class: 'tsi-bhp-send__label', text: o.label }),
-            el('span', { class: 'tsi-bh-muted', 'data-made': String(o.at), text: 'Made ' + ago(o.at) + '.' }),
-            el('div', { class: 'tsi-bhp-row' }, [copyBtn, btn('Show it', function () { showCode('Request: ' + o.label, 'Send this to the DM exactly as it is.', o.code, 'beast-handler-request.txt', 'bhp-show'); }, 'tsi-btn--ghost', 'bhp-show-' + o.id), btn('Forget it', function () { onForget(o); }, 'tsi-btn--ghost', 'bhp-forget-' + o.id)])
-          ]);
-        }))
-      ]));
-    }
+    var live = liveOn();
     parts.push(el('section', { class: 'tsi-bh-panel tsi-bh-panel--quiet', 'data-test': 'bhp-snap' }, [
       el('h2', { class: 'tsi-bh-panel__title', text: s ? 'Your snapshot' : 'No snapshot yet' }),
-      el('p', { class: 'tsi-bh-muted', text: s ? 'This is what the DM\'s Bastion showed for ' + pairing.name + ' on ' + s.asOfLabel + '. Ask the DM for a new snapshot when you want to see changes.' : 'Ask the DM for a snapshot code.' }),
-      el('div', { class: 'tsi-bhp-row' }, [btn('Update from a snapshot…', onUpdate, '', 'bhp-update'), btn('Unlink this phone', onUnlink, 'tsi-btn--ghost', 'bhp-unlink')])
+      el('p', { class: 'tsi-bh-muted', text: s
+        ? 'This is what the DM\'s Bastion showed for ' + pairing.name + ' on ' + s.asOfLabel + '.' + (live ? ' It updates by itself while this page is open.' : ' Ask the DM for a new snapshot when you want to see changes.')
+        : 'Ask the DM for a snapshot code.' }),
+      liveRow(),
+      el('div', { class: 'tsi-bhp-row' }, [btn('Copy my link', onCopyLink, '', 'bhp-mylink-button'), btn('Unlink this phone', onUnlink, 'tsi-btn--ghost', 'bhp-unlink')]),
+      backupBox('Offline backup: update from a snapshot code', [
+        el('p', { class: 'tsi-bh-muted', text: 'With no internet, your DM can send you a snapshot code in a message. Paste it here to see the latest.' }),
+        el('div', { class: 'tsi-bhp-row' }, btn('Update from a snapshot…', onUpdate, '', 'bhp-update'))
+      ])
     ]));
     if (keepsNothing) parts.push(el('p', { class: 'tsi-bh-message', text: 'This browser won\'t keep anything for this page, so closing it forgets your link. Use a normal (not private) window.' }));
     return parts;
   }
 
   /* ---------- The first-run screens ---------- */
+  function flashNode(extra) {
+    if (!flash) return null;
+    var f = flash;
+    flash = null;
+    return el('p', { class: f.bad ? 'tsi-bhp-error' : 'tsi-bhp-ok', role: f.bad ? 'alert' : 'status', 'data-test': 'bhp-flash', text: f.text });
+  }
+  /* A pasted pairing code, link or whole address: what it gives, in the plain words of the old paste box. */
+  function readPasted(text) {
+    var t = C.tidy(text);
+    if (C.looksLikeLink(t)) return C.decodeLink(t);
+    var r = C.decodePairing(t);
+    if (!r.ok && C.kind(t) !== 'pair') r.why = 'That isn\'t a pairing code or a link. A pairing code starts BHP1. and a link has a # in it. Your DM gives you one of them.';
+    return r;
+  }
+  /* The shut "Using an iPhone Home Screen icon?" help: on the link screen and on the first screen after linking. */
+  function iphoneHelp() {
+    return el('details', { class: 'tsi-bhp-help', 'data-test': 'bhp-iphone-help' }, [
+      el('summary', { class: 'tsi-bhp-backup__summary', text: 'Using an iPhone Home Screen icon?' }),
+      el('div', { class: 'tsi-bhp-backup__body' }, [
+        el('p', { text: 'An iPhone keeps a Home Screen icon\'s saved link apart from Safari\'s, so scanning links Safari, not the icon. To use an icon:' }),
+        el('ol', null, [
+          el('li', { text: 'Scan the QR code with the camera, so this page opens and links in Safari.' }),
+          el('li', { text: 'Press Copy my link on that page.' }),
+          el('li', { text: 'Choose Share, then Add to Home Screen, from that page.' }),
+          el('li', { text: 'Open the new icon, open Offline backup, and paste the link there.' })
+        ]),
+        el('p', { text: 'If Safari ever forgets the link (it can after a week unused), tap the link your DM sent you again, or scan the QR code again.' })
+      ])
+    ]);
+  }
   function screenLink() {
-    var input = codeInput('Paste the pairing code here (it starts BHP1.)', 'bhp-pair-input');
+    var input = codeInput('Paste the pairing code or link here', 'bhp-pair-input');
     var problem = el('p', { class: 'tsi-bhp-error', hidden: true, role: 'alert', 'data-test': 'bhp-pair-problem' });
     var go = btn('Link this phone', function () {
-      var r = C.decodePairing(input.value());
+      var r = readPasted(input.value());
       if (!r.ok) { problem.textContent = r.why; problem.hidden = false; return; }
-      pairing = r.pairing;
-      write(KEY.pairing, pairing);
-      start();
+      adoptPairing(r.pairing, 'pasted').then(function () { start(); });
     }, 'tsi-btn--primary', 'bhp-link');
+    var note = flashNode();
     TSI.append(root, el('div', { class: 'tsi-bh' }, el('div', { class: 'tsi-bhp-card', 'data-test': 'bhp-screen-link' }, [
       el('h1', { text: 'Link your phone' }),
-      el('p', { text: 'This page shows your beasts at the Ironbow and lets you ask your DM for things. It needs no internet.' }),
-      el('ol', null, [el('li', { text: 'Your DM gives you a pairing code. It starts BHP1.' }), el('li', { text: 'Paste it below and press Link this phone.' }), el('li', { text: 'Then your DM sends you a snapshot code to show your beasts.' })]),
-      input.node, problem, el('div', { class: 'tsi-bhp-row' }, go)
+      note,
+      el('p', { text: 'This page shows your beasts at the Ironbow: their bond, their profile and their Chronicle. It only looks, so nothing you do here changes anything.' }),
+      el('ol', null, [
+        el('li', { text: 'Ask your DM to show you your QR code.' }),
+        el('li', { text: 'Point your phone\'s camera at it and tap the link that appears.' }),
+        el('li', { text: 'This page opens and links itself. Your beasts appear as soon as your DM sends them.' })
+      ]),
+      el('p', { text: 'If your DM sent you a link in a message instead, just tap it.' }),
+      iphoneHelp(),
+      backupBox('Offline backup: link with a pairing code or a pasted link', [
+        el('p', { class: 'tsi-bh-muted', text: 'Paste a pairing code (it starts BHP1.) or a whole link here, then press Link this phone.' }),
+        input.node, problem, el('div', { class: 'tsi-bhp-row' }, go)
+      ])
     ])));
   }
   function screenSnapshot(notice) {
@@ -271,15 +338,24 @@
     var problem = el('p', { class: 'tsi-bhp-error', hidden: true, role: 'alert', 'data-test': 'bhp-first-problem' });
     if (notice) { problem.textContent = notice; problem.hidden = false; }
     var go = btn('Show my beasts', function () {
-      var r = takeSnapshot(input.value());
+      var r = takeSnapshot(input.value(), 'code');
       if (!r.ok) { problem.textContent = r.why; problem.hidden = false; return; }
       start();
     }, 'tsi-btn--primary', 'bhp-first-go');
+    var on = liveOn();
+    var note = flashNode();
     TSI.append(root, el('div', { class: 'tsi-bh' }, el('div', { class: 'tsi-bhp-card', 'data-test': 'bhp-screen-snap' }, [
       el('h1', { text: 'Hello, ' + pairing.name }),
-      el('p', { text: 'Your phone is linked. Now ask your DM for a snapshot code: it shows your beasts as the Bastion sees them today. Paste it here.' }),
-      input.node, problem, el('div', { class: 'tsi-bhp-row' }, [go, btn('Unlink this phone', onUnlink, 'tsi-btn--ghost', 'bhp-unlink')])
+      note,
+      el('p', { text: on
+        ? 'Your phone is linked. Your DM\'s Bastion sends your beasts here by itself whenever it is open.'
+        : 'Your phone is linked. Now your DM sends you a snapshot code, which shows your beasts as the Bastion sees them today. Open Offline backup below and paste it there.' }),
+      liveRow(),
+      backupBox('Offline backup: paste a snapshot code', [input.node, problem, el('div', { class: 'tsi-bhp-row' }, go)]),
+      el('div', { class: 'tsi-bhp-row' }, [btn('Copy my link', onCopyLink, '', 'bhp-mylink-button'), btn('Unlink this phone', onUnlink, 'tsi-btn--ghost', 'bhp-unlink')]),
+      iphoneHelp()
     ])));
+    if (notice) { var d = root.querySelector('[data-test="bhp-backup"]'); if (d) d.open = true; }
   }
 
   function refreshAll() { if (view) view.refresh(); }
@@ -287,7 +363,8 @@
   function start() {
     TSI.clear(root);
     view = null;
-    if (!pairing) return screenLink();
+    if (!pairing) { live.stop(); liveFor = ''; return screenLink(); }
+    if (liveFor !== pairing.secret) { liveFor = pairing.secret; live.start(); }
     if (!snapshot()) return screenSnapshot();
     try {
       view = BH.view.mount(root, host);
@@ -305,12 +382,60 @@
     if (!ageTimer) ageTimer = life.setInterval(tickAges, 60000);
   }
   var ageTimer = null;
+  var liveFor = '';
   function tickAges() {
     if (!view) return;
     var line = root.querySelector('[data-test="bh-sync"] span:last-child');
     if (line) line.textContent = host.syncLine();
-    Array.prototype.forEach.call(root.querySelectorAll('[data-made]'), function (n) { n.textContent = 'Made ' + ago(Number(n.getAttribute('data-made'))) + '.'; });
+    paintLive();
   }
 
-  start();
+  /* When the page is already showing the player's beasts there is no first-run screen to put a message on, so a message
+     that is still waiting (that the phone was linked, or why a link didn't work) comes up in a small pop-up. */
+  function announce() {
+    if (!flash || !view) return;
+    var f = flash;
+    flash = null;
+    TSI.modal.alert({ title: f.bad ? 'That link didn\'t work' : 'Your phone', message: f.text });
+  }
+
+  /* A link, however it arrived: take it in (asking first if it would swap this phone's link), then show the right screen. */
+  function handleLink(d) {
+    if (d && d.ok) return adoptPairing(d.pairing).then(function () { start(); announce(); });
+    if (d) flash = { text: pairing ? d.why + ' This phone is still linked to ' + pairing.name + '\'s beasts.' : d.why, bad: true };
+    start();
+    announce();
+    return Promise.resolve();
+  }
+
+  /* Open: a link in the address (from a QR code) is read and wiped first, then the right screen is shown. */
+  var opened = readHash();
+  if (opened) handleLink(opened); else start();
+  /* A link opened while this page is already showing (the browser may swap just the # part and not load the page again). */
+  /* While a first-meeting reveal is playing the page is never redrawn: the same link is ignored (the # part is already
+     wiped), and a different or damaged one waits until the reveal has ended, then is handled as usual (asking first). */
+  var waiting = null;
+  var waitTimer = null;
+  function revealPlaying() { return !!(view && view.playing && view.playing()); }
+  function handleWaiting() {
+    if (waitTimer !== null && !revealPlaying()) {
+      life.clearInterval(waitTimer); waitTimer = null;
+      var d = waiting; waiting = null;
+      if (d) handleLink(d);
+    }
+  }
+  function sameLink(d) {
+    return !!(d && d.ok && pairing && pairing.secret === d.pairing.secret && P.handlerKey(pairing.handler) === P.handlerKey(d.pairing.handler) && pairing.campaign === d.pairing.campaign);
+  }
+  life.on(window, 'hashchange', function () {
+    var d = readHash();
+    if (!d) return;
+    if (revealPlaying() || waiting) {
+      if (sameLink(d) && !waiting) return;
+      waiting = d;
+      if (waitTimer === null) waitTimer = life.setInterval(handleWaiting, 400);
+      return;
+    }
+    handleLink(d);
+  });
 }());

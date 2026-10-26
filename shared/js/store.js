@@ -37,6 +37,8 @@
   var statusListeners = [];
   var status = { state: 'idle', at: null, error: null, reason: '' };
   var unreadable = [];
+  var reservedCopies = new Set(); /* names of copies being written (TSI.store.keepCopy) */
+  var copyProblem = '';
 
   /* ---------- Back ends ---------- */
   function idbBackend(db) {
@@ -458,7 +460,11 @@
           cache.set(record.key, record);
           pending.set(record.key, { op: 'put', key: record.key, record: record });
         });
-        return writeNow();
+        return writeNow().then(function (ok) {
+          /* Tell the other open windows (a storage event reaches them, not this one). */
+          if (ok) { try { localStorage.setItem(rules.spaceNames(SPACE).replaced, String(Date.now())); } catch (e) { /* no small storage: they look again when focused */ } }
+          return ok;
+        });
       });
     },
 
@@ -470,9 +476,7 @@
       var now = new Date();
       /* Two set aside in the same second get different names, so the first
          isn't overwritten by the second. */
-      var base = rules.quarantineKey(key, now);
-      var newKey = base;
-      for (var n = 2; cache.has(newKey) || pending.has(newKey); n++) newKey = base + '-' + n;
+      var newKey = rules.uniqueKey(rules.quarantineKey(key, now), function (k) { return cache.has(k) || pending.has(k); });
       var moved = rules.makeRecord(newKey, record.value, now, { from: key, reason: reason || 'It couldn\'t be read.', at: now.toISOString() });
       cache.set(newKey, moved);
       cache.delete(key);
@@ -480,6 +484,55 @@
       pending.set(key, { op: 'delete', key: key });
       return writeNow().then(function () { return newKey; });
     },
+
+    /* Keep a copy of a save under the quarantine name (tsi.quarantine.<tool>.
+       <name>.<stamp>), LEAVING the save itself where it is. The Bastion's
+       conversion uses it: the copy must be safely kept BEFORE the converted
+       save is written, so there is never a moment with no Bastion, and the
+       old one can always be put back from "Back up everything".
+       It tells the truth: it resolves with the copy's key only once the
+       browser has saved the copy AND it has been read back and found the
+       same; otherwise null, with the reason in TSI.store.copyProblem() and
+       nothing left behind (no half-written copy, nothing queued to be saved
+       later). It never reports a copy in a browser that is not keeping saves
+       (memory only), or when storage is full. It writes the copy on its own,
+       after anything already being saved, not in the shared queue, so the
+       answer is about this copy and nothing else (an unrelated failed save
+       can't make it fail, and a save still in flight can't make it succeed
+       early). Nothing is written to the live key. */
+    keepCopy: function (key, reason) {
+      requireReady();
+      copyProblem = '';
+      var record = cache.get(key);
+      if (!record) { copyProblem = 'There was nothing saved to copy.'; return Promise.resolve(null); }
+      if (backend.mode === 'memory' || !backend.read) {
+        copyProblem = 'This browser is not keeping the suite\'s saves at all (they are held in memory and vanish when the page closes), so a copy would not last.';
+        return Promise.resolve(null);
+      }
+      var now = new Date();
+      var newKey = rules.uniqueKey(rules.quarantineKey(key, now), function (k) { return cache.has(k) || pending.has(k) || reservedCopies.has(k); });
+      reservedCopies.add(newKey);
+      var copy = rules.makeRecord(newKey, record.value, now, rules.copyNote(key, reason, now));
+      var settle = inflight ? inflight.then(function () {}, function () {}) : Promise.resolve();
+      return settle.then(function () {
+        return backend.write([{ op: 'put', key: newKey, record: copy }]);
+      }).then(function () {
+        return backend.read(newKey);
+      }).then(function (row) {
+        if (!rules.copyIsIntact(row, newKey, copy.value)) throw new Error('The copy could not be read back as it was written.');
+        cache.set(newKey, copy);
+        reservedCopies.delete(newKey);
+        return newKey;
+      }).catch(function (err) {
+        reservedCopies.delete(newKey);
+        copyProblem = rules.describeFailure(err);
+        /* Nothing half-written is left behind. */
+        return Promise.resolve().then(function () { return backend.write([{ op: 'delete', key: newKey }]); }).then(null, function () {}).then(function () { return null; });
+      });
+    },
+
+    /* Why the latest keepCopy gave null, in plain English ('' if it didn't). */
+    copyProblem: function () { return copyProblem; },
 
     /* Save everything waiting now. Resolves true if all saved. */
     flush: function () { return writeNow(); },

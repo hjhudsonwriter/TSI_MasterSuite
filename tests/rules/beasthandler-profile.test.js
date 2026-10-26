@@ -41,10 +41,12 @@
     t.equal(Pf.suggest('unicorn', Math.random), null);
     var one = Pf.suggestOne('dire_wolf', 'trigger', seq(0.0));
     t.same(one, { text: 'Restrictive chains', roll: 1 });
-    /* A subspecies rolls as an even pick among that kind's own five (Harry, 21 October 2026). */
-    t.same(Pf.suggestOne('dire_wolf', 'regional', seq(0.0)), { text: 'Nightfang', roll: 1, of: 5 });
-    t.same(Pf.suggestOne('dire_wolf', 'regional', seq(0.999)), { text: 'Hollowhowl', roll: 5, of: 5 });
-    t.same(Pf.suggestOne('griffin', 'regional', seq(0.45)), { text: 'Silvershroud', roll: 3, of: 5 }, 'a griffin rolls a griffin variety');
+    /* A subspecies rolls as an even pick among that kind's own varieties (Harry, 21 October 2026; the wolf has six since Blacktide, 22 October). */
+    t.same(Pf.suggestOne('dire_wolf', 'regional', seq(0.0)), { text: 'Nightfang', roll: 1, of: 7 });
+    t.same(Pf.suggestOne('dire_wolf', 'regional', seq(0.999)), { text: 'Blacktide', roll: 7, of: 7 });
+    t.same(Pf.suggestOne('buckbear', 'regional', seq(0.999)), { text: 'Saltcoat', roll: 5, of: 5 });
+    t.same(Pf.suggestOne('fellcat', 'trigger', seq(0.0)), { text: 'Being grabbed from behind', roll: 1 }, 'the Fellcat\'s draft table rolls');
+    t.same(Pf.suggestOne('griffin', 'regional', seq(0.45)), { text: 'Galeclaw', roll: 4, of: 8 }, 'a griffin rolls a griffin variety');
     t.equal(Pf.suggestOne('unicorn', 'regional', Math.random), null);
   });
 
@@ -53,7 +55,7 @@
     t.equal(o.dominant.length, 12);
     t.equal(o.attachment.length, 8);
     t.equal(o.trigger.length, 8);
-    t.same(o.regional, ['Dawnmantle', 'Thunderwing', 'Silvershroud', 'Galeclaw', 'Embermantle']);
+    t.same(o.regional, ['Dawnmantle', 'Thunderwing', 'Silvershroud', 'Galeclaw', 'Embermantle', 'Gloamquill', 'Wrecktalon', 'Frostcrown']);
     t.same(Pf.options('nothing'), { dominant: Pf.options('x').dominant, attachment: [], trigger: [], regional: [] });
   });
 

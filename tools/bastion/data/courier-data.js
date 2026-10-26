@@ -63,8 +63,8 @@ window.TSI_DATA.bastionCourier = {
 
   /* "+ Add supplies" in the Warehouse: the goods the DM can add by hand, for
      now (Harry, 14 October 2026). Packs also come from the Fishery &
-     Smokehouse; nothing at the Ironbow makes charts yet (the Library's
-     "Prepare Overland Travel Charts" comes later). Adding by hand makes no
+     Smokehouse; the Workshop's Scholar makes charts too ("Prepare
+     Overland Travel Charts", from Workshop Level 3). Adding by hand makes no
      gold, and supplies never sail with the Dock. */
   manualAdd: ['expedition_provision_pack', 'overland_chart'],
 

@@ -38,13 +38,13 @@ window.TSI_DATA.bastionResearch = {
   stageDays: [7, 14, 21],
   needs: {
     goods: 'the goods catalogue to give this choice a real effect, which it does not have yet',
-    lab: 'the Arcane Laboratory having recipes of its own, which it does not have yet',
+    lab: 'the Workshop\'s Alchemist having recipes of its own, which he does not have yet',
     explorer: 'the Explorer tracking each hero\'s conditions, which it does not do',
     trade: 'research effects on commodity trade, which are not built'
   },
   trees: {
     herbal_gardens: {
-      intro: 'The Herbal Gardens grows and prepares botanical products; the Arcane Laboratory specialises in chemical and magical manufacturing.',
+      intro: 'The Herbal Gardens grows and prepares botanical products; the Workshop\'s Alchemist specialises in chemical and magical manufacturing.',
       branches: [
         {
           id: 'agricultural',
@@ -170,7 +170,7 @@ window.TSI_DATA.bastionResearch = {
         {
           id: 'botanical',
           name: 'Botanical Research',
-          focus: 'Rare flora, specialist ingredients, experimental plant products and unusual extracts, especially for the Arcane Laboratory.',
+          focus: 'Rare flora, specialist ingredients, experimental plant products and unusual extracts, especially for the Workshop\'s Alchemist.',
           costs: [200, 500, 1100],
           stages: [
             {
@@ -184,7 +184,7 @@ window.TSI_DATA.bastionResearch = {
                 },
                 {
                   id: 'botanical_extraction', name: 'Botanical Extraction',
-                  text: 'Unlocks Refined Botanical Reagents in Harvest Commercial Medicinal Crops (Level 4): a batch of Alchemical Flowers becomes a cargo lot of reagents (Harry, 13 October 2026). Turning ingredients into Herbal Reagents for the Arcane Laboratory comes with its own recipes.',
+                  text: 'Unlocks Refined Botanical Reagents in Harvest Commercial Medicinal Crops (Level 4): a batch of Alchemical Flowers becomes a cargo lot of reagents (Harry, 13 October 2026). Turning ingredients into Herbal Reagents for the Workshop\'s Alchemist comes with his own recipes.',
                   now: 'Harvest Commercial Medicinal Crops: Refined Botanical Reagents.',
                   effects: [{ type: 'unlock', fn: 'commercial_medicinal_crops', key: 'refined_botanical_reagents' }]
                 }
@@ -210,7 +210,7 @@ window.TSI_DATA.bastionResearch = {
               choices: [
                 {
                   id: 'exotic_flora_conservatory', name: 'Exotic Flora Conservatory',
-                  text: 'Unlocks Rare Botanical Extraction in Major Botanical Production (Level 5): 20 Alchemical Flowers become a cargo lot of Rare Botanical Extracts (Harry, 13 October 2026). Exotic Botanical Catalysts come with the Arcane Laboratory\'s recipes.',
+                  text: 'Unlocks Rare Botanical Extraction in Major Botanical Production (Level 5): 20 Alchemical Flowers become a cargo lot of Rare Botanical Extracts (Harry, 13 October 2026). Exotic Botanical Catalysts come with the Workshop\'s Alchemist\'s recipes.',
                   now: 'Major Botanical Production: Rare Botanical Extraction.',
                   effects: [{ type: 'unlock', fn: 'major_botanical_production', key: 'rare_botanical_extraction' }]
                 },

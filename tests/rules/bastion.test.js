@@ -2,7 +2,7 @@
 (function () {
   var R = TSI.bastion.rules;
   var T = window.TSI_DATA;
-  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce };
+  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce };
 
   /* Dice that come up in the given order (numbers from 0 up to 1). */
   function dice(list) {
@@ -29,34 +29,30 @@
   }
   function roll(d20, total) { return { d20: d20, total: total }; }
   function titles(s) { return s.log.map(function (l) { return l.title; }); }
-  /* A war order as the old single-roll war queued it (R.queueWarAction,
-     archived in Build 3: tools/bastion/archive/mercenary-brigade.js), as a
-     save can still hold one. */
-  function oldWarOrder(s, meta) {
-    var days = R.time(data).musterDays;
-    s.pendingOrders.push({ id: R.uid(dice([0.3])), facId: 'war_council', fnId: 'war_action', optionIdx: 0, label: 'War Action', issuedDay: s.day, dueDay: s.day + days, meta: Object.assign({}, meta, { kind: 'war_action' }) });
-  }
 
   group('Bastion: content');
 
-  test('22 facilities (the overhaul, 13 October 2026: none still in development: pull request 3 opened the Fishery and Timber Yard, pull request 6 the Courier Exchange, pull request 7 the three creature buildings and 19 October 2026 the Stone Quarry and the Weavers\' Hall), 12 tool tables (9 can be artisan tools), 11 events, 7 clans, 270 compendium items (271 entries)', function (t) {
-    t.equal(data.facilities.length, 22);
+  test('the facilities: the war game\'s five and the three Shrines are gone (the Temple is one building), none is still in development; 12 tool tables, 7 clans, and a Compendium that lists what the facilities offer', function (t) {
+    t.ok(data.facilities.length > 0 && data.facilities.every(function (f) { return f.id && f.name && Array.isArray(f.functions); }), 'every facility has an id, a name and a list of orders');
+    t.equal(data.facilities.map(function (f) { return f.id; }).filter(function (id, i, a) { return a.indexOf(id) !== i; }).length, 0, 'ids are unique');
+    t.same(['barracks', 'armoury', 'watchtower', 'war_room', 'menagerie'].filter(function (id) { return R.facility(data, id); }), [], 'the war game\'s five facilities are gone (S06)');
+    t.same(['shrine_telluria', 'shrine_aurush', 'shrine_pelagos'].filter(function (id) { return R.facility(data, id); }), [], 'the three Shrines are gone (S11)');
+    t.equal(R.facility(data, 'temple').name, 'Temple', 'the Temple is one building');
     /* Pull request 7 (Harry, 14 October 2026) opened the Wyvern Roost, Griffin
        Tower and Dire Wolf Den, so only these two are still in development. */
     /* The Stone Quarry & Masonworks and the Weavers' Hall opened on 19 October 2026: none is left. */
     t.same(data.facilities.filter(function (f) { return f.inDevelopment; }).map(function (f) { return f.id; }), []);
     t.same(['smithy', 'arcane_study', 'laboratory', 'library', 'garden', 'greenhouse', 'gaming_hall'].filter(function (id) { return R.facility(data, id); }), [], 'the old ones are gone');
     t.equal(Object.keys(data.tools).length, 12);
-    t.equal(R.toolTableNames(data.tools).length, 9);
-    t.equal(data.events.eventTable.length, 11);
+    t.equal(R.toolTableNames, undefined, 'the Artisan Tools picker is gone (step S12)');
     t.same(T.bastion.clans.map(function (c) { return c.name; }), ['Blackstone', 'Bacca', 'Farmer', 'Slade', 'Molten', 'Rowthorn', 'Karr']);
-    /* The old tool's 265, less Regiment (100), plus the six War Room units of the war's phase 2
-       (the old Regiment (100) entry is kept in the data, but nothing lists it any more). */
-    t.equal(R.compendiumIndex(data.facilities, data.tools).items.length, 270);
-    t.equal(Object.keys(T.bastionCompendium.items).length, 271);
-    /* The War Room's Recruit list is the war data's, in the same order. */
-    var warRoom = R.facility(data, 'war_room').functions[0].options.map(function (o) { return o.label; });
-    t.same(warRoom, T.bastionWar.warRoom.map(function (e) { return e.label; }));
+    /* The Compendium lists what the facilities offer, and nothing else: the entries match the index one for one (the war game's units
+       and beasts went in S06; the Shrines' six Craft charms and nine prayers went with the Temple in S11). */
+    var index = R.compendiumIndex(data.facilities, data.tools).items;
+    t.equal(Object.keys(T.bastionCompendium.items).length, index.length, 'one entry for each item listed');
+    t.same(Object.keys(T.bastionCompendium.items).filter(function (k) { return index.indexOf(k) === -1; }), [], 'no entry for anything the Compendium does not list');
+    t.same(['Tellurian Root Charm', 'Aurush Sun Charm', 'Pelagos Tide Charm', 'Telluria\'s Guidance', 'Pelagos\'s Deep Rest'].filter(function (k) { return index.indexOf(k) !== -1 || k in T.bastionCompendium.items; }), [], 'none of the Shrines\' charms or prayers');
+    t.equal(T.bastionWar, undefined, 'the war data file is gone');
   });
 
   test('every facility has a picture (a painted tile, or a crop of its map picture until Harry paints one), and the map overlays belong to real facilities', function (t) {
@@ -73,29 +69,34 @@
     t.equal(m.base, 'map/bastion_base.jpg');
     t.same([m.width, m.height], [3000, 1250], 'Harry\'s new painting, 12 October 2026');
     m.overlays.forEach(function (o) { t.ok(R.facility(data, o.fac), o.fac); t.ok(/^map\/overlays\/[a-z_]+\.png$/.test(o.pic), o.pic); });
-    t.same(m.overlays.map(function (o) { return o.fac; }), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'war_room', 'hall_of_emissaries', 'shrine_aurush', 'shrine_telluria', 'shrine_pelagos',
-      'wyvern_roost', 'griffin_tower', 'dire_wolf_den', 'weavers_hall', 'stone_masonworks', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange']);
-    t.equal(m.overlays.filter(function (o) { return o.fac === 'menagerie'; }).length, 0, 'no map picture for the Menagerie');
+    t.same(m.overlays.map(function (o) { return o.fac; }), ['herbal_gardens', 'hall_of_emissaries', 'temple', 'temple', 'temple',
+      'beast_pen', 'weavers_hall', 'stone_masonworks', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange']);
+    t.equal(m.overlays.filter(function (o) { return o.fac === 'menagerie' || o.fac === 'war_room'; }).length, 0, 'no map picture for the war game\'s facilities (the War Room\'s went to assets/extras)');
     t.ok(T.bastion.mapLabels.courier_exchange, 'the Courier Exchange has a place for its label');
+    t.same(m.overlays.filter(function (o) { return o.fac === 'temple'; }).map(function (o) { return o.pic; }), ['map/overlays/shrine_of_aurush.png', 'map/overlays/shrine_of_telluria.png', 'map/overlays/shrine_of_pelagos.png'], 'the Temple draws the three Shrine buildings');
+    t.same(T.bastion.facilityImages.temple, ['shrine_of_telluria.png', 'shrine_of_aurush.png', 'shrine_of_pelagos.png'], 'and its tile shows the three Shrine paintings side by side');
+    t.same([T.bastion.mapLabels.temple.x, T.bastion.mapLabels.temple.y, T.bastion.mapLabels.temple.also], [1275, 532, [{ x: 2252, y: 722 }, { x: 2668, y: 840 }]], 'a label at each of the three buildings');
   });
 
   test('the map overlays: one per built facility with a picture, a shared picture drawn once, darkened while Under Repair', function (t) {
     var s = fresh();
     t.same(R.mapOverlays(s, data), [], 'the starting five are in the base painting');
-    s.builtExtras = ['shrine_pelagos', 'herbal_gardens', 'menagerie', 'library_scriptorium'].map(function (id) { return { facId: id, status: 'built' }; });
-    s.builtExtras.push({ facId: 'war_room', status: 'building', startDay: 1, readyDay: 36 });
+    s.builtExtras = ['temple', 'herbal_gardens', 'beast_pen'].map(function (id) { return { facId: id, status: 'built' }; });
+    s.builtExtras.push({ facId: 'hall_of_emissaries', status: 'building', startDay: 1, readyDay: 36 });
     t.same(R.mapOverlays(s, data).map(function (o) { return [o.pic, o.facs]; }), [
-      ['map/overlays/library.png', ['library_scriptorium']],
       ['map/overlays/greenhouse.png', ['herbal_gardens']],
-      ['map/overlays/shrine_of_pelagos.png', ['shrine_pelagos']]
-    ], 'in the data\'s order; nothing for the Menagerie or a building still being built');
+      ['map/overlays/shrine_of_aurush.png', ['temple']],
+      ['map/overlays/shrine_of_telluria.png', ['temple']],
+      ['map/overlays/shrine_of_pelagos.png', ['temple']],
+      ['map/overlays/wyvern_roost.png', ['beast_pen']]
+    ], 'in the data\'s order (the Temple draws all three Shrine buildings); nothing for a building still being built');
     s.repairs = { herbal_gardens: s.day + 3 };
     t.same(R.mapOverlays(s, data).filter(function (o) { return o.repair; }).map(function (o) { return o.facs; }), [['herbal_gardens']], 'darkened while Under Repair');
     /* No two facilities share a picture since the overhaul; the rule still draws a shared one once. */
-    var two = { bastion: Object.assign({}, T.bastion, { map: { overlays: [{ fac: 'herbal_gardens', pic: 'p.png' }, { fac: 'library_scriptorium', pic: 'p.png' }] } }), facilities: data.facilities };
+    var two = { bastion: Object.assign({}, T.bastion, { map: { overlays: [{ fac: 'herbal_gardens', pic: 'p.png' }, { fac: 'beast_pen', pic: 'p.png' }] } }), facilities: data.facilities };
     var shared = R.mapOverlays(s, two);
     t.equal(shared.length, 1, 'a shared picture, drawn once');
-    t.same(shared[0].facs, ['herbal_gardens', 'library_scriptorium']);
+    t.same(shared[0].facs, ['herbal_gardens', 'beast_pen']);
     t.equal(shared[0].repair, true, 'darkened while either is Under Repair');
   });
 
@@ -103,46 +104,45 @@
     var s = fresh();
     s.partyLevel = 9;
     s.treasuryGP = 100;
-    s.builtExtras = [{ facId: 'library_scriptorium', status: 'built' }, { facId: 'herbal_gardens', status: 'building', startDay: 1, readyDay: 22 }, ''];
-    s.facilityLevels.library_scriptorium = 1;
-    s.repairs = { library_scriptorium: 5 };
+    s.builtExtras = [{ facId: 'beast_pen', status: 'built' }, { facId: 'herbal_gardens', status: 'building', startDay: 1, readyDay: 22 }, ''];
+    s.facilityLevels.beast_pen = 1;
+    s.repairs = { beast_pen: 5 };
     s.pendingOrders = [
-      { id: 'a', facId: 'library_scriptorium', fnId: 'research', label: 'Library & Scriptorium: Research (Combat Scriptures)', costGP: 0, issuedDay: 1, dueDay: 6 },
-      { id: 'b', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', costGP: 0, issuedDay: 1, dueDay: 6 }
+      { id: 'a', facId: 'beast_pen', fnId: 'house_beast', label: 'Beast Pen: House Beast Here (Brindle)', costGP: 0, issuedDay: 1, dueDay: 6 },
+      { id: 'b', facId: 'dock', fnId: 'charter_berth', label: 'Dock: Charter a Vessel', costGP: 0, issuedDay: 1, dueDay: 6 }
     ];
-    s.warehouse = [{ name: 'Religious Scriptures', qty: 1, gp: '', notes: 'Library & Scriptorium' }];
-    var r = R.demolishFacility(s, data, 'library_scriptorium');
+    s.warehouse = [{ name: 'Religious Scriptures', qty: 1, gp: '', notes: 'Beast Pen' }];
+    var r = R.demolishFacility(s, data, 'beast_pen');
     t.equal(r.ok, true);
-    t.same(r.log, ['Facility Demolished', 'The Library & Scriptorium was demolished; its slot is free. Cancelled: Library & Scriptorium: Research (Combat Scriptures).']);
+    t.same(r.log, ['Facility Demolished', 'The Beast Pen was demolished; its slot is free. Cancelled: Beast Pen: House Beast Here (Brindle).']);
     t.same(s.builtExtras, ['', { facId: 'herbal_gardens', status: 'building', startDay: 1, readyDay: 22 }, '']);
-    t.same(s.pendingOrders.map(function (o) { return o.id; }), ['b'], 'only the Library\'s order goes');
+    t.same(s.pendingOrders.map(function (o) { return o.id; }), ['b'], 'only the Beast Pen\'s order goes');
     t.equal(s.treasuryGP, 100, 'no refund (B9)');
-    t.equal(s.facilityLevels.library_scriptorium, undefined);
+    t.equal(s.facilityLevels.beast_pen, undefined);
     t.same(s.repairs, {});
     t.equal(s.warehouse.length, 1, 'what it made stays');
     var g = R.demolishFacility(s, data, 'herbal_gardens');
     t.same(g.log, ['Construction Stopped', 'Building work on the Herbal Gardens stopped; its slot is free.']);
     t.same(s.builtExtras, ['', '', '']);
-    var b = R.demolishFacility(s, data, 'barracks');
+    var b = R.demolishFacility(s, data, 'workshop');
     t.equal(b.ok, false);
     t.ok(/starting facilities/.test(b.message));
-    t.equal(R.demolishFacility(s, data, 'library_scriptorium').ok, false, 'not built any more');
+    t.equal(R.demolishFacility(s, data, 'beast_pen').ok, false, 'not built any more');
   });
 
-  test('the starting Bastion: five facilities, Day 1 (not yet set by the Explorer), level 7, 0 gp, unsworn', function (t) {
+  test('the starting Bastion: two facilities (the Workshop and the Dock), Day 1 (not yet set by the Explorer), level 7, 0 gp, no Party Name', function (t) {
     var s = fresh();
-    t.same(R.builtFacilityIds(s, data), ['barracks', 'armoury', 'watchtower', 'workshop', 'dock']);
-    t.equal(s.v, 3, 'a save in days, with the overhauled facilities (13 October 2026)');
-    t.same([s.legacyFacilities, s.archivedFacilities, s.migration], [[], [], null]);
+    t.same(R.builtFacilityIds(s, data), ['workshop', 'dock'], 'the Barracks, Armoury and Watchtower went with the war game (22 October 2026)');
+    t.equal(s.v, 4, 'a save in days, with the overhauled facilities (13 October 2026) and stripped back (22 October 2026)');
+    t.same([s.archivedFacilities, s.migration], [[], null]);
+    t.same(['artisanTools', 'legacyFacilities'].filter(function (k) { return k in s; }), [], 'no Artisan Tools and no list of retired buildings (step S12)');
     t.equal(s.day, 1);
     t.equal(s.anchored, false);
     t.equal('turn' in s, false, 'no Bastion turn');
     t.equal(s.partyLevel, 7);
     t.equal(s.treasuryGP, 0);
-    t.equal(s.organization.type, 'unsworn');
-    t.equal(s.clanHonor, 40);
-    t.equal(s.trustedClientsByClan.karr, 50);
-    t.equal(s.artisanTools.length, 6);
+    t.equal(s.partyName, '', 'no Party Name yet');
+    t.same(['organization', 'clanHonor', 'trustedClientsByClan'].filter(function (k) { return k in s; }), [], 'a party can no longer found a Clan (22 October 2026): no Clan, no Clan Honour, no Trusted Clients');
     t.equal(s.dayInProgress, null);
     t.same(s.word, []);
   });
@@ -160,30 +160,32 @@
   test('building: locked by level, no duplicates, then built on its ready day', function (t) {
     var s = fresh();
     s.day = 10;
+    s.partyLevel = 7;
+    R.slotRows(s, 7);
+    t.equal(R.startBuild(s, data, 0, 'temple').message, 'Locked. Temple requires party level 8.');
     s.partyLevel = 9;
     R.slotRows(s, 9);
-    t.equal(R.startBuild(s, data, 0, 'menagerie').message, 'Locked. Menagerie requires party level 13.');
-    var res = R.startBuild(s, data, 0, 'library_scriptorium');
+    var res = R.startBuild(s, data, 0, 'hall_of_emissaries');
     t.ok(res.ok);
-    t.same(res.log, ['Construction Started', 'Library & Scriptorium is under construction (21 days: ready on Day 31).']);
-    t.same(s.builtExtras[0], { facId: 'library_scriptorium', status: 'building', startDay: 10, readyDay: 31 });
-    t.equal(R.startBuild(s, data, 1, 'library_scriptorium').message, 'That facility is already built or under construction.');
+    t.same(res.log, ['Construction Started', 'Hall of Emissaries is under construction (21 days: ready on Day 31).']);
+    t.same(s.builtExtras[0], { facId: 'hall_of_emissaries', status: 'building', startDay: 10, readyDay: 31 });
+    t.equal(R.startBuild(s, data, 1, 'hall_of_emissaries').message, 'That facility is already built or under construction.');
     /* The Wyvern Roost was the example until pull request 7 made it buildable. */
     t.equal(R.startBuild(s, data, 1, 'stone_masonworks', 'slot').ok, false, 'a Development Plot facility can\'t go in a special slot');
     t.equal(R.startBuild(s, data, 1, 'smithy').ok, false, 'the Smithy is gone');
-    t.equal(R.startBuild(s, data, 1, 'barracks').message, 'That facility is already built or under construction.');
+    t.equal(R.startBuild(s, data, 1, 'workshop').message, 'That facility is already built or under construction.');
     t.equal(R.buildDaysLeft(s, s.builtExtras[0]), 21);
     s.day = 30;
     t.same(R.completeConstruction(s), [], 'Day 30: not yet');
     t.equal(R.buildDaysLeft(s, s.builtExtras[0]), 1);
     s.day = 31;
-    t.same(R.completeConstruction(s), ['library_scriptorium']);
-    t.same(s.builtExtras[0], { facId: 'library_scriptorium', status: 'built' });
-    t.ok(R.builtFacilityIds(s, data).indexOf('library_scriptorium') !== -1);
+    t.same(R.completeConstruction(s), ['hall_of_emissaries']);
+    t.same(s.builtExtras[0], { facId: 'hall_of_emissaries', status: 'built' });
+    t.ok(R.builtFacilityIds(s, data).indexOf('hall_of_emissaries') !== -1);
   });
 
   test('lowering the level keeps every building, marking the extra ones over capacity (BAS-04, B8)', function (t) {
-    var s = built(fresh(), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'hall_of_emissaries', 'shrine_aurush']);
+    var s = built(fresh(), ['beast_pen', 'courier_exchange', 'herbal_gardens', 'hall_of_emissaries', 'temple']);
     var rows = R.slotRows(s, 13);
     t.equal(rows.over, 0);
     rows = R.slotRows(s, 9);
@@ -192,13 +194,13 @@
     t.equal(rows.over, 1);
     t.same(rows.rows.map(function (r) { return r.overCapacity; }), [false, false, false, false, true]);
     t.ok(rows.rows.every(function (r) { return !r.canBuild; }), 'no room to build');
-    t.ok(R.builtFacilityIds(s, data).indexOf('shrine_aurush') !== -1, 'still built and working');
+    t.ok(R.builtFacilityIds(s, data).indexOf('temple') !== -1, 'still built and working');
     rows = R.slotRows(s, 13);
     t.equal(rows.over, 0, 'back up: nothing over');
   });
 
   test('over capacity counts buildings, not slot positions', function (t) {
-    var s = built(fresh(), ['library_scriptorium', '', 'arcane_laboratory', 'herbal_gardens', 'hall_of_emissaries']);
+    var s = built(fresh(), ['beast_pen', '', 'courier_exchange', 'herbal_gardens', 'hall_of_emissaries']);
     var rows = R.slotRows(s, 9);
     t.equal(rows.used, 4);
     t.equal(rows.over, 0);
@@ -210,10 +212,10 @@
   });
 
   test('empty slots past the limit are dropped; built ones stay', function (t) {
-    var s = built(fresh(), ['library_scriptorium', '', '', '', '']);
+    var s = built(fresh(), ['beast_pen', '', '', '', '']);
     R.slotRows(s, 5);
     t.equal(s.builtExtras.length, 2);
-    t.same(s.builtExtras[0], { facId: 'library_scriptorium', status: 'built' });
+    t.same(s.builtExtras[0], { facId: 'beast_pen', status: 'built' });
   });
 
   group('Bastion: orders');
@@ -240,13 +242,6 @@
     t.equal(s.pendingOrders.length, 0);
   });
 
-  test('Arm Defenders costs 100 + 100 per defender', function (t) {
-    var s = fresh();
-    s.defenders.count = 3;
-    var fac = R.facility(data, 'armoury');
-    t.same(R.computeFnCost(s, fac, fac.functions[0], null), { costGP: 400, costText: '400gp (100 + defenders×100)' });
-  });
-
   test('cancelling keeps the gold spent (B9, kept)', function (t) {
     var s = fresh();
     s.treasuryGP = 500;
@@ -256,26 +251,21 @@
     t.equal(s.treasuryGP, 400);
   });
 
-  test('Workshop Craft lists what the artisan tools make, sorted, and crafts the choice', function (t) {
+  test('Workshop crafting: each staff member\'s list is made from fixed tool tables, sorted, and crafts the choice', function (t) {
     var s = fresh();
-    s.artisanTools = ['Smith’s Tools', '', '', '', '', ''];
-    var items = R.craftItems(s, data.tools);
+    s.facilityLevels.workshop = 2;
+    var smith = R.fn(R.facility(data, 'workshop'), 'craft_smith');
+    var items = R.craftItemsFor(data, smith, 2);
     t.ok(items.length > 0);
     t.same(items, items.slice().sort(function (a, b) { return a.localeCompare(b); }));
-    var o = order(s, 'workshop', 'craft', 0);
+    t.equal(items.length, data.tools['Smith’s Tools'].length, 'the whole of Smith’s Tools');
+    var o = order(s, 'workshop', 'craft_smith', 0);
     t.equal(o.optionLabel, items[0]);
+    t.equal(o.label, 'Workshop: Smith - ' + items[0]);
     var lines = R.completeSimpleOrder(s, data, o, dice([0.3]));
     t.same(lines, [['Order Completed', o.label + ' → Crafted: ' + items[0] + '.']]);
     t.equal(s.warehouse[0].item, items[0]);
     t.equal(s.warehouse[0].notes, 'Workshop');
-  });
-
-  test('an active summit cuts the price of Hall actions', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.treasuryGP = 1000;
-    s.diplomacy.summits.push({ title: 'Inter-Clan Summit', startDay: 1, endDay: 15, costReductionPct: 25 });
-    order(s, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: '' });
-    t.equal(s.treasuryGP, 1000 - 187);
   });
 
   test('orders complete on their day or any later one (BAS-13)', function (t) {
@@ -286,63 +276,15 @@
     t.same(R.dueOrders(s, ['a']).map(function (o) { return o.id; }), ['c'], 'skipped today');
   });
 
-  test('every order has its days: the five starting facilities, the Hall, the network and the war', function (t) {
+  test('every order has its days: the two starting facilities and the Dock\'s Register Port Charter; the Hall has none', function (t) {
     var days = function (facId, fnId) { return R.fn(R.facility(data, facId), fnId).days; };
-    t.same([days('workshop', 'craft'), days('workshop', 'craft_magic_item'), days('barracks', 'recruit_defenders'), days('watchtower', 'patrol'), days('dock', 'charter_berth'), days('armoury', 'arm_defenders')], [3, 10, 5, 1, 7, 3]);
-    t.same(['upgrade_hall', 'secure_trade_agreement', 'host_delegation', 'inter_clan_summit', 'arbitration_authority', 'trade_consortium'].map(function (f) { return days('hall_of_emissaries', f); }), [14, 7, 5, 14, 10, 14]);
+    t.same([days('workshop', 'craft'), days('workshop', 'craft_magic_item'), days('dock', 'charter_berth')], [3, 10, 7]);
+    t.equal(days('dock', 'register_port_charter'), 3);
+    t.same(R.facility(data, 'hall_of_emissaries').functions, [], 'the Hall has no orders (step S09)');
     data.facilities.forEach(function (f) { f.functions.forEach(function (fn) { t.ok(fn.days >= 1, f.id + ' ' + fn.id + ' has days'); }); });
-    t.same(['stability', 'yield', 'toggle_high_risk'].map(function (k) { return T.bastion.networkUpgrades[k].days; }), [7, 7, 1]);
-    t.equal(R.time(data).musterDays, 3);
-    var s = fresh();
-    s.day = 9;
-    s.treasuryGP = 500;
-    s.tradeNetwork.active = true;
-    R.issueNetworkUpgrade(s, data, 'toggle_high_risk', dice([0.3]));
-    t.equal(s.pendingOrders[0].dueDay, 10);
   });
 
   group('Bastion: completing orders');
-
-  test('Barracks: 1d4 defenders; Watchtower: patrol; Armoury: armed', function (t) {
-    var s = fresh();
-    var o = { facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders' };
-    t.same(R.completeSimpleOrder(s, data, o, dice([0.99])), [['Order Completed', 'Barracks: Recruit Defenders → Recruited 4 defenders.']]);
-    t.equal(s.defenders.count, 4);
-    s.day = 12;
-    t.same(R.completeSimpleOrder(s, data, { facId: 'watchtower', fnId: 'patrol', label: 'x' }, dice([0.1])), [['Order Completed', 'x → Patrol active until Day 19.']]);
-    t.ok(R.patrolActive(s));
-    s.day = 19;
-    t.ok(R.patrolActive(s), 'the 7th day after');
-    s.day = 20;
-    t.equal(R.patrolActive(s), false, 'over');
-    R.completeSimpleOrder(s, data, { facId: 'armoury', fnId: 'arm_defenders', label: 'x' }, dice([0.1]));
-    t.ok(s.defenders.armed);
-  });
-
-  test('War Room and Menagerie recruits go to Military and the beasts list, counted by name', function (t) {
-    var s = fresh();
-    R.completeSimpleOrder(s, data, { facId: 'war_room', fnId: 'recruit', optionLabel: 'Lieutenant (1)', label: 'x' }, dice([0.1]));
-    R.completeSimpleOrder(s, data, { facId: 'war_room', fnId: 'recruit', optionLabel: 'Lieutenant (1)', label: 'x' }, dice([0.1]));
-    t.same(s.military, [{ name: 'Lieutenant (1)', qty: 2, source: 'War Room' }]);
-    t.equal(R.metaLine(s.military[0]), 'x2 • War Room');
-    R.completeSimpleOrder(s, data, { facId: 'menagerie', fnId: 'recruit_beast', optionLabel: 'Ape', label: 'x' }, dice([0.1]));
-    t.same(s.defenderBeasts, [{ name: 'Ape', qty: 1, source: 'Menagerie' }]);
-  });
-
-  test('shrine prayers: 1d20% favour, a 1d10 hint on 4–7, a 1d6 rest on 5–6', function (t) {
-    var s = fresh();
-    var pray = R.fn(R.facility(data, 'shrine_telluria'), 'pray');
-    var lines = R.completeSimpleOrder(s, data, { facId: 'shrine_telluria', fnId: 'pray', chosen: pray.options[2], label: 'L' }, dice([0.5]));
-    t.equal(s.favour.telluria, 11);
-    t.same(lines, [['Order Completed', 'L → Rolled 1d20 = 11. Added +11% to TELLURIA favour.']]);
-    t.same(R.completeSimpleOrder(s, data, { facId: 'shrine_telluria', fnId: 'pray', chosen: pray.options[0], label: 'L' }, dice([0.4])),
-      [['Order Completed', 'L → Rolled 1d10 = 5. A hint is granted (DM decides the hint).']]);
-    t.same(R.completeSimpleOrder(s, data, { facId: 'shrine_telluria', fnId: 'pray', chosen: pray.options[1], label: 'L' }, dice([0.1])),
-      [['Order Completed', 'L → Rolled 1d6 = 1. No rest granted.']]);
-    s.favour.telluria = 95;
-    R.completeSimpleOrder(s, data, { facId: 'shrine_telluria', fnId: 'pray', chosen: pray.options[2], label: 'L' }, dice([0.99]));
-    t.equal(s.favour.telluria, 100, 'favour stops at 100%');
-  });
 
   test('other orders land in the warehouse; the same item adds to its count', function (t) {
     var s = fresh();
@@ -356,30 +298,16 @@
     t.equal(s.warehouse[1].notes, 'Dock');
   });
 
-  test('Library research notes still don\'t attach (B16, kept)', function (t) {
+  test('Scholar research notes still don\'t attach (B16, kept)', function (t) {
     var s = fresh();
     s.treasuryGP = 100;
-    var o = order(s, 'library_scriptorium', 'research', 0);
+    s.facilityLevels.workshop = 3;
+    var o = order(s, 'workshop', 'research', 0);
     t.equal(o.optionLabel, 'Geographical Scriptures');
+    t.equal(o.label, 'Workshop: Scholar - Research (Geographical Scriptures)');
     t.equal(o.notes, '');
     R.completeSimpleOrder(s, data, o, dice([0.1]));
-    t.equal(s.warehouse[0].notes, 'Library & Scriptorium');
-  });
-
-  test('the Hall\'s old Upgrade Hall: can\'t be ordered since step 1b, but one already ordered completes, up to Level 5 (the bonus stays +6: D7)', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.treasuryGP = 100;
-    t.same(R.issueOrder(s, data, 'hall_of_emissaries', 'upgrade_hall', 0, dice([0.3])), { ok: false, message: 'That order has been replaced by Upgrade.' });
-    var fn = R.fn(R.facility(data, 'hall_of_emissaries'), 'upgrade_hall');
-    t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries upgraded to Level 2.']);
-    t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries upgraded to Level 3.']);
-    t.equal(R.diplomacyModForHall(s), 6);
-    t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries upgraded to Level 4.']);
-    t.equal(R.diplomacyModForHall(s), 6, 'still +6 at Level 4 (D7)');
-    t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries upgraded to Level 5.']);
-    t.equal(R.diplomacyModForHall(s), 6, 'and at Level 5');
-    t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries is already max level.']);
-    t.equal(s.treasuryGP, 100);
+    t.equal(s.warehouse[0].notes, 'Workshop');
   });
 
   test('warehouse rows: typed values tidied as before', function (t) {
@@ -393,207 +321,25 @@
     t.equal(s.warehouse[1].notes, 'Dock | Smithy');
   });
 
-  group('Bastion: the Hall of Emissaries');
-
-  test('tiers from a d20: natural 20 and 1, then by the total against the DC', function (t) {
-    t.equal(R.tierFromRoll(20, 5, 14), 'critical_success');
-    t.equal(R.tierFromRoll(1, 30, 14), 'critical_failure');
-    t.equal(R.tierFromRoll(10, 19, 14), 'great_success');
-    t.equal(R.tierFromRoll(10, 14, 14), 'success');
-    t.equal(R.tierFromRoll(10, 13, 14), 'failure');
-    t.equal(R.tierFromRoll(10, 9, 14), 'bad_failure');
-    t.equal(R.formatTier('critical_failure'), 'Bad Failure');
-  });
-
-  test('planning: one roll for most actions, three for a delegation (B2); cooldowns block', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.treasuryGP = 5000;
-    var ta = order(s, 'hall_of_emissaries', 'secure_trade_agreement', 1, { targetClan: 'Clan Rowthorn' });
-    var p = R.emissaryPlan(s, data, ta);
-    t.equal(p.rolls.length, 1);
-    t.equal(p.dc, 14);
-    t.equal(p.mod, 2);
-    t.equal(p.opt, 'Clan Rowthorn');
-    var hd = order(s, 'hall_of_emissaries', 'host_delegation', 0, { tone: 'conciliatory', targetClan: 'Clan Blackstone' });
-    p = R.emissaryPlan(s, data, hd);
-    t.same(p.rolls.map(function (r) { return [r.title, r.mod, r.dc]; }), [
-      ['Host Delegation (Clan Blackstone)', 2, 13], ['Diplomacy Roll (conciliatory)', 4, 13], ['Insight Roll (conciliatory)', 2, 12]
-    ]);
-    R.setCooldown(s, 'host_delegation', 14);
-    t.equal(R.emissaryPlan(s, data, hd).blocked, 14);
-    s.day += 10;
-    t.equal(R.emissaryPlan(s, data, hd).blocked, 4, 'days left');
-  });
-
-  test('a Trade Agreement: income per shipment, the weeks chosen and Political Capital by tier', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.day = 5;
-    s.treasuryGP = 5000;
-    var o = order(s, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Blackstone', weeks: 6 });
-    t.equal(o.dueDay, 12, '7 days to negotiate');
-    s.day = 12;
-    var p = R.emissaryPlan(s, data, o);
-    var res = R.applyEmissary(s, data, o, p, { main: roll(12, 14) }, dice([0.5, 0, 0]));
-    t.equal(res.tier, 'success');
-    t.same(s.diplomacy.agreements.map(function (a) { return [a.title, a.clan, a.startDay, a.endDay, a.income, a.lastShipmentDay]; }), [['Trade Agreement', 'Clan Blackstone', 12, 54, 100, 12]]);
-    t.equal(R.shipmentsLeft(s.diplomacy.agreements[0], 7), 6, 'six weeks, six shipments');
-    t.equal(R.daysLeft(s, s.diplomacy.agreements[0]), 42);
-    t.equal(s.politicalCapital.blackstone, 8);
-    t.equal(s.warehouse[0].item, 'Trade Agreement Contract');
-    t.equal(res.summary, 'Terms are acceptable. The contract is sealed.');
-    t.same(res.changes, ['Political Capital: +8 (Clan Blackstone)', 'New record: Trade Agreement (42 days, 6 shipments, until Day 54)', 'Income: +100 gp a shipment, every 7 days']);
-    t.equal(res.log[0], 'Order Resolved');
-  });
-
-  test('a Trade Agreement\'s weeks: 1, 3 or 6 as chosen (3 if not), the tier adds or takes a week or two, never under a week', function (t) {
-    function weeksFor(weeks, d20, total) {
-      var s = built(fresh(), ['hall_of_emissaries']);
-      s.treasuryGP = 5000;
-      var o = order(s, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Karr', weeks: weeks });
-      R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(d20, total) }, dice([0.5]));
-      var a = s.diplomacy.agreements[0];
-      return a ? (a.endDay - a.startDay) / 7 : 0;
-    }
-    t.same([weeksFor(1, 12, 14), weeksFor(3, 12, 14), weeksFor(6, 12, 14), weeksFor(undefined, 12, 14), weeksFor(4, 12, 14)], [1, 3, 6, 3, 3]);
-    t.same([weeksFor(3, 20, 22), weeksFor(3, 15, 19), weeksFor(3, 10, 12), weeksFor(1, 10, 12)], [5, 4, 2, 1]);
-  });
-
-  test('contracts send a shipment every 7 days from the day signed, the last on the final day, then end with a word', function (t) {
-    var s = fresh();
-    s.day = 12;
-    s.diplomacy.agreements = [{ id: 'a', title: 'Trade Agreement', clan: 'Clan Karr', startDay: 12, endDay: 33, income: 100, lastShipmentDay: 12 }];
-    var paid = [];
-    for (var d = 13; d <= 34; d++) {
-      s.day = d;
-      var before = s.treasuryGP;
-      var out = R.tickDiplomacy(s, data);
-      if (s.treasuryGP > before) paid.push(d);
-      if (out.word.length) t.same([d, out.word], [33, ['Your Trade Agreement with Clan Karr has ended (its last shipment arrived).']]);
-    }
-    t.same(paid, [19, 26, 33]);
-    t.equal(s.treasuryGP, 300);
-    t.equal(s.diplomacy.agreements.length, 0);
-  });
-
-  test('a bad failure: no deal, −20 Political Capital, a 14-day cooldown', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.treasuryGP = 5000;
-    var o = order(s, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Blackstone' });
-    var res = R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(5, 7) }, dice([0.5]));
-    t.equal(res.tier, 'bad_failure');
-    t.equal(s.diplomacy.agreements.length, 0);
-    t.equal(s.politicalCapital.blackstone, -20);
-    t.equal(R.cooldownLeft(s, 'trade_agreement'), 14);
-    t.ok(res.changes.indexOf('Cooldown: 14 days') !== -1);
-    t.equal(res.summary, 'Negotiations sour. Ink never touches parchment.');
-    s.day += 14;
-    R.tickDiplomacy(s, data);
-    t.equal(R.cooldownLeft(s, 'trade_agreement'), 0, 'free again 14 days later');
-    t.same(s.diplomacy.cooldowns, {});
-  });
-
-  test('a natural 1 still signs the deal with no Political Capital change (B20, kept)', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.treasuryGP = 5000;
-    var o = order(s, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Blackstone' });
-    var res = R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(1, 3) }, dice([0.5]));
-    t.equal(res.tier, 'critical_failure');
-    t.equal(s.diplomacy.agreements.length, 1);
-    t.equal(s.politicalCapital.blackstone, 0);
-    t.equal(R.cooldownLeft(s, 'trade_agreement'), 0);
-  });
-
-  test('Host Delegation changes Political Capital once, by its Diplomacy and Insight rolls (B2)', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.treasuryGP = 1000;
-    var o = order(s, 'hall_of_emissaries', 'host_delegation', 0, { tone: 'conciliatory', targetClan: 'Clan Blackstone' });
-    var p = R.emissaryPlan(s, data, o);
-    var before = s.treasuryGP;
-    var res = R.applyEmissary(s, data, o, p, { main: roll(20, 22), r1: roll(12, 16), r2: roll(11, 13) }, dice([0]));
-    t.equal(s.politicalCapital.blackstone, 15, 'not 15 + 25');
-    t.equal(s.diplomacy.tokens, 1);
-    t.equal(s.treasuryGP, before + 68, '80 gp × 0.85 (conciliatory)');
-    var dl = s.diplomacy.delegations[0];
-    t.equal(dl.endDay - dl.startDay, 28, 'the first roll still sets the length (14 + 14 days)');
-    t.same(res.changes.filter(function (c) { return /Political Capital/.test(c); }), ['Political Capital: +15 (Clan Blackstone)']);
-    t.equal(res.summary, '', 'its summary line stays empty (BAS-34, kept)');
-  });
-
-  test('Host Delegation: one success +8, a near miss 0, two misses −12 and a gold penalty', function (t) {
-    function run(r1, r2) {
-      var s = built(fresh(), ['hall_of_emissaries']);
-      s.treasuryGP = 1000;
-      var o = order(s, 'hall_of_emissaries', 'host_delegation', 2, { tone: 'assertive', targetClan: 'Clan Karr' });
-      s.treasuryGP = 1000;
-      R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(10, 12), r1: roll(r1, r1), r2: roll(r2, r2) }, dice([0]));
-      return [s.politicalCapital.karr, s.treasuryGP, s.diplomacy.tokens];
-    }
-    t.same(run(13, 3), [8, 1080, 0]);
-    t.same(run(11, 3), [0, 1080, 0]);
-    t.same(run(5, 4), [-12, 950, 0]);
-  });
-
-  test('a Summit gives both clans Political Capital and a Hall discount', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.facilityLevels.hall_of_emissaries = 2;
-    s.treasuryGP = 1000;
-    var o = order(s, 'hall_of_emissaries', 'inter_clan_summit', 0, { targetClan: '' });
-    t.equal(o.optionLabel, 'Blackstone + Rowthorn');
-    var res = R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(15, 19) }, dice([0.2]));
-    t.equal(res.tier, 'great_success');
-    t.equal(s.politicalCapital.blackstone, 15);
-    t.equal(s.politicalCapital.rowthorn, 15);
-    t.same([s.diplomacy.summits[0].costReductionPct, s.diplomacy.summits[0].endDay - s.diplomacy.summits[0].startDay], [30, 28]);
-    t.equal(s.warehouse[0].item, 'Summit Charter');
-  });
-
-  test('a Trade Consortium opens the network and a route for its clan', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.facilityLevels.hall_of_emissaries = 3;
-    s.treasuryGP = 1000;
-    var o = order(s, 'hall_of_emissaries', 'trade_consortium', 1, { targetClan: 'Karr' });
-    t.equal(o.label, 'Hall of Emissaries: Trade Consortium (Karr)');
-    s.day = 15;
-    R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(15, 21) }, dice([0.5]));
-    t.ok(s.tradeNetwork.active);
-    var r = s.tradeNetwork.routes[0];
-    t.same([r.clan, r.commodity, r.risk, r.openedDay, r.nextDay, r.expiresDay, r.status], ['Karr', 'Wool & Furs', 'high', 15, 22, 50, 'active']);
-    t.equal(r.yieldGP, s.diplomacy.consortiums[0].income);
-  });
-
-  test('a new consortium doesn\'t reopen an expired route (B21, kept)', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.facilityLevels.hall_of_emissaries = 3;
-    s.treasuryGP = 1000;
-    s.tradeNetwork.routes = [{ id: 'old', clan: 'Karr', status: 'expired' }];
-    var o = order(s, 'hall_of_emissaries', 'trade_consortium', 1, { targetClan: 'Karr' });
-    R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(15, 21) }, dice([0.5]));
-    t.equal(s.tradeNetwork.routes.length, 1);
-    t.equal(s.diplomacy.consortiums.length, 1);
-  });
-
   group('Bastion: passing a day');
 
-  test('a day\'s steps: the day moves on, building and shipments, then the routes, the orders and the finish, with word from the Ironbow', function (t) {
+  test('a day\'s steps: the day moves on and building is finished, then the trade, the orders and the finish, with word from the Ironbow', function (t) {
     var s = built(fresh(), []);
     s.day = 20;
-    s.builtExtras = [{ facId: 'library_scriptorium', status: 'building', startDay: 0, readyDay: 21 }];
-    s.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', startDay: 14, endDay: 21, income: 100, lastShipmentDay: 14 }];
-    s.lastEvent = { name: 'Guest' };
+    s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'building', startDay: 0, readyDay: 21 }];
     R.startDay(s, data, 1);
     t.equal(s.day, 21);
-    t.equal(s.treasuryGP, 100, 'the last shipment');
-    t.equal(s.diplomacy.agreements.length, 0, 'the agreement ran out');
-    t.same([s.dayInProgress.day, s.dayInProgress.stage, s.dayInProgress.skipped, s.dayInProgress.attackRolled], [21, 'trade', [], false]);
-    t.same(s.builtExtras[0], { facId: 'library_scriptorium', status: 'built' });
+    t.equal(s.treasuryGP, 0, 'no contract pays a shipment: the Hall has none (step S09)');
+    t.same([s.dayInProgress.day, s.dayInProgress.stage, s.dayInProgress.skipped], [21, 'trade', []]);
+    t.equal('attackRolled' in s.dayInProgress, false, 'no attack roll any more (the war game is gone)');
+    t.same(s.builtExtras[0], { facId: 'hall_of_emissaries', status: 'built' });
     R.finishRoutes(s);
     t.equal(s.dayInProgress.stage, 'orders');
-    t.same(s.lastEvent, { name: 'Guest' }, 'the last event stays until the next');
-    R.finishDay(s, data, data.events, dice([0.5]), 1);
+    R.finishDay(s);
     t.equal(s.dayInProgress, null);
-    t.same(titles(s), ['Diplomacy', 'Diplomacy', 'Construction Complete']);
+    t.same(titles(s), ['Construction Complete']);
     t.ok(s.log.every(function (l) { return l.day === 21; }), 'each log line has its day');
-    t.same(s.word, [{ day: 21, lines: ['The Library & Scriptorium is built.', 'Your Trade Agreement with Clan Karr has ended (its last shipment arrived).'] }]);
+    t.same(s.word, [{ day: 21, lines: ['The Hall of Emissaries is built.'] }]);
   });
 
   test('a quiet day adds no word', function (t) {
@@ -601,40 +347,46 @@
     s.day = 3;
     R.startDay(s, data);
     R.finishRoutes(s);
-    R.finishDay(s, data, data.events, dice([0.5]));
+    R.finishDay(s);
     t.equal(s.day, 4);
     t.same(s.word, []);
     t.same(s.log, []);
   });
 
-  test('the automatic Bastion event comes every 28 days from Day 1 (Days 29, 57…), once', function (t) {
-    t.same([1, 2, 28, 29, 30, 57, 85].map(function (d) { return R.isEventDay(data, d); }), [false, false, false, true, false, true, true]);
-    t.same([1, 5, 29, 30, -3].map(function (d) { return R.nextEventDay(data, d); }), [29, 29, 57, 57, 29]);
+  test('no Bastion event comes any more: Day 29, 57 and 85 pass like any other day, the state holds no event, and the event rules are gone (S05)', function (t) {
+    ['rollEvent', 'resolveEvent', 'isEventDay', 'nextEventDay'].forEach(function (name) { t.equal(typeof R[name], 'undefined', name + ' is gone'); });
+    t.equal('eventEvery' in R.time(data), false, 'no every-28-days setting');
+    t.equal('lastEvent' in fresh() || 'lastEventDay' in fresh(), false, 'a new Bastion holds no event record');
     var s = fresh();
+    [28, 56, 84].forEach(function (before) {
+      s.day = before;
+      R.startDay(s, data);
+      R.finishRoutes(s);
+      R.finishDay(s);
+      t.equal(s.day, before + 1);
+      t.same(s.log, [], 'nothing logged on Day ' + s.day);
+      t.same(s.word, [], 'no word on Day ' + s.day);
+      t.equal('lastEvent' in s || 'lastEventDay' in s, false, 'no event record on Day ' + s.day);
+    });
     s.day = 28;
     R.startDay(s, data);
     R.finishRoutes(s);
-    R.finishDay(s, data, data.events, dice([0.995]));
-    t.equal(s.lastEvent.name, 'Treasure');
-    t.equal(s.lastEvent.day, 29);
-    t.equal(s.lastEventDay, 29);
-    t.equal(s.log[0].body, 'Auto event (Day 29) → Rolled 100 → Treasure');
-    t.same(s.word[0].lines, ['Bastion event: Treasure (rolled 100).']);
-    /* Finishing the same day again (a resumed day) can't roll it twice. */
-    s.dayInProgress = { day: 29, stage: 'orders', skipped: [], attackRolled: true, news: [] };
-    R.finishDay(s, data, data.events, dice([0.1]));
-    t.equal(s.lastEvent.name, 'Treasure');
+    var real = Math.random;
+    var rolled = 0;
+    Math.random = function () { rolled++; return real(); };
+    try { R.finishDay(s); } finally { Math.random = real; }
+    t.equal(rolled, 0, 'finishing a day rolls nothing');
   });
 
   test('a skipped order stays due and comes up the next day', function (t) {
     var s = fresh();
-    s.pendingOrders = [{ id: 'w', facId: 'war_council', dueDay: 2, meta: { kind: 'war_action' } }];
+    s.pendingOrders = [{ id: 'w', facId: 'dock', fnId: 'charter_berth', label: 'Dock: Charter Berth', dueDay: 2 }];
     R.startDay(s, data);
     t.equal(R.dueOrders(s, s.dayInProgress.skipped).length, 1);
     R.skipOrder(s, 'w');
     t.equal(R.dueOrders(s, s.dayInProgress.skipped).length, 0);
     t.equal(R.dueOrders(s).length, 1, 'still due (Resolve)');
-    R.finishDay(s, data, data.events, dice([0.1]));
+    R.finishDay(s);
     R.startDay(s, data);
     t.equal(R.dueOrders(s, s.dayInProgress.skipped).length, 1);
   });
@@ -650,7 +402,7 @@
     t.same(R.clockAction(s, 9), { kind: 'none' });
     t.same(R.clockAction(s, 12), { kind: 'pass', days: 3 });
     t.same(R.clockAction(s, 4), { kind: 'shift', by: -5 });
-    s.dayInProgress = { day: 9, stage: 'orders', skipped: [], attackRolled: false, news: [] };
+    s.dayInProgress = { day: 9, stage: 'orders', skipped: [], news: [] };
     t.same(R.clockAction(s, 4), { kind: 'pass', days: 0 }, 'a day part-way through is finished first');
   });
 
@@ -659,341 +411,51 @@
     s.day = 30;
     s.anchored = true;
     s.pendingOrders = [{ id: 'o', issuedDay: 28, dueDay: 33 }];
-    s.builtExtras = [{ facId: 'library_scriptorium', status: 'building', startDay: 20, readyDay: 41 }];
-    s.diplomacy.agreements = [{ startDay: 26, endDay: 47, lastShipmentDay: 26, income: 10 }];
-    s.diplomacy.cooldowns = { summit: 40 };
-    s.tradeNetwork.routes = [{ id: 'r', openedDay: 25, nextDay: 32, expiresDay: 60, status: 'active' }];
-    s.repairs = { barracks: 35 };
-    s.wars = { bacca: { since: 20, last: 27, next: 34 } };
-    s.warRecovery = [{ id: 'x', untilDay: 37 }];
-    s.defenders.patrolUntil = 31;
+    s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'building', startDay: 20, readyDay: 41 }];
+    s.legacyDiplomacy = { records: [{ kind: 'Trade Agreement', title: 'Trade Agreement', clan: 'Clan Karr', startDay: 26, endDay: 47, endedDay: 29, income: 10, shipments: 3, paid: 30, note: '' }] };
+    s.repairs = { workshop: 35 };
     s.log = [{ title: 'x', body: 'y', day: 29 }];
     R.shiftDays(s, -29);
     t.equal(s.day, 1);
-    t.same([s.pendingOrders[0].dueDay, s.builtExtras[0].readyDay, s.diplomacy.agreements[0].endDay, s.diplomacy.cooldowns.summit, s.tradeNetwork.routes[0].nextDay, s.repairs.barracks, s.wars.bacca.next, s.wars.bacca.since, s.warRecovery[0].untilDay, s.defenders.patrolUntil], [4, 12, 18, 11, 3, 6, 5, -9, 8, 2]);
-    t.equal(R.cooldownLeft(s, 'summit'), 10);
+    t.same([s.pendingOrders[0].dueDay, s.builtExtras[0].readyDay, s.legacyDiplomacy.records[0].endDay, s.legacyDiplomacy.records[0].startDay, s.legacyDiplomacy.records[0].endedDay, s.repairs.workshop], [4, 12, 18, -3, 0, 6], 'the Hall\'s old agreements, kept as history, move with the days too');
     t.equal(s.log[0].day, 29, 'the log is history');
     t.equal(R.dayLabel(-9), 'before Day 1');
     t.equal(R.dayLabel(4), 'Day 4');
   });
 
   test('which way each order completes', function (t) {
-    t.equal(R.orderKind(data, { facId: 'trade_network' }), 'network');
-    t.equal(R.orderKind(data, { facId: 'war_council' }), 'war');
-    t.equal(R.orderKind(data, { facId: 'hall_of_emissaries', fnId: 'host_delegation' }), 'emissary');
-    t.equal(R.orderKind(data, { facId: 'hall_of_emissaries', fnId: 'upgrade_hall' }), 'simple');
+    t.equal(R.orderKind(data, { facId: 'war_council' }), 'none', 'the War Council is gone (S06)');
+    t.equal(R.orderKind(data, { facId: 'dock', fnId: 'register_port_charter' }), 'simple');
+    t.equal(R.orderKind(data, { facId: 'workshop', fnId: 'upgrade', meta: { kind: 'upgrade' } }), 'simple');
     t.equal(R.orderKind(data, { facId: 'nowhere', fnId: 'x' }), 'none');
+    t.equal(R.orderKind(data, { facId: 'trade_network', fnId: 'upgrade' }), 'none', 'the Trade Network\'s investments and the Hall\'s actions are gone: such an order is cancelled when the Bastion is converted');
+    t.equal(R.orderKind(data, { facId: 'hall_of_emissaries', fnId: 'host_delegation' }), 'none');
   });
 
-  test('diplomacy each day: shipments, records ending, routes expiring with their consortium, cooldowns ending', function (t) {
-    var s = fresh();
-    s.day = 15;
-    s.diplomacy.consortiums = [{ clan: 'Karr', title: 'Form Trade Consortium', startDay: 8, endDay: 15, income: 50, lastShipmentDay: 8 }];
-    s.tradeNetwork.routes = [{ id: 'r', clan: 'Karr', status: 'active', expiresDay: 43 }];
-    s.diplomacy.cooldowns = { summit: 17, consortium: 15 };
-    var out = R.tickDiplomacy(s, data);
-    t.same(out.logs, [['Diplomacy', 'Contract shipments arrived: +50 gp.'], ['Diplomacy', 'Your Form Trade Consortium with Karr has ended (its last shipment arrived).']]);
-    t.equal(s.tradeNetwork.routes[0].status, 'expired');
-    t.same(s.diplomacy.cooldowns, { summit: 17 });
-    t.equal(R.passiveIncome(s), 0);
-  });
+  group('Bastion: Clan support is gone');
 
-  group('Bastion: trade routes');
-
-  function network(routes) {
-    var s = fresh();
-    s.day = 5;
-    s.tradeNetwork.active = true;
-    s.tradeNetwork.routes = routes;
-    return s;
-  }
-
-  test('route DCs and payouts', function (t) {
-    var s = network([]);
-    t.equal(R.routeDC(s, { risk: 'high' }), 14);
-    t.equal(R.routeDC(s, { risk: 'low' }), 11);
-    t.equal(R.routePayout(s, { yieldGP: 100 }, 'success'), 100);
-    t.equal(R.routePayout(s, { yieldGP: 100 }, 'strong_success'), 120);
-    s.tradeNetwork.highRiskRouting = true;
-    s.tradeNetwork.yieldBonusPct = 5;
-    t.equal(R.routeDC(s, { risk: 'high' }), 16);
-    t.equal(R.routePayout(s, { yieldGP: 100 }, 'success'), 125);
-    t.equal(R.routePayout(s, { yieldGP: 100, status: 'expired' }, 'success'), 0);
-  });
-
-  test('each route pays at most once each time it sails (every 7 days), even after a cancelled roll (BAS-05, BAS-11)', function (t) {
-    var s = network([{ id: 'a', clan: 'Blackstone', risk: 'low', yieldGP: 100, status: 'active', nextDay: 5 }, { id: 'b', clan: 'Karr', risk: 'high', yieldGP: 200, status: 'active', nextDay: 5 }, { id: 'c', clan: 'Bacca', risk: 'low', yieldGP: 50, status: 'active', nextDay: 7 }]);
-    t.ok(R.routesDueToday(s));
-    t.equal(R.routeNeedsRoll(s, s.tradeNetwork.routes[0]), false);
-    t.equal(R.routeNeedsRoll(s, s.tradeNetwork.routes[1]), true);
-    var out = R.settleRoute(s, data, s.tradeNetwork.routes[0], null, dice([0.1]));
-    t.equal(out.gained, 100);
-    /* The Karr roll is cancelled here: nothing more happens. Resolving again only offers Karr. */
-    t.same(R.routesToSettle(s).map(function (r) { return r.id; }), ['b']);
-    R.settleRoute(s, data, s.tradeNetwork.routes[1], roll(15, 15), dice([0.1]));
-    t.equal(s.treasuryGP, 300);
-    t.same(R.routesToSettle(s), []);
-    t.equal(R.routesDueToday(s), false);
-    t.same(s.tradeNetwork.routes.map(function (r) { return r.nextDay; }), [12, 12, 7]);
-    s.day = 7;
-    t.same(R.routesToSettle(s).map(function (r) { return r.id; }), ['c'], 'each on its own 7-day count');
-    s.day = 12;
-    t.equal(R.routesToSettle(s).length, 3, 'a week on, they sail again');
-  });
-
-  test('a failed roll disrupts the route; a disaster also drops stability and files a dispute', function (t) {
-    var s = network([{ id: 'b', clan: 'Karr', commodity: 'Wool & Furs', risk: 'high', yieldGP: 200, status: 'active' }]);
-    var out = R.settleRoute(s, data, s.tradeNetwork.routes[0], roll(12, 12), dice([0.1]));
-    t.equal(out.gained, 0);
-    t.equal(s.tradeNetwork.routes[0].status, 'disrupted');
-    t.equal(s.arbitration.queue.length, 0);
-    s = network([{ id: 'b', clan: 'Karr', commodity: 'Wool & Furs', risk: 'high', yieldGP: 200, status: 'active' }]);
-    out = R.settleRoute(s, data, s.tradeNetwork.routes[0], roll(5, 5), dice([0.1]));
-    t.equal(out.line, 'Karr suffers a catastrophic loss at sea. Status: Disrupted. Market Stability falls by 10%.');
-    t.equal(s.tradeNetwork.stability, 65);
-    var d = s.arbitration.queue[0];
-    t.same([d.a, d.b, d.meta.routeClan, d.meta.commodity, d.meta.disruptedDay, d.meta.stabilityAtFiling, d.createdDay], ['Karr', 'Ironbow Trade Consortium', 'Karr', 'Wool & Furs', 5, 65, 5]);
-  });
-
-  group('Bastion: the Council Ledger');
-
-  function disputed() {
-    var s = network([{ id: 'b', clan: 'Karr', risk: 'high', yieldGP: 200, status: 'disrupted' }]);
-    R.enqueueDispute(s, data, 'Karr', 'Trade disruption and disputed tariffs.', { routeClan: 'Karr' }, dice([0.3]));
-    return s;
-  }
-
-  test('a binding verdict clears the dispute and restores the route', function (t) {
-    var s = disputed();
-    var res = R.rule(s, data, s.arbitration.queue[0].id, 'S', roll(13, 13));
-    t.ok(res.passed);
-    t.equal(s.arbitration.queue.length, 0);
-    t.equal(s.tradeNetwork.routes[0].status, 'active');
-    t.equal(s.politicalCapital.karr, 2);
-    t.equal(s.tradeNetwork.stability, 77);
-    t.same(res.effects, ['Karr accepts a compromise (+2 Political Capital).', 'Market Stability +2%.', 'Karr route status: Restored (Active).']);
-    t.equal(res.log[1], 'The seal is struck. The council has split the claims. (Roll [object Object] = 13 vs DC 13)', 'as before (BAS-29, kept)');
-  });
-
-  test('ruling for either side, and a deadlock', function (t) {
-    var s = disputed();
-    R.rule(s, data, s.arbitration.queue[0].id, 'A', roll(15, 15));
-    t.same([s.politicalCapital.karr, s.tradeNetwork.stability], [6, 74]);
-    s = disputed();
-    R.rule(s, data, s.arbitration.queue[0].id, 'B', roll(15, 15));
-    t.same([s.politicalCapital.karr, s.tradeNetwork.stability], [-4, 79]);
-    s = disputed();
-    var res = R.rule(s, data, s.arbitration.queue[0].id, 'A', roll(12, 12));
-    t.ok(!res.passed);
-    t.ok(res.stillThere);
-    t.same([s.politicalCapital.karr, s.tradeNetwork.stability, s.tradeNetwork.routes[0].status], [-2, 73, 'disrupted']);
-    t.ok(/Returned to docket/.test(s.arbitration.queue[0].reason));
-    t.equal(R.councilBonus(s), 0, 'the Writ\'s +2 is never granted (B6, kept)');
-  });
-
-  group('Bastion: identity');
-
-  test('support: (Political Capital + 100) ÷ 2 + Honour/Respect × 4', function (t) {
-    var s = fresh();
-    t.equal(R.supportForClanKey(s, 'karr'), 50);
-    s.politicalCapital.karr = 10;
-    s.honourRespectByClan.karr = 2;
-    t.equal(R.supportForClanKey(s, 'karr'), 63);
-    t.equal(R.totalSupport(fresh()), 350);
-  });
-
-  test('forming a Clan: level 9, total support 360 and 3 clans at 55, each on both sides of the line', function (t) {
-    function clanState(level, pcs) {
-      var s = fresh();
-      s.partyLevel = level;
-      Object.keys(pcs).forEach(function (k) { s.politicalCapital[k] = pcs[k]; });
-      return R.canFormClan(s, data);
-    }
-    var three = { blackstone: 10, bacca: 10, farmer: 10, slade: -10 };
-    t.same(clanState(9, three), { ok: true, lvlOk: true, totalOk: true, countOk: true });
-    t.equal(clanState(8, three).lvlOk, false);
-    t.equal(clanState(9, { blackstone: 10, bacca: 10, farmer: 10, slade: -12 }).totalOk, false, '359');
-    t.equal(clanState(9, { blackstone: 10, bacca: 10, farmer: 8 }).countOk, false, 'only 2 clans at 55');
-  });
-
-  test('the requirements line is the Clan\'s alone: the Mercenary Brigade is archived (Build 3)', function (t) {
-    var s = fresh();
-    s.defenders.count = 3;
-    t.equal(R.requirementsHint(s, data), 'Clan requirements: Level 9+ (NO), Total Support 360+ (NO), 3 clans at 55+ (NO).');
-    t.equal(R.canFormMerc, undefined, 'no Form Mercenary Brigade');
-    t.same(Object.keys(data.bastion.identityRules), ['clanMinLevel', 'clanSupportTotalMin', 'clanSupportPerClanMin', 'clanSupportClanCountMin']);
-    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtDay: 1 };
-    t.equal(R.orgLabel(s), 'Clan: Clan Ironbow');
-    t.equal(R.orgLabel(fresh()), 'Unsworn');
-  });
-
-  test('a Brigade in a save from Builds 1 and 2 loads as Unsworn, its name known for the Day Log; its Trusted Clients are kept', function (t) {
-    var save = R.toSave(fresh());
-    save.day = 9;
-    save.organization = { type: 'merc', name: 'The Ironbow Freeblades', chief: '', motto: '', foundedAtDay: 4 };
-    save.trustedClientsByClan.bacca = 12;
-    t.equal(R.saveProblem(save), null, 'still a good save');
-    t.same(R.formerBrigade(save), { name: 'The Ironbow Freeblades' });
-    var back = R.fromSave(JSON.parse(JSON.stringify(save)), data);
-    t.same(back.organization, { type: 'unsworn', name: '', chief: '', motto: '', foundedAtDay: null });
-    t.equal(back.trustedClientsByClan.bacca, 12, 'kept, unread, so the archived Brigade could come back');
-    t.equal(R.formerBrigade(R.toSave(back)), null, 'only once');
-    save.organization.name = '  ';
-    t.same(R.formerBrigade(save), { name: 'the Brigade' });
-    t.equal(R.formerBrigade(R.toSave(fresh())), null);
-    t.equal(R.formerBrigade(null), null);
-  });
-
-  group('Bastion: war');
-
-  test('what can be committed; the unsworn only send defenders and beasts', function (t) {
-    var s = fresh();
-    s.defenders.count = 5;
-    s.defenderBeasts = [{ name: 'Ape', qty: 2 }];
-    s.military = [{ name: 'Lieutenant (1)', qty: 2 }, { name: 'Regiment (100)', qty: 1 }];
-    t.same(R.warAvailable(s), { defenders: 5, beasts: 2, lieutenants: 2, regiments: 1, fullWar: false }, 'beasts counted by number, not by row (BAS-25 fixed)');
-    s.organization.type = 'clan';
-    t.equal(R.warAvailable(s).fullWar, true, 'a Clan sends everything');
-    s.organization.type = 'merc';
-    t.equal(R.warAvailable(s).fullWar, false, 'only a Clan (the Brigade is archived)');
-  });
-
-  test('the old single-roll war is archived: nothing on the rules calls it', function (t) {
-    ['warCommit', 'queueWarAction', 'warPlan', 'resolveWar', 'removeBeasts'].forEach(function (k) { t.equal(R[k], undefined, k); });
-    t.equal(data.bastion.war.dc, undefined, 'its DCs went with it');
-  });
-
-  test('five Giant Vultures are five beasts (BAS-25)', function (t) {
-    var s = fresh();
-    s.defenders.count = 3;
-    s.defenderBeasts = [{ name: 'Ape', qty: 1 }, { name: 'Giant Vulture', qty: 5 }];
-    t.equal(R.beastQty(s), 6);
-    t.equal(R.warAvailable(s).beasts, 6);
-  });
-
-  group('Bastion: the Military Action');
-
-  /* A Clan at war: 2 Regiments, 6 defenders, 1 Lieutenant and 3 of its 5 Giant Vultures. */
-  function atWar(extra) {
-    var s = fresh();
-    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtDay: 1 };
-    s.treasuryGP = 100;
-    s.defenders.count = 6;
-    s.defenderBeasts = [{ name: 'Giant Vulture', qty: 5 }, { name: 'Ape', qty: 1 }];
-    s.military = [{ name: 'Lieutenant (1)', qty: 1 }, { name: 'Regiment (100)', qty: 2 }];
-    oldWarOrder(s, Object.assign({ objective: 'raid', targetKey: 'bacca', targetName: 'Bacca', commitDefenders: 6, commitBeasts: 3, commitLieutenants: 1, commitRegiments: 2 }, extra || {}));
-    return s;
-  }
-  function begun(extra) {
-    var s = atWar(extra);
-    var ma = R.beginMilitaryAction(s, data, s.pendingOrders[0], dice([0.4]), 0);
-    return { s: s, ma: ma };
-  }
-  function rolled(weatherD20, moraleD20, luckD20, stormRand) {
-    var b = begun();
-    R.militaryRoll(b.s, data, b.ma.id, 'weather', roll(weatherD20, weatherD20), dice([stormRand === undefined ? 0 : stormRand]));
-    R.militaryRoll(b.s, data, b.ma.id, 'morale', roll(moraleD20, moraleD20), dice([0]));
-    R.militaryRoll(b.s, data, b.ma.id, 'luck', roll(luckD20, luckD20), dice([0]));
-    return b;
-  }
-
-  test('the war order becomes a Military Action at once, so it can\'t come due twice', function (t) {
-    var b = begun();
-    t.same(b.s.pendingOrders, []);
-    t.equal(b.s.militaryActions.length, 1);
-    t.same([b.ma.step, b.ma.objective, b.ma.targetName, b.ma.day, b.ma.v, b.ma.tier], ['weather', 'raid', 'Bacca', 1, 2, 'established'], 'a phase 1 order: an established local force');
-    t.same(b.ma.commit, { defenders: 6, lieutenants: 1, units: { line: 2 }, beasts: { 'Giant Vulture': 3 } }, 'its Regiments are Line Infantry; its beasts the first in the list');
-    t.equal(b.ma.battle, null);
-    t.same(b.ma.spec.player.units.map(function (u) { return u.label; }), ['Line Infantry 1', 'Line Infantry 2', 'Giant Vulture 1', 'Giant Vulture 2', 'Giant Vulture 3']);
-    t.equal(b.s.log[0].body, 'Raid vs Bacca: your forces muster for battle. The Military Action is ready to begin.');
-    t.equal(R.militaryCommitLine(b.ma.commit), '6 defenders, 1 Lieutenant, Line Infantry ×2, Giant Vulture ×3');
-    t.equal(R.militaryCommitLine({ defenders: 6, beasts: 3, lieutenants: 1, regiments: 2 }), '6 defenders, 1 Lieutenant, 3 beasts, 2 Regiments', 'phase 1\'s shape still reads');
-  });
-
-  test('short names: a name\'s initials', function (t) {
-    t.same([R.forceInitials('Giant Vulture'), R.forceInitials('ape'), R.forceInitials('Dire Wolf Alpha'), R.forceInitials('')], ['GV', 'Ap', 'DA', '?']);
-  });
-
-  test('Weather: pass the DC 12 for a clear day; fail and a storm is drawn at random', function (t) {
-    var b = begun();
-    t.equal(R.militaryDC(data, b.ma, 'weather'), 12);
-    var res = R.militaryRoll(b.s, data, b.ma.id, 'weather', roll(12, 12), dice([0.9]));
-    t.same([b.ma.weather.id, b.ma.weather.pass, b.ma.step, res.headline, res.video], ['clear', true, 'morale', 'Clear Day', null]);
-    t.equal(R.militaryDC(data, b.ma, 'morale'), 12, 'a clear day adds nothing to Morale');
-    [[0, 'white_blizzard', 16], [0.4, 'cold_rain', 14], [0.9, 'sun_heatwave', 15]].forEach(function (c) {
-      var x = begun();
-      var r = R.militaryRoll(x.s, data, x.ma.id, 'weather', roll(11, 11), dice([c[0]]));
-      t.same([x.ma.weather.id, x.ma.weather.pass, R.militaryDC(data, x.ma, 'morale')], [c[1], false, c[2]], c[1]);
-      t.ok(/^tools\/explorer\/assets\/overlays\/.+\.mp4$/.test(r.video), 'the Explorer\'s weather film');
-      t.ok(/Morale DC rises by \d/.test(r.text));
+  test('support: the Clan Influence panel and its number went (S10)', function (t) {
+    t.equal(R.supportForClanKey, undefined, 'R.supportForClanKey went with the Clan Influence panel');
+    ['canFormClan', 'totalSupport', 'clansAtSupport', 'orgLabel', 'requirementsHint', 'formerBrigade', 'canFormMerc'].forEach(function (k) {
+      t.equal(R[k], undefined, 'R.' + k + ' went with founding a Clan (22 October 2026)');
     });
+    t.equal(data.bastion.identityRules, undefined, 'and so did its numbers');
   });
 
-  test('each roll only counts at its own step, once', function (t) {
-    var b = begun();
-    t.equal(R.militaryRoll(b.s, data, b.ma.id, 'morale', roll(20, 20), dice([0])), null, 'not Morale before the Weather');
-    t.ok(R.militaryRoll(b.s, data, b.ma.id, 'weather', roll(15, 15), dice([0])));
-    t.equal(R.militaryRoll(b.s, data, b.ma.id, 'weather', roll(1, 1), dice([0])), null, 'a second Weather roll is ignored');
-    t.equal(b.ma.weather.d20, 15);
-    t.equal(R.militaryRoll(b.s, data, 'nope', 'morale', roll(15, 15), dice([0])), null);
-    t.equal(R.militaryRoll(b.s, data, b.ma.id, 'morale', null, dice([0])), null, 'a cancelled roll changes nothing');
-    t.equal(b.ma.step, 'morale');
+  test('the old Day Log as text: the newest 25 entries, newest first; nothing when empty (S10)', function (t) {
+    var s = fresh();
+    t.equal(R.oldLogText(s, 25), '');
+    for (var i = 1; i <= 30; i++) R.log(s, 'Entry ' + i, 'Body ' + i, 1000 * i);
+    var text = R.oldLogText(s, 25);
+    t.ok(text.indexOf('Entry 30') > -1 && text.indexOf('Entry 6') > -1, 'newest 25 are in');
+    t.ok(text.indexOf('Entry 5\n') === -1 && text.indexOf('· Entry 5') === -1, 'older ones are left out');
+    t.ok(text.indexOf('Entry 30') < text.indexOf('Entry 29'), 'newest first');
+    t.ok(text.indexOf('the newest 25 of 30') > -1);
   });
 
-  test('Morale: the words fit the weather and who leads the march', function (t) {
-    var b = rolled(5, 18, 15, 0);
-    t.same([b.ma.weather.id, b.ma.morale.pass, b.ma.morale.dc], ['white_blizzard', true, 16]);
-    t.equal(R.militaryResult(data, b.ma, 'morale').text, 'Despite the biting cold of the march, your Lieutenants keep your forces’ spirits high through encouraging words around warm campfires.');
-    var c = rolled(5, 15, 15, 0);
-    t.equal(c.ma.morale.pass, false, '15 misses the snowstorm\'s DC 16');
-    t.equal(R.militaryResult(data, c.ma, 'morale').text, 'The morale of your forces is low after a long march to the field in biting cold and ankle-deep snow.');
-    var d = begun({ commitLieutenants: 0 });
-    R.militaryRoll(d.s, data, d.ma.id, 'weather', roll(4, 4), dice([0.5]));
-    R.militaryRoll(d.s, data, d.ma.id, 'morale', roll(20, 20), dice([0]));
-    t.ok(/^Soaked to the skin.+ You make a jest/.test(R.militaryResult(data, d.ma, 'morale').text), 'no Lieutenants: the party themselves');
-  });
+  group('Bastion: the crest, and the War Table\'s saves (ignored since 22 October 2026)');
 
-  test('Luck: DC 10; pass is +1, fail is −1, then it\'s time to deploy', function (t) {
-    var b = rolled(15, 15, 10);
-    t.same([b.ma.luck.mod, b.ma.step, R.militaryResult(data, b.ma, 'luck').headline], [1, 'deploy', 'Luck: +1']);
-    var c = rolled(15, 15, 9);
-    t.same([c.ma.luck.mod, R.militaryResult(data, c.ma, 'luck').headline], [-1, 'Luck: −1']);
-    t.equal(R.militaryResult(data, c.ma, 'luck').text, 'Something strange is in the air today, perhaps the Gods do not look kindly upon this needless bloodshed… (−1 modifier on all attack rolls)', 'Harry\'s words');
-    t.same(R.militarySummary(data, c.ma), [{ label: 'Weather', value: 'Clear Day' }, { label: 'Morale', value: 'High' }, { label: 'Luck', value: '−1' }]);
-    t.equal(R.militaryStatus(c.ma), 'Rolls done. Next: deploy your forces on the War Table.');
-  });
-
-  test('Luck\'s modifier follows the war data file, so the Luck box, the summary and the battle agree', function (t) {
-    var W = T.bastionWar;
-    var data2 = Object.assign({}, data, { war: Object.assign({}, W, { luck: { passMod: 2, failMod: -3 } }) });
-    function luckAt(d20) {
-      var b = begun();
-      R.militaryRoll(b.s, data2, b.ma.id, 'weather', roll(15, 15), dice([0]));
-      R.militaryRoll(b.s, data2, b.ma.id, 'morale', roll(15, 15), dice([0]));
-      R.militaryRoll(b.s, data2, b.ma.id, 'luck', roll(d20, d20), dice([0]));
-      return b;
-    }
-    var up = luckAt(15), down = luckAt(2);
-    t.same([up.ma.luck.mod, R.militaryResult(data2, up.ma, 'luck').headline, R.militarySummary(data2, up.ma)[2].value, up.ma.spec.conditions.luckMod], [2, 'Luck: +2', '+2', 2]);
-    t.same([down.ma.luck.mod, R.militaryResult(data2, down.ma, 'luck').headline, down.ma.spec.conditions.luckMod], [-3, 'Luck: −3', -3]);
-    t.equal(R.fromSave(JSON.parse(JSON.stringify(R.toSave(up.s))), data2).militaryActions[0].luck.mod, 2, 'and on loading a save');
-    t.equal(R.luckMod(data, true), W.luck.passMod, 'the data file\'s own +1');
-  });
-
-  test('calling it off wins and loses nothing', function (t) {
-    var b = rolled(15, 15, 15);
-    var before = [b.s.treasuryGP, b.s.defenders.count, JSON.stringify(b.s.defenderBeasts), b.s.warLog.length];
-    t.ok(R.callOffMilitaryAction(b.s, b.ma.id, 0));
-    t.same(b.s.militaryActions, []);
-    t.ok(b.s.warMissions[b.ma.missionKey].conditions, 'the mission and its opening rolls are kept');
-    t.same([b.s.treasuryGP, b.s.defenders.count, JSON.stringify(b.s.defenderBeasts), b.s.warLog.length], before);
-    t.equal(b.s.log[0].body, 'Raid vs Bacca: the Military Action was called off. Nothing was won or lost.');
-    t.equal(R.callOffMilitaryAction(b.s, b.ma.id, 0), false);
-  });
-
-  group('Bastion: the crest and the War Table\'s saves');
-
-  test('a crest is a picture record; anything else is refused on import', function (t) {
+  test('a crest is a picture record; anything else is refused on import (the War Table\'s saves are not checked any more: Strip Back, 22 October 2026)', function (t) {
     var good = { dataUrl: 'data:image/webp;base64,AAAA', key: R.hashText('data:image/webp;base64,AAAA'), name: 'crest.png' };
     t.ok(R.isCrest(good));
     t.ok(!R.isCrest({ dataUrl: 'http://example.com/x.png', key: 'k' }));
@@ -1001,8 +463,8 @@
     t.ok(!R.isCrest('data:image/png;base64,AAAA'));
     t.equal(R.importProblem([{ key: 'tsi.bastion.crest', value: good }]), null);
     t.ok(/crest picture/.test(R.importProblem([{ key: 'tsi.bastion.crest', value: { dataUrl: 'x' } }])));
-    t.ok(/battle map/.test(R.importProblem([{ key: 'tsi.bastion.warMap', value: { dataUrl: 'nope', key: 1 } }])));
-    t.ok(/War Table settings/.test(R.importProblem([{ key: 'tsi.bastion.warTable', value: 'x' }])));
+    t.equal(R.importProblem([{ key: 'tsi.bastion.warMap', value: { dataUrl: 'nope', key: 1 } }]), null, 'a damaged battle map is ignored, so an old backup is never refused for it');
+    t.equal(R.importProblem([{ key: 'tsi.bastion.warTable', value: 'x' }]), null, 'and so are the War Table\'s settings');
     t.equal(R.importProblem([{ key: 'tsi.bastion.warMap', value: good }, { key: 'tsi.bastion.warTable', value: {} }]), null);
     t.equal(R.hashText('abc'), R.hashText('abc'));
     t.ok(R.hashText('abc') !== R.hashText('abd'));
@@ -1030,26 +492,19 @@
     t.equal(R.crestFromHandoff('x'), null);
   });
 
-  group('Bastion: events and the Compendium');
-
-  test('the d100 table, with 99–00 now reaching Treasure (B11)', function (t) {
-    var table = data.events.eventTable;
-    t.same([1, 50, 51, 98, 99, 100].map(function (n) { return R.resolveEvent(n, table).name; }),
-      ['All Is Well', 'All Is Well', 'Attack', 'Request for Aid', 'Treasure', 'Treasure']);
-    var s = fresh();
-    var ev = R.rollEvent(s, data.events, dice([0.3]), 0);
-    t.same([ev.roll, ev.name], [31, 'All Is Well']);
-    t.ok(s.lastEvent.lines.length > 0);
-  });
+  group('Bastion: the Compendium');
 
   test('the Compendium index, its links, Roll20 and the offline export (B15)', function (t) {
     var idx = R.compendiumIndex(data.facilities, data.tools);
-    t.ok(idx.links['Bag of Holding'].some(function (l) { return l.facName === 'Arcane Laboratory'; }));
+    t.ok(idx.links['Bag of Holding'].some(function (l) { return l.facName === 'Workshop' && l.fnLabel === 'Craft Uncommon'; }), 'Bag of Holding is made by the Alchemist (Craft Uncommon)');
+    t.ok(idx.links['Dread Helm'].every(function (l) { return l.fnLabel === 'Compendium only'; }), 'Dread Helm, Moon-Touched Sword and Smoldering Armor stay in the Compendium only');
+    t.ok(idx.links['Longsword'].some(function (l) { return l.fnLabel === 'Craft (Smith)'; }), 'the Smith crafts a Longsword');
+    t.equal(idx.items.indexOf('Potion of Climbing') !== -1 && idx.links['Potion of Climbing'].every(function (l) { return l.fnLabel !== 'Craft Common'; }), true, 'the duplicate potion is not offered twice by the Alchemist');
     t.equal(R.roll20Url('Bag of Holding'), 'https://roll20.net/compendium/dnd5e/Bag%20of%20Holding');
     var out = R.compendiumExport(idx, T.bastionCompendium.items);
     t.equal(out.filled, 0);
-    t.equal(out.kept + out.stubbed, 270);
-    t.equal(out.kept, 68);
+    t.equal(out.kept + out.stubbed, idx.items.length, 'every item is either kept or stubbed');
+    t.equal(out.kept, idx.items.filter(function (k) { var e = T.bastionCompendium.items[k]; return e && String(e.summary || '').trim(); }).length, 'the kept ones are the items whose entry has a summary');
     t.equal(out.file.version, 1);
     t.equal(T.bastion.compendiumCards.length, 36);
     t.same(T.bastion.compendiumCards.filter(function (n) { return idx.items.indexOf(n) === -1; }), [], 'every card belongs to an item');
@@ -1063,64 +518,54 @@
     t.same([2, 3, 4, 5].map(function (l) { return R.upgradeDays(data, l); }), [7, 14, 21, 28]);
     var s = fresh();
     s.day = 10;
-    s.treasuryGP = 50;
-    t.equal(R.getFacilityLevel(s, 'barracks'), 1);
-    t.same(R.upgradeCheck(s, data, 'barracks'), { ok: true, toLevel: 2, days: 7, costGP: 0 });
-    var r = R.issueUpgrade(s, data, 'barracks', dice([0.3]));
+    s.treasuryGP = 150;
+    t.equal(R.getFacilityLevel(s, 'workshop'), 1);
+    t.same(R.upgradeCheck(s, data, 'workshop'), { ok: true, toLevel: 2, days: 7, costGP: 0 });
+    var r = R.issueUpgrade(s, data, 'workshop', dice([0.3]));
     t.equal(r.ok, true);
-    t.same(r.log, ['Order Issued', 'Barracks: Upgrade to Level 2 (7 days: due Day 17).']);
+    t.same(r.log, ['Order Issued', 'Workshop: Upgrade to Level 2 (7 days: due Day 17).']);
     var o = s.pendingOrders[0];
-    t.same([o.facId, o.fnId, o.label, o.costGP, o.issuedDay, o.dueDay, o.meta], ['barracks', 'upgrade', 'Barracks: Upgrade to Level 2', 0, 10, 17, { kind: 'upgrade', toLevel: 2 }]);
-    t.equal(s.treasuryGP, 50, 'no gold');
+    t.same([o.facId, o.fnId, o.label, o.costGP, o.issuedDay, o.dueDay, o.meta], ['workshop', 'upgrade', 'Workshop: Upgrade to Level 2', 0, 10, 17, { kind: 'upgrade', toLevel: 2 }]);
+    t.equal(s.treasuryGP, 150, 'no gold');
     t.equal(R.orderKind(data, o), 'simple');
-    t.ok(/already being upgraded: ready on Day 17/.test(R.issueUpgrade(s, data, 'barracks', dice([0.3])).message), 'one at a time');
-    t.ok(R.issueOrder(s, data, 'barracks', 'recruit_defenders', 0, dice([0.3])).ok, 'its other orders carry on');
-    t.same(R.completeSimpleOrder(s, data, o, dice([0.3])), [['Order Completed', 'Barracks: Upgrade to Level 2 → The Barracks is now Level 2.']]);
-    t.equal(R.getFacilityLevel(s, 'barracks'), 2);
+    t.ok(/already being upgraded: ready on Day 17/.test(R.issueUpgrade(s, data, 'workshop', dice([0.3])).message), 'one at a time');
+    t.ok(R.issueOrder(s, data, 'dock', 'charter_berth', 0, dice([0.3])).ok, 'its other orders carry on');
+    t.same(R.completeSimpleOrder(s, data, o, dice([0.3])), [['Order Completed', 'Workshop: Upgrade to Level 2 → The Workshop is now Level 2.']]);
+    t.equal(R.getFacilityLevel(s, 'workshop'), 2);
     R.removeOrder(s, o.id);
-    s.facilityLevels.barracks = 4;
-    t.same(R.upgradeCheck(s, data, 'barracks'), { ok: true, toLevel: 5, days: 28, costGP: 0 });
-    s.facilityLevels.barracks = 5;
-    t.same(R.upgradeCheck(s, data, 'barracks'), { ok: false, top: true, message: 'The Barracks is at its highest level (5).' });
-    s.facilityLevels.barracks = 9;
-    t.equal(R.getFacilityLevel(s, 'barracks'), 5, 'never above 5');
+    s.facilityLevels.workshop = 4;
+    t.same(R.upgradeCheck(s, data, 'workshop'), { ok: true, toLevel: 5, days: 28, costGP: 0 });
+    s.facilityLevels.workshop = 5;
+    t.same(R.upgradeCheck(s, data, 'workshop'), { ok: false, top: true, message: 'The Workshop is at its highest level (5).' });
+    s.facilityLevels.workshop = 9;
+    t.equal(R.getFacilityLevel(s, 'workshop'), 5, 'never above 5');
   });
 
   test('no upgrading while Under Repair (D6); an upgrade already running waits for the repairs, like any order; not for a facility that isn\'t built', function (t) {
     var s = fresh();
     s.day = 10;
     R.issueUpgrade(s, data, 'dock', dice([0.3]));
-    s.repairs = { dock: 20, armoury: 12 };
-    t.same(R.issueUpgrade(s, data, 'armoury', dice([0.3])), { ok: false, message: 'The Armoury is Under Repair until Day 12.' });
+    s.repairs = { dock: 20, workshop: 12 };
+    t.same(R.issueUpgrade(s, data, 'workshop', dice([0.3])), { ok: false, message: 'The Workshop is Under Repair until Day 12.' });
     s.day = 17;
     t.same(R.dueOrders(s).map(function (x) { return x.facId; }), [], 'the Dock\'s upgrade waits for its repairs');
     s.day = 21;
     t.same(R.dueOrders(s).map(function (x) { return x.facId; }), ['dock']);
-    t.equal(R.upgradeCheck(s, data, 'library_scriptorium').message, 'The Library & Scriptorium isn\'t built yet.');
-    s.builtExtras = [{ facId: 'library_scriptorium', status: 'building', startDay: 1, readyDay: 22 }];
-    t.equal(R.upgradeCheck(s, data, 'library_scriptorium').ok, false, 'not while it\'s being built');
+    t.equal(R.upgradeCheck(s, data, 'beast_pen').message, 'The Beast Pen isn\'t built yet.');
+    s.builtExtras = [{ facId: 'beast_pen', status: 'building', startDay: 1, readyDay: 22 }];
+    t.equal(R.upgradeCheck(s, data, 'beast_pen').ok, false, 'not while it\'s being built');
   });
 
-  test('the Hall\'s Upgrade is the same order: Level 4 and 5 keep the +6 (D7); its Level 2 and 3 actions unlock as before', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    t.equal(R.diplomacyModForHall(s), 2);
-    t.equal(R.issueUpgrade(s, data, 'hall_of_emissaries', dice([0.3])).ok, true);
-    t.equal(s.pendingOrders[0].label, 'Hall of Emissaries: Upgrade to Level 2');
-    R.completeSimpleOrder(s, data, s.pendingOrders[0], dice([0.3]));
-    t.equal(R.diplomacyModForHall(s), 4);
-    [3, 4, 5].forEach(function (l) { s.facilityLevels.hall_of_emissaries = l; t.equal(R.diplomacyModForHall(s), 6, 'Level ' + l); });
-  });
-
-  test('levels survive saving, demolishing drops one, and an upgrade order is an ordinary pending order (cancel, demolish, defence lost)', function (t) {
-    var s = built(fresh(), ['library_scriptorium']);
-    s.facilityLevels.library_scriptorium = 3;
-    s.facilityLevels.watchtower = 5;
-    R.issueUpgrade(s, data, 'library_scriptorium', dice([0.3]));
+  test('levels survive saving, demolishing drops one, and an upgrade order is an ordinary pending order (cancel, demolish)', function (t) {
+    var s = built(fresh(), ['timber_sawmill']);
+    s.facilityLevels.timber_sawmill = 3;
+    s.facilityLevels.workshop = 5;
+    R.issueUpgrade(s, data, 'timber_sawmill', dice([0.3]));
     var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
-    t.same([back.facilityLevels.library_scriptorium, back.facilityLevels.watchtower, back.pendingOrders[0].meta], [3, 5, { kind: 'upgrade', toLevel: 4 }]);
-    var d = R.demolishFacility(back, data, 'library_scriptorium');
-    t.same(d.cancelled.map(function (o) { return o.label; }), ['Library & Scriptorium: Upgrade to Level 4']);
-    t.equal(back.facilityLevels.library_scriptorium, undefined);
+    t.same([back.facilityLevels.timber_sawmill, back.facilityLevels.workshop, back.pendingOrders[0].meta], [3, 5, { kind: 'upgrade', toLevel: 4 }]);
+    var d = R.demolishFacility(back, data, 'timber_sawmill');
+    t.same(d.cancelled.map(function (o) { return o.label; }), ['Timber Yard & Sawmill: Upgrade to Level 4']);
+    t.equal(back.facilityLevels.timber_sawmill, undefined);
   });
 
   group('Bastion: research (pull request 2, 13 October 2026)');
@@ -1156,7 +601,7 @@
       if (c.needs) t.ok(T.bastionResearch.needs[c.needs], c.id + ' says what it waits for');
       else t.ok(c.effects && c.effects.length, c.id + ' has effects');
     });
-    t.equal(R.researchTree(data, 'barracks'), null, 'only the Herbal Gardens has a tree so far');
+    t.equal(R.researchTree(data, 'workshop'), null, 'only the Herbal Gardens has a tree so far');
   });
 
   test('tokens: none at Level 1; one per level from 2 (four at Level 5); a project running takes one', function (t) {
@@ -1355,8 +800,11 @@
     t.same(s.repairs, { barracks: 13, herbal_gardens: 20 });
     t.same([s.pendingOrders[0].facId, s.pendingOrders[0].fnId], ['herbal_gardens', 'cultivate']);
     var back = R.fromSave(s, data);
-    t.same(back.repairs, { barracks: 13, herbal_gardens: 20 }, 'the repairs survive loading (an unknown facility\'s would be dropped)');
-    t.same(back.pendingOrders.map(function (o) { return o.id; }), ['g'], 'and so does the order');
+    t.same(back.repairs, {}, 'a version 3 Bastion\'s repairs are cleared when it is converted: only a lost battle in the war game ever caused one (S06)');
+    t.same(back.pendingOrders.map(function (o) { return o.id; }), ['g'], 'the order stays');
+    var v4 = R.toSave(back);
+    v4.repairs = { herbal_gardens: 20, nowhere: 7 };
+    t.same(R.fromSave(JSON.parse(JSON.stringify(v4)), data).repairs, { herbal_gardens: 20 }, 'a version 4 save keeps a repair of a real facility (an unknown facility\'s is dropped)');
   });
 
   test('the Smithy joins the Workshop: its slot is freed and the Workshop keeps its Craft order (as Smithing); still being built, it just goes', function (t) {
@@ -1376,11 +824,11 @@
     var workshop = R.facility(data, 'workshop');
     var smithing = R.fn(workshop, 'smithing');
     t.equal(smithing.options.length, 29, 'the Smithy\'s 29 items');
-    t.same(R.fnAvailable(R.fromSave(s, data), workshop, smithing), { ok: true });
+    t.same(R.fnAvailable(R.fromSave(s, data), workshop, smithing), { ok: false, hidden: true, message: 'That order isn\'t given any more.' }, 'Smithing is retired (step S12): never offered, though a pending one still finishes');
     var building = R.migrateToV3(v2(function (b) { b.builtExtras = [{ facId: 'smithy', status: 'building', startDay: 4, readyDay: 25 }]; }), data);
     t.same([slots(building.save), building.save.legacyFacilities], [[''], []], 'no Smithing for a Smithy never finished');
     t.equal(building.lines[0], 'Building work on the Smithy stopped: it has joined the Workshop. Its slot is free.');
-    t.same(R.fnAvailable(fresh(), workshop, smithing), { ok: false, hidden: true, message: 'That order isn\'t available here.' }, 'a new Bastion doesn\'t see Smithing');
+    t.same(R.fnAvailable(fresh(), workshop, smithing), { ok: false, hidden: true, message: 'That order isn\'t given any more.' }, 'a new Bastion doesn\'t see Smithing');
   });
 
   test('the Gaming Hall goes (Harry, D2): built or building, its slot is freed, its Trade order cancelled, and it is recorded as archived', function (t) {
@@ -1388,7 +836,7 @@
       b.builtExtras = [{ facId: 'gaming_hall', status: 'built' }, ''];
       b.facilityLevels.gaming_hall = 1;
       b.repairs = { gaming_hall: 20 };
-      b.pendingOrders = [{ id: 'gh', facId: 'gaming_hall', fnId: 'trade', label: 'Gaming Hall: Trade', costGP: 0, issuedDay: 10, dueDay: 17 }, { id: 'k', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', costGP: 0, issuedDay: 10, dueDay: 15 }];
+      b.pendingOrders = [{ id: 'gh', facId: 'gaming_hall', fnId: 'trade', label: 'Gaming Hall: Trade', costGP: 0, issuedDay: 10, dueDay: 17 }, { id: 'k', facId: 'dock', fnId: 'charter_berth', label: 'Dock: Charter Berth', costGP: 0, issuedDay: 10, dueDay: 15 }];
     }), data);
     var s = res.save;
     t.same(slots(s), ['', '']);
@@ -1430,29 +878,28 @@
   test('converted once: loading again changes nothing, and a Bastion with nothing to convert has no notice', function (t) {
     var raw = v2(function (b) { b.builtExtras = [{ facId: 'library', status: 'built' }, { facId: 'gaming_hall', status: 'built' }]; });
     var once = R.fromSave(raw, data);
-    t.equal(once.v, 3);
+    t.equal(once.v, 4, 'a version 2 save is now taken on to version 4 in one go (Strip Back, 22 October 2026)');
     var twice = R.fromSave(JSON.parse(JSON.stringify(R.toSave(once))), data);
     t.same(twice, once, 'a v 3 save is loaded as it is');
     t.same(R.migrateToV3(R.toSave(once), data), { save: R.toSave(once), lines: [] }, 'and isn\'t converted again');
     t.equal(once.log.filter(function (l) { return l.title === 'Facilities'; }).length, 1, 'one Day Log entry');
     var plain = R.fromSave(v2(function (b) { b.builtExtras = [{ facId: 'shrine_aurush', status: 'built' }]; }), data);
-    t.same(plain.migration, { v3: { day: 12, lines: [], shown: true } }, 'nothing changed: no notice');
+    t.same(plain.migration.v3, { day: 12, lines: [], shown: true }, 'nothing changed: no notice');
     t.equal(plain.log.filter(function (l) { return l.title === 'Facilities'; }).length, 0);
-    t.same(slots(plain), ['shrine_aurush']);
+    t.same(slots(plain), ['temple'], 'a Shrine in a version 2 save is the Temple once the Strip Back conversion has run (22 October 2026)');
   });
 
-  test('new orders: Alchemy and Greenhouse Harvest need party level 9; a facility still in development can\'t be built; a plot facility can\'t go in a special slot', function (t) {
-    var s = built(fresh(), ['arcane_laboratory', 'herbal_gardens']);
+  test('new orders: Greenhouse Harvest needs party level 9 (Alchemy has no party level since step S12, only the Alchemist\'s Workshop level); a plot facility can\'t go in a special slot', function (t) {
+    var s = built(fresh(), ['herbal_gardens']);
     s.treasuryGP = 1000;
     s.partyLevel = 8;
-    var lab = R.facility(data, 'arcane_laboratory');
-    t.same(R.fnAvailable(s, lab, R.fn(lab, 'alchemy')), { ok: false, message: 'Needs party level 9.' });
-    t.same(R.issueOrder(s, data, 'arcane_laboratory', 'alchemy', 0, dice([0.3])), { ok: false, message: 'Needs party level 9.' });
+    s.facilityLevels.workshop = 4;
+    var ws = R.facility(data, 'workshop');
+    t.same(R.fnAvailable(s, ws, R.fn(ws, 'alchemy')), { ok: true }, 'no party level gate on Alchemy');
+    t.ok(R.issueOrder(s, data, 'workshop', 'alchemy', 0, dice([0.3])).ok);
     t.equal(R.issueOrder(s, data, 'herbal_gardens', 'cultivate', 0, dice([0.3])).message, 'Needs party level 9.');
-    t.ok(R.issueOrder(s, data, 'arcane_laboratory', 'craft_common', 0, dice([0.3])).ok, 'the Arcane Study\'s orders need nothing more');
     t.ok(R.issueOrder(s, data, 'herbal_gardens', 'harvest', 0, dice([0.3])).ok);
     s.partyLevel = 9;
-    t.ok(R.issueOrder(s, data, 'arcane_laboratory', 'alchemy', 0, dice([0.3])).ok);
     t.ok(R.issueOrder(s, data, 'herbal_gardens', 'cultivate', 0, dice([0.3])).ok);
     t.equal(R.issueOrder(s, data, 'workshop', 'smithing', 0, dice([0.3])).ok, false, 'no Smithing without the old Smithy');
     s.partyLevel = 20;
@@ -1476,14 +923,15 @@
     stock(s, goods);
     return s;
   }
-  test('both are plain Timber Yard-style trade facilities: Level 5, a Development Plot, one production order at a time, no gold', function (t) {
+  test('both are plain Timber Yard-style trade facilities: Level 5, a Development Plot, one production order at a time, no gold, each level replacing the last, no goods needed', function (t) {
     ['stone_masonworks', 'weavers_hall'].forEach(function (id) {
       var f = R.facility(data, id);
-      t.same([f.requiredLevel, f.plot, f.productionLimit, !!f.inDevelopment], [5, true, 1, false], id);
+      t.same([f.requiredLevel, f.plot, f.productionLimit, f.levelOrders, !!f.inDevelopment], [5, true, 1, 'replace', false], id);
       t.same(f.functions.map(function (fn) { return [fn.days, fn.requiredFacilityLevel, fn.costGP]; }), [[4, 1, 0], [4, 2, 0], [5, 3, 0], [7, 4, 0], [9, 5, 0], [8, 5, 0]], id);
       f.functions.forEach(function (fn) {
         fn.options.forEach(function (o) {
-          (o.inputs || []).concat(o.outputs).forEach(function (x) { t.ok(T.bastionGoods.goods.some(function (g) { return g.id === x.good; }), id + ' uses a real good: ' + x.good); });
+          t.equal(o.inputs, undefined, id + ' ' + fn.id + ' takes nothing from the Warehouse (Strip Back Overhaul, S04: orders are self-contained)');
+          o.outputs.forEach(function (x) { t.ok(T.bastionGoods.goods.some(function (g) { return g.id === x.good; }), id + ' makes a real good: ' + x.good); });
         });
       });
     });
@@ -1500,40 +948,37 @@
     });
     t.ok(R.startBuild(s, data, 0, 'stone_masonworks', 'plot').ok);
   });
-  test('extracting needs nothing and the processing orders take their inputs from the Warehouse when they start', function (t) {
-    var s = stoneStock(3, 'stone_masonworks', []);
-    var r = R.issueOrder(s, data, 'stone_masonworks', 'extract_raw_stone', 0, dice([0.3]));
+  test('every Stone order works on its own: with an empty Warehouse the Level 2 order starts and takes nothing; one production order at a time', function (t) {
+    var s = stoneStock(2, 'stone_masonworks', []);
+    var r = R.issueOrder(s, data, 'stone_masonworks', 'produce_dressed_stone', 0, dice([0.3]));
     t.equal(r.ok, true, r.message);
-    s = stoneStock(3, 'stone_masonworks', []);
-    t.ok(/Needs 1 lot of Raw Stone in the Warehouse; it has 0 lots\./.test(R.issueOrder(s, data, 'stone_masonworks', 'produce_dressed_stone', 0, dice([0.3])).message));
-    s = stoneStock(3, 'stone_masonworks', [['raw_stone', 2]]);
-    r = R.issueOrder(s, data, 'stone_masonworks', 'produce_dressed_stone', 0, dice([0.3]));
-    t.equal(r.ok, true, r.message);
-    t.equal(R.goodsQty(s, 'raw_stone'), 1, 'one lot consumed at the start, not two');
+    t.same(r.log, ['Order Issued', 'Stone Quarry & Masonworks: Produce Dressed Stone (4 days: due Day 14).'], 'no "Taken from the Warehouse" part');
+    t.equal(s.pendingOrders[0].inputs, undefined, 'it holds nothing');
+    t.equal(s.warehouse.length, 0, 'the Warehouse was not touched');
     t.equal(R.issueOrder(s, data, 'stone_masonworks', 'produce_dressed_stone', 0, dice([0.3])).ok, false, 'one production order at a time');
+    s = stoneStock(2, 'stone_masonworks', [['raw_stone', 2]]);
+    t.equal(R.issueOrder(s, data, 'stone_masonworks', 'produce_dressed_stone', 0, dice([0.3])).ok, true);
+    t.equal(R.goodsQty(s, 'raw_stone'), 2, 'goods already in the Warehouse are left alone, not used up');
   });
-  test('a finished order puts real, counted goods in the Warehouse (bulk processing: 3 raw to 3 dressed; improved garments: 2 textiles to 2 garments)', function (t) {
+  test('a finished order puts real, counted goods in the Warehouse and uses nothing up (bulk processing: 3 dressed; improved garments: 2 garments)', function (t) {
     var s = stoneStock(5, 'stone_masonworks', []);
-    stock(s, [['raw_stone', 3]]);
-    t.equal(R.issueOrder(s, data, 'stone_masonworks', 'bulk_stone_processing', 0, dice([0.3])).ok, true);
-    t.equal(R.goodsQty(s, 'raw_stone'), 0, 'three lots taken at the start');
+    t.equal(R.issueOrder(s, data, 'stone_masonworks', 'bulk_stone_processing', 0, dice([0.3])).ok, true, 'an empty Warehouse is enough');
     var o = s.pendingOrders[0];
     t.equal(o.dueDay, s.day + 8);
     finish(s, o);
-    t.same([R.goodsQty(s, 'raw_stone'), R.goodsQty(s, 'dressed_stone')], [0, 3], 'used up, never given back on completion');
+    t.same([R.goodsQty(s, 'raw_stone'), R.goodsQty(s, 'dressed_stone')], [0, 3]);
     var w = stoneStock(4, 'weavers_hall', []);
-    stock(w, [['ordinary_textiles', 2]]);
     t.equal(R.issueOrder(w, data, 'weavers_hall', 'improved_specialist_garment_production', 0, dice([0.3])).ok, true);
-    t.equal(R.goodsQty(w, 'ordinary_textiles'), 0, 'two lots taken');
     t.equal(w.pendingOrders[0].dueDay, w.day + 7);
     finish(w, w.pendingOrders[0]);
-    t.equal(R.goodsQty(w, 'specialist_garments'), 2);
+    t.same([R.goodsQty(w, 'ordinary_textiles'), R.goodsQty(w, 'specialist_garments')], [0, 2]);
   });
-  test('upgrade levels follow the orders: Level 2 unlocks the second order, and so on', function (t) {
-    var s = stoneStock(1, 'weavers_hall', [['ordinary_textiles', 1]]);
-    t.equal(R.issueOrder(s, data, 'weavers_hall', 'produce_sailcloth', 0, dice([0.3])).message, 'Needs Level 2.');
+  test('upgrade levels replace the orders: Weavers\' Level 1 order is gone at Level 2, and the Level 2 order is refused until then', function (t) {
+    var s = stoneStock(1, 'weavers_hall', []);
+    t.equal(R.issueOrder(s, data, 'weavers_hall', 'produce_sailcloth', 0, dice([0.3])).message, 'That order belongs to Level 2.');
     s.facilityLevels.weavers_hall = 2;
-    t.equal(R.issueOrder(s, data, 'weavers_hall', 'produce_sailcloth', 0, dice([0.3])).ok, true);
+    t.equal(R.issueOrder(s, data, 'weavers_hall', 'produce_ordinary_textiles', 0, dice([0.3])).message, 'That order belongs to Level 1.', 'Level 1\'s order is replaced');
+    t.equal(R.issueOrder(s, data, 'weavers_hall', 'produce_sailcloth', 0, dice([0.3])).ok, true, 'with an empty Warehouse');
   });
 
   group('Bastion: Development Plots (pull request 3, 13 October 2026)');
@@ -1562,7 +1007,7 @@
     t.ok(/needs a free Development Plot: plots open at party level 9/.test(R.startBuild(s, data, 0, 'herbal_gardens', 'plot').message));
     s.partyLevel = 9;
     t.equal(R.startBuild(s, data, 0, 'herbal_gardens', 'slot').message, 'The Herbal Gardens is built on a Development Plot.');
-    t.equal(R.startBuild(s, data, 0, 'war_room', 'plot').message, 'The War Room is built in a construction slot, not on a Development Plot.');
+    t.equal(R.startBuild(s, data, 0, 'hall_of_emissaries', 'plot').message, 'The Hall of Emissaries is built in a construction slot, not on a Development Plot.');
     var r = R.startBuild(s, data, 0, 'herbal_gardens', 'plot');
     t.same(r, { ok: true, log: ['Construction Started', 'Herbal Gardens is under construction (21 days: ready on Day 31).'] });
     t.same(s.builtPlots[0], { facId: 'herbal_gardens', status: 'building', startDay: 10, readyDay: 31 });
@@ -1580,7 +1025,7 @@
   });
 
   test('an Herbal Gardens in a special slot moves to the first free plot, keeping its level, orders and research; with no plot free it stays', function (t) {
-    var s = built(fresh(), ['war_room', 'herbal_gardens']);
+    var s = built(fresh(), ['hall_of_emissaries', 'herbal_gardens']);
     s.partyLevel = 8;
     s.facilityLevels.herbal_gardens = 3;
     s.research = { herbal_gardens: { agricultural: ['fertile_soil'] } };
@@ -1612,10 +1057,10 @@
     t.same([rows.max, rows.used, rows.over], [2, 3, 1]);
     t.same(rows.rows.map(function (r) { return r.overCapacity; }), [false, false, true]);
     t.ok(R.builtFacilityIds(s, data).indexOf('fishery_smokehouse') !== -1, 'still working');
-    var save = R.toSave(plots(9, ['war_room', 'herbal_gardens']));
+    var save = R.toSave(plots(9, ['hall_of_emissaries', 'herbal_gardens']));
     var back = R.fromSave(JSON.parse(JSON.stringify(save)), data);
     t.same(back.builtPlots, ['', { facId: 'herbal_gardens', status: 'built' }]);
-    t.ok(back.builtExtras.some(function (x) { return x && x.facId === 'war_room'; }), 'the War Room is kept, in a slot');
+    t.ok(back.builtExtras.some(function (x) { return x && x.facId === 'hall_of_emissaries'; }), 'the Hall of Emissaries is kept, in a slot');
     var plain = plots(9, ['herbal_gardens']);
     t.same(R.fromSave(JSON.parse(JSON.stringify(R.toSave(plain))), data), plain, 'a save and reload keeps the plots');
   });
@@ -1705,128 +1150,115 @@
     t.same(R.readGoodsRow({ qty: '-4', notes: ' kept ' }), { qty: 0, notes: 'kept' });
   });
 
-  test('the Timber Yard: orders open by its level; one production order at a time; inputs taken when it begins', function (t) {
+  test('the Timber Yard: each level offers only its own order (it replaces the last); one production order at a time, even across an upgrade; nothing is taken from the Warehouse', function (t) {
     var s = plots(9, ['timber_sawmill']);
-    t.equal(R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3])).message, 'Needs Level 2.');
-    s.facilityLevels.timber_sawmill = 2;
-    t.equal(R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3])).message, 'Needs 1 lot of Raw Timber in the Warehouse; it has 0 lots.');
+    t.equal(R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3])).message, 'That order belongs to Level 2.');
     var r = R.issueOrder(s, data, 'timber_sawmill', 'harvest_timber', 0, dice([0.3]));
     t.same(r.log, ['Order Issued', 'Timber Yard & Sawmill: Harvest Timber (4 days: due Day 14).']);
-    stock(s, [['raw_timber', 1]]);
+    t.equal(R.issueUpgrade(s, data, 'timber_sawmill', dice([0.7])).ok, true, 'an upgrade isn\'t a production order');
+    var up = s.pendingOrders.filter(function (x) { return x.fnId === 'upgrade'; })[0];
+    /* The upgrade completes while Harvest Timber is still pending: Level 2, so Harvest Timber is replaced... */
+    finish(s, up);
+    t.equal(R.getFacilityLevel(s, 'timber_sawmill'), 2);
+    t.equal(R.issueOrder(s, data, 'timber_sawmill', 'harvest_timber', 0, dice([0.3])).message, 'That order belongs to Level 1.');
+    /* ...but the order already running still counts, and still finishes. */
     t.equal(R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3])).message, 'The Timber Yard & Sawmill is busy: one production order at a time (Timber Yard & Sawmill: Harvest Timber, due on Day 14).');
-    t.equal(R.issueUpgrade(s, data, 'timber_sawmill', dice([0.3])).ok, true, 'an upgrade isn\'t a production order');
     var o = s.pendingOrders.filter(function (x) { return x.fnId === 'harvest_timber'; })[0];
     t.same(finish(s, o), [['Order Completed', 'Timber Yard & Sawmill: Harvest Timber → Added to Warehouse: 1 lot of Raw Timber.']]);
-    t.equal(R.goodsQty(s, 'raw_timber'), 2);
-    r = R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3]));
-    t.same(r.log, ['Order Issued', 'Timber Yard & Sawmill: Saw Lumber (4 days: due Day 14). Taken from the Warehouse: 1 lot of Raw Timber.']);
     t.equal(R.goodsQty(s, 'raw_timber'), 1);
+    r = R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3]));
+    t.same(r.log, ['Order Issued', 'Timber Yard & Sawmill: Saw Lumber (4 days: due Day 14).'], 'no "Taken from the Warehouse"');
     o = s.pendingOrders.filter(function (x) { return x.fnId === 'saw_lumber'; })[0];
-    t.same(o.inputs, [{ goodId: 'raw_timber', name: 'Raw Timber', qty: 1 }]);
+    t.equal(o.inputs, undefined);
     finish(s, o);
-    t.same([R.goodsQty(s, 'raw_timber'), R.goodsQty(s, 'sawn_lumber')], [1, 1], 'used up, never given back on completion');
+    t.same([R.goodsQty(s, 'raw_timber'), R.goodsQty(s, 'sawn_lumber')], [1, 1], 'the Raw Timber is left alone');
   });
 
-  test('cancelling gives held goods back once; demolishing gives them back; an order whose facility is gone gives them back', function (t) {
-    var s = stock(plots(9, ['timber_sawmill']), [['raw_timber', 1]]);
-    s.facilityLevels.timber_sawmill = 2;
-    R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3]));
+  test('cancelling gives held goods back once; demolishing gives them back; an order whose facility is gone gives them back (the Herbal Gardens still uses goods)', function (t) {
+    var s = stock(plots(9, ['herbal_gardens']), [['restorative_herbs', 10]]);
+    s.facilityLevels.herbal_gardens = 3;
+    var r = R.issueOrder(s, data, 'herbal_gardens', 'field_medical_supplies', 1, dice([0.3]));
+    t.equal(r.ok, true, r.message);
+    t.equal(R.goodsQty(s, 'restorative_herbs'), 0, 'taken when it begins');
     var id = s.pendingOrders[0].id;
-    t.same(R.cancelOrder(s, id, data, 10), ['Orders', 'Cancelled Timber Yard & Sawmill: Saw Lumber. 1 lot of Raw Timber went back to the Warehouse.']);
+    var back = R.cancelOrder(s, id, data, 10);
+    t.equal(back[0], 'Orders');
+    t.ok(/10 portions of Restorative Herbs went back to the Warehouse\.$/.test(back[1]), back[1]);
     t.same(R.cancelOrder(s, id, data, 10), ['Orders', 'Cancelled an order.'], 'a second Cancel gives nothing');
-    t.equal(R.goodsQty(s, 'raw_timber'), 1);
-    R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3]));
-    var d = R.demolishFacility(s, data, 'timber_sawmill');
-    t.equal(d.log[1], 'The Timber Yard & Sawmill was demolished; its plot is free. Cancelled: Timber Yard & Sawmill: Saw Lumber. 1 lot of Raw Timber went back to the Warehouse.');
-    t.equal(R.goodsQty(s, 'raw_timber'), 1);
+    t.equal(R.goodsQty(s, 'restorative_herbs'), 10);
+    R.issueOrder(s, data, 'herbal_gardens', 'field_medical_supplies', 1, dice([0.3]));
+    var d = R.demolishFacility(s, data, 'herbal_gardens');
+    t.ok(/^The Herbal Gardens was demolished; its plot is free\. Cancelled: .*10 portions of Restorative Herbs went back to the Warehouse\.$/.test(d.log[1]), d.log[1]);
+    t.equal(R.goodsQty(s, 'restorative_herbs'), 10);
     var lost = { id: 'x', facId: 'old_mill', fnId: 'grind', label: 'Old Mill: Grind', inputs: [{ goodId: 'raw_timber', name: 'Raw Timber', qty: 2 }], dueDay: 10 };
     t.equal(R.orderKind(data, lost), 'none');
     t.same(R.dropOrderGoods(s, data, lost), [['Orders', 'Old Mill: Grind couldn\'t be completed (its facility or order no longer exists). 2 lots of Raw Timber went back to the Warehouse.']]);
-    t.equal(R.goodsQty(s, 'raw_timber'), 3);
+    t.equal(R.goodsQty(s, 'raw_timber'), 2);
     t.equal(R.dropOrderGoods(s, data, { id: 'y', facId: 'old_mill' }), null, 'nothing held, nothing said');
   });
 
-  test('the Fishery: fish, smoked fish, provision packs; Level 5\'s bulk orders make three', function (t) {
+  test('the Timber Yard: Cancel after the upgrade gives nothing extra back (no goods were held) and frees the slot for the new level\'s order', function (t) {
+    var s = plots(9, ['timber_sawmill']);
+    order(s, 'timber_sawmill', 'harvest_timber', 0);
+    s.facilityLevels.timber_sawmill = 2;
+    var held = JSON.stringify(s.warehouse);
+    t.equal(R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3])).ok, false, 'busy while Harvest Timber is pending');
+    t.same(R.cancelOrder(s, s.pendingOrders[0].id, data, 10), ['Orders', 'Cancelled an order.'], 'nothing came back');
+    t.equal(JSON.stringify(s.warehouse), held, 'the Warehouse is as it was');
+    t.equal(R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3])).ok, true, 'the slot is free');
+  });
+
+  test('the Fishery: each level\'s order on its own (fish, smoked fish, provision packs); Level 5\'s two bulk orders make three and use nothing', function (t) {
     var s = plots(9, ['fishery_smokehouse']);
+    s.facilityLevels.fishery_smokehouse = 3;
+    finish(s, order(s, 'fishery_smokehouse', 'prepare_expedition_provisions', 0));
+    t.same([R.goodsQty(s, 'preserved_fish'), R.goodsQty(s, 'expedition_provision_pack')], [0, 5], 'five packs from an empty Warehouse');
     s.facilityLevels.fishery_smokehouse = 5;
+    t.equal(R.issueOrder(s, data, 'fishery_smokehouse', 'prepare_expedition_provisions', 0, dice([0.3])).message, 'That order belongs to Level 3.');
     finish(s, order(s, 'fishery_smokehouse', 'commercial_fishing_fleet', 0));
     t.equal(R.goodsQty(s, 'fresh_fish'), 3);
     var o = order(s, 'fishery_smokehouse', 'bulk_smokehouse_production', 0);
     t.equal(o.dueDay, 17, '7 days');
     finish(s, o);
-    t.same([R.goodsQty(s, 'fresh_fish'), R.goodsQty(s, 'preserved_fish')], [0, 3]);
-    finish(s, order(s, 'fishery_smokehouse', 'prepare_expedition_provisions', 0));
-    t.same([R.goodsQty(s, 'preserved_fish'), R.goodsQty(s, 'expedition_provision_pack')], [2, 5]);
+    t.same([R.goodsQty(s, 'fresh_fish'), R.goodsQty(s, 'preserved_fish')], [3, 3], 'the Fresh Fish is not used up');
   });
 
-  test('the Library & Scriptorium (Harry, 14 October 2026): Prepare Overland Travel Charts at Level 2 makes 1 Overland chart in 4 days, no gold; one at a time, beside scripture Research', function (t) {
-    var s = plots(9, [], ['library_scriptorium']);
-    t.equal(R.issueOrder(s, data, 'library_scriptorium', 'prepare_overland_travel_charts', 0, dice([0.3])).message, 'Needs Level 2.');
-    s.facilityLevels.library_scriptorium = 2;
+  test('the Scholar (Harry, 14 October 2026 for the Library; moved to the Workshop at Level 3 by step S12): Prepare Overland Travel Charts makes 1 Overland chart in 4 days, no gold; the Scholar does one job at a time, so Research waits', function (t) {
+    var s = fresh();
+    s.day = 10;
+    t.equal(R.issueOrder(s, data, 'workshop', 'prepare_overland_travel_charts', 0, dice([0.3])).message, 'Needs Level 3.');
+    s.facilityLevels.workshop = 3;
     var gp = s.treasuryGP;
-    var o = order(s, 'library_scriptorium', 'prepare_overland_travel_charts', 0);
-    t.same([o.dueDay, s.treasuryGP, o.label], [14, gp, 'Library & Scriptorium: Prepare Overland Travel Charts']);
-    t.equal(R.issueOrder(s, data, 'library_scriptorium', 'prepare_overland_travel_charts', 0, dice([0.3])).ok, false, 'one chart order at a time');
-    var res = order(s, 'library_scriptorium', 'research', 0);
-    t.equal(res.fnId, 'research', 'scripture Research still runs beside it');
-    t.same(finish(s, o), [['Order Completed', 'Library & Scriptorium: Prepare Overland Travel Charts → Added to Warehouse: 1 Overland chart.']]);
+    var o = order(s, 'workshop', 'prepare_overland_travel_charts', 0);
+    t.same([o.dueDay, s.treasuryGP, o.label], [14, gp, 'Workshop: Scholar - Prepare Overland Travel Charts']);
+    t.equal(R.issueOrder(s, data, 'workshop', 'prepare_overland_travel_charts', 0, dice([0.3])).ok, false, 'one chart order at a time');
+    var busy = R.issueOrder(s, data, 'workshop', 'research', 0, dice([0.3]));
+    t.same([busy.ok, busy.message], [false, 'The Scholar is busy: Workshop: Scholar - Prepare Overland Travel Charts, due on Day 14.'], 'one job at a time for each staff member');
+    t.same(finish(s, o), [['Order Completed', 'Workshop: Scholar - Prepare Overland Travel Charts → Added to Warehouse: 1 Overland chart.']]);
     t.same([R.goodsQty(s, 'overland_chart'), s.treasuryGP], [1, gp], 'one chart, no gold');
-    t.same(R.fn(R.facility(data, 'library_scriptorium'), 'research').options.map(function (x) { return x.label; }),
+    t.ok(order(s, 'workshop', 'research', 0), 'then the Scholar can research');
+    t.same(R.fn(R.facility(data, 'workshop'), 'research').options.map(function (x) { return x.label; }),
       ['Geographical Scriptures', 'Religious Scriptures', 'Combat Scriptures', 'Political scriptures'], 'the scripture choices are unchanged');
   });
 
-  /* Pull request 8b (Harry's Shrine specification, 15 October 2026). */
-  test('the Shrines at Levels 2 to 5: Favour 0 / 5 / 10 / 25, taken once when the order starts; items into the Warehouse; Craft and Pray unchanged', function (t) {
-    var s = plots(9, [], ['shrine_telluria', 'shrine_aurush', 'shrine_pelagos']);
-    t.same(['shrine_telluria', 'shrine_aurush', 'shrine_pelagos'].map(function (id) { return R.facility(data, id).functions.map(function (f) { return [f.id, f.requiredFacilityLevel || 1, f.days, f.favourCost || 0]; }); }), [
-      [['craft', 1, 5, 0], ['pray', 1, 1, 0], ['prepare_earthward_talisman', 2, 3, 0], ['prepare_rootguard_salve', 3, 4, 5], ['bless_bastion_foundations', 4, 5, 10], ['great_rite_telluria', 5, 7, 25]],
-      [['craft', 1, 5, 0], ['pray', 1, 1, 0], ['prepare_blessed_lantern', 2, 3, 0], ['prepare_purification_incense', 3, 4, 5], ['consecrate_expedition_supplies', 4, 5, 10], ['great_rite_aurush', 5, 7, 25]],
-      [['craft', 1, 5, 0], ['pray', 1, 1, 0], ['bless_voyage', 2, 3, 0], ['prepare_aquatic_protection_charm', 3, 4, 5], ['bless_commercial_shipment', 4, 5, 10], ['great_rite_pelagos', 5, 7, 25]]
-    ]);
-    t.equal(R.issueOrder(s, data, 'shrine_telluria', 'prepare_earthward_talisman', 0, dice([0.3])).message, 'Needs Level 2.');
-    s.facilityLevels.shrine_telluria = 3;
-    s.facilityLevels.shrine_aurush = 4;
-    s.favour = { telluria: 4, aurush: 30, pelagos: 0 };
-    var o = order(s, 'shrine_telluria', 'prepare_earthward_talisman', 0);
-    t.same([o.dueDay, s.favour.telluria], [13, 4], 'Level 2: no Favour');
-    t.same(finish(s, o), [['Order Completed', 'Shrine of Telluria: Prepare Earthward Talisman → Added to Warehouse: 1 Earthward Talisman.']]);
-    var gold = s.treasuryGP;
-    var res = R.issueOrder(s, data, 'shrine_telluria', 'prepare_rootguard_salve', 0, dice([0.3]));
-    t.same([res.ok, res.message, s.favour.telluria, s.pendingOrders.length], [false, 'Needs 5% of Telluria\'s Favour; the Ironbow has 4%.', 4, 0], 'refused: nothing taken');
-    s.favour.telluria = 7;
-    var r2 = R.issueOrder(s, data, 'shrine_telluria', 'prepare_rootguard_salve', 0, dice([0.3]));
-    o = s.pendingOrders[s.pendingOrders.length - 1];
-    t.same([s.favour.telluria, o.favourCost, o.dueDay, s.treasuryGP], [2, 5, 14, gold]);
-    t.ok(/5% of Telluria's Favour spent \(now 2%\)\.$/.test(r2.log[1]), r2.log[1]);
-    var r3 = R.issueOrder(s, data, 'shrine_aurush', 'consecrate_expedition_supplies', 0, dice([0.7]));
-    t.ok(r3.ok, r3.message);
-    var cons = s.pendingOrders[s.pendingOrders.length - 1];
-    t.equal(s.favour.aurush, 20, 'Level 4: 10%');
-    finish(s, o);
-    t.same([R.goodsQty(s, 'rootguard_salve'), R.goodsAmountText(data, 'rootguard_salve', 2), R.goodsAmountText(data, 'purification_incense', 1)], [2, '2 doses of Rootguard Salve', '1 Purification Incense']);
-    t.equal(s.pendingOrders.length, 1, 'the Aurush order is still waiting');
-    R.cancelOrder(s, cons.id, data);
-    t.equal(s.pendingOrders.length, 0);
-    t.equal(s.favour.aurush, 20, 'Cancel gives no Favour back (as gold)');
-    s.facilityLevels.shrine_telluria = 4;
-    var w = R.issueOrder(s, data, 'shrine_telluria', 'bless_bastion_foundations', 0, dice([0.3]));
-    t.same([w.ok, w.message, s.favour.telluria], [false, 'Not available yet', 2], 'Bless Bastion Foundations: no environmental event yet');
-    t.ok(/no Bastion event damages a facility by natural causes yet/.test(R.fnAvailable(s, R.facility(data, 'shrine_telluria'), R.fn(R.facility(data, 'shrine_telluria'), 'bless_bastion_foundations')).why));
-  });
-
-  test('a Great Rite waits at the Ironbow, once; a Blessing of Pelagos is held for the Dock; both survive a reload', function (t) {
-    var s = plots(17, [], ['shrine_aurush', 'shrine_pelagos']);
-    s.facilityLevels.shrine_aurush = 5;
-    s.facilityLevels.shrine_pelagos = 4;
+  /* Pull request 8b (Harry's Shrine specification, 15 October 2026), changed by the Strip Back Overhaul (22 October 2026): the Shrines are
+     one Temple, whose blessings happen at once (tests/rules/temple.test.js). What stays here is an order carried over from a Shrine. */
+  test('an order carried over from a Shrine completes at the Temple: a Great Rite waits at the Ironbow, once; a Blessing of Pelagos is held for the Dock; both survive a reload', function (t) {
+    var s = plots(17, [], ['temple']);
     s.favour = { telluria: 0, aurush: 30, pelagos: 25 };
-    var o = order(s, 'shrine_aurush', 'great_rite_aurush', 0);
-    t.same([o.dueDay, s.favour.aurush], [17, 5]);
-    t.same(R.completeSimpleOrder(s, data, o, dice([0.3])), [['Order Completed', 'Shrine of Aurush: Great Rite of Aurush → Cleansing Radiance waits at the Ironbow until the DM gives it to the party on an expedition.']]);
+    function carried(id, fnId) {
+      var fn = R.fn(R.facility(data, 'temple'), fnId);
+      var o = { id: id, facId: 'temple', fnId: fnId, chosen: null, optionLabel: null, notes: '', label: 'Temple: ' + fn.label, costGP: 0, issuedDay: 10, dueDay: 17, favourCost: 25 };
+      s.pendingOrders.push(o);
+      return o;
+    }
+    var o = carried('o1', 'great_rite_aurush');
+    t.same(R.completeSimpleOrder(s, data, o, dice([0.3])), [['Order Completed', 'Temple: Great Rite of Aurush → Cleansing Radiance waits at the Ironbow until the DM gives it to the party on an expedition.']]);
     R.completeSimpleOrder(s, data, o, dice([0.3]));
     t.same(s.greatRites, [{ id: 'rite-' + o.id, rite: 'cleansing_radiance', god: 'aurush', madeDay: 10, status: 'waiting' }], 'once, however often it completes');
     R.removeOrder(s, o.id);
-    var b = order(s, 'shrine_pelagos', 'bless_commercial_shipment', 0);
-    t.same(finish(s, b), [['Order Completed', 'Shrine of Pelagos: Bless Commercial Shipment → A Blessing of Pelagos waits for the next ship the Dock sends with cargo (1 held).']]);
+    var b = carried('o2', 'bless_commercial_shipment');
+    t.same(finish(s, b), [['Order Completed', 'Temple: Bless Commercial Shipment → A Blessing of Pelagos waits for the next ship the Dock sends with cargo (1 held).']]);
     t.same(s.tradeNetwork.protections, { pelagos_blessing: { charges: 1 } });
     var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
     t.same([back.greatRites, back.tradeNetwork.protections], [s.greatRites, s.tradeNetwork.protections]);
@@ -1897,15 +1329,14 @@
 
   test('the map labels: one per built facility with a position, with its level; a plot facility is labelled; positions are on the painting', function (t) {
     var s = fresh();
-    t.same(R.mapLabels(s, data).map(function (l) { return [l.fac, l.level]; }), [['workshop', 1], ['barracks', 1], ['watchtower', 1], ['dock', 1], ['armoury', 1]].sort(function (a, b) { return data.bastion.startingBuilt.indexOf(a[0]) - data.bastion.startingBuilt.indexOf(b[0]); }));
-    s = plots(9, ['herbal_gardens'], ['menagerie', 'war_room']);
-    s.builtExtras.push({ facId: 'library_scriptorium', status: 'building', startDay: 1, readyDay: 30 });
-    s.facilityLevels.barracks = 3;
+    t.same(R.mapLabels(s, data).map(function (l) { return [l.fac, l.level]; }), [['workshop', 1], ['dock', 1]], 'the two starting facilities (the Barracks, Armoury and Watchtower went with the war game)');
+    s = plots(9, ['herbal_gardens'], ['hall_of_emissaries', 'beast_pen']);
+    s.builtExtras.push({ facId: 'temple', status: 'building', startDay: 1, readyDay: 30 });
+    s.facilityLevels.workshop = 3;
     var ids = R.mapLabels(s, data).map(function (l) { return l.fac; });
-    t.ok(ids.indexOf('herbal_gardens') !== -1 && ids.indexOf('war_room') !== -1);
-    t.equal(ids.indexOf('menagerie'), -1, 'no position for the Menagerie');
-    t.equal(ids.indexOf('library_scriptorium'), -1, 'not while being built');
-    t.equal(R.mapLabels(s, data).filter(function (l) { return l.fac === 'barracks'; })[0].level, 3);
+    t.ok(ids.indexOf('herbal_gardens') !== -1 && ids.indexOf('hall_of_emissaries') !== -1);
+    t.equal(ids.indexOf('temple'), -1, 'not while being built');
+    t.equal(R.mapLabels(s, data).filter(function (l) { return l.fac === 'workshop'; })[0].level, 3);
     var at = data.bastion.mapLabels;
     Object.keys(at).forEach(function (id) {
       t.ok(R.facility(data, id), id);
@@ -1915,22 +1346,16 @@
 
   group('Bastion: saving');
 
-  test('a save and reload keeps identity, war log, diplomacy, the day, a day in progress and word not yet shown (BAS-01)', function (t) {
+  test('a save and reload keeps the Party Name, the Hall\'s old agreements as history, the day, a day in progress and word not yet shown (BAS-01)', function (t) {
     var s = built(fresh(), ['hall_of_emissaries']);
     s.day = 12;
     s.anchored = true;
-    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: 'Harry', motto: 'Root and Steel', foundedAtDay: 3 };
-    s.clanHonor = 70;
+    s.partyName = 'The Ironbow Company';
     s.honourRespectByClan.karr = -3;
-    s.trustedClientsByClan.slade = 20;
-    s.warLog = [{ id: 'w', title: 'Success: Raid vs Bacca' }];
-    s.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', startDay: 5, endDay: 26, income: 90, lastShipmentDay: 12 }];
+    s.legacyDiplomacy = { records: [{ kind: 'Trade Agreement', title: 'Trade Agreement', clan: 'Clan Karr', startDay: 5, endDay: 26, endedDay: 12, income: 90, shipments: 2, paid: 180, note: '' }] };
     s.diplomacy.tokens = 2;
-    s.diplomacy.cooldowns = { summit: 15 };
-    s.defenders.patrolUntil = 14;
-    s.lastEventDay = -3;
-    s.dayInProgress = { day: 12, stage: 'orders', skipped: ['x'], attackRolled: true, news: ['The Smithy is built.'] };
-    s.word = [{ day: 11, lines: ['Barracks: Recruit Defenders → Recruited 2 defenders.'] }];
+    s.dayInProgress = { day: 12, stage: 'orders', skipped: ['x'], news: ['The Smithy is built.'] };
+    s.word = [{ day: 11, lines: ['Dock: Charter Berth → Added to Warehouse.'] }];
     var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
     t.same(back, s);
   });
@@ -1944,39 +1369,22 @@
     t.equal(R.isOldSave(R.toSave(fresh())), false);
   });
 
-  test('a Military Action part-way through survives a save and reload', function (t) {
-    var s = fresh();
-    s.defenders.count = 4;
-    s.defenderBeasts = [{ name: 'Giant Vulture', qty: 5 }];
-    oldWarOrder(s, { objective: 'defend', targetKey: 'karr', targetName: 'Karr', commitDefenders: 4, commitBeasts: 5, commitLieutenants: 0, commitRegiments: 0 });
-    var ma = R.beginMilitaryAction(s, data, s.pendingOrders[0], dice([0.6]), 0);
-    R.militaryRoll(s, data, ma.id, 'weather', roll(3, 3), dice([0.1]));
-    R.militaryRoll(s, data, ma.id, 'morale', roll(17, 17), dice([0]));
-    R.militaryRoll(s, data, ma.id, 'luck', roll(12, 12), dice([0]));
-    t.ok(R.militaryBattleSave(s, ma.id, { v: 2, phase: 'deploy', round: 1, maxRounds: 6, started: false, units: [{ id: 'p-beast-1', side: 'player', pos: { c: 3, r: 9 } }], leaders: [], log: [] }));
-    var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
-    t.same(back, s);
-    t.equal(back.militaryActions[0].spec.player.units.length, 5, 'five Giant Vultures');
-    t.same(back.militaryActions[0].battle.units[0].pos, { c: 3, r: 9 });
-    t.equal(back.warMissions[ma.missionKey].conditions, null, 'the rolls stay the action\'s own until it is called off');
-    t.same(back.militaryActions[0].spec.conditions, { weather: 'white_blizzard', moraleMod: T.bastionWar.morale.highMod, luckMod: T.bastionWar.luck.passMod });
-  });
-
-  test('a damaged Military Action is dropped; one whose step is ahead of its rolls goes back', function (t) {
-    var s = fresh();
-    var save = R.toSave(s);
-    save.militaryActions = [
-      'nonsense',
-      { id: 'a', step: 'flying', commit: {}, forces: [] },
-      { id: 'b', step: 'deploy', commit: { defenders: 2 }, forces: [{ id: 'def', kind: 'defenders', label: 'Bastion Defenders', count: 2 }, { id: 'x', kind: 'dragon' }], weather: { d20: 14, total: 14, dc: 12, pass: true, id: 'clear' } },
-      { id: 'c', step: 'resolve', commit: {}, forces: [], weather: { d20: 1, total: 1, dc: 12, pass: false, id: 'cold_rain' }, morale: { d20: 1, total: 1, dc: 14, pass: false }, luck: { d20: 1, total: 1, dc: 10, pass: false, mod: -1 }, deployment: { started: true, locked: false, positions: {} } }
-    ];
-    save.defenders = { count: 2, armed: false, patrolUntil: 0 };
-    var back = R.fromSave(save, data);
-    t.same(back.militaryActions.map(function (m) { return [m.id, m.step, m.v]; }), [['b', 'morale', 2], ['c', 'deploy', 2]], 'phase 1 actions are upgraded; one waiting for the single roll goes back to deployment');
-    t.equal(back.militaryActions[0].forces, undefined, 'the old tokens and deployment are dropped');
-    t.same(back.militaryActions[0].spec.player.defenders, { count: 2, armed: false, source: { defenders: true } });
-    t.ok(R.saveProblem(Object.assign(R.toSave(s), { militaryActions: 'x' })));
+  test('the war game\'s fields in an old file are ignored, even damaged ones: they neither refuse the file nor survive loading (S06)', function (t) {
+    var save = R.toSave(fresh());
+    save.defenders = 'x';
+    save.defenderBeasts = 7;
+    save.military = { nonsense: true };
+    save.militaryActions = 'x';
+    save.warMissions = [1];
+    save.warRecovery = 'y';
+    save.wars = 3;
+    save.warLog = 'z';
+    save.repairs = 'broken';
+    t.equal(R.saveProblem(save), null, 'still a good save');
+    t.equal(R.importProblem([{ key: 'tsi.bastion.state', value: save }]), null, 'and it imports');
+    var back = R.fromSave(JSON.parse(JSON.stringify(save)), data);
+    ['defenders', 'defenderBeasts', 'military', 'militaryActions', 'warMissions', 'warMissionSeq', 'warRecovery', 'wars', 'warLog'].forEach(function (k) { t.equal(k in back, false, k + ' is not kept'); });
+    t.same(back.repairs, {}, 'a damaged repairs list comes back empty');
   });
 
   test('another tool\'s file or a damaged one is refused (BAS-14)', function (t) {
@@ -1995,58 +1403,16 @@
     s.dayInProgress = { day: 2, stage: 'nonsense' };
     var back = R.fromSave(R.toSave(s), data);
     t.equal(back.treasuryGP, 0);
-    t.same(back.dayInProgress, { day: 2, stage: 'orders', skipped: [], attackRolled: false, news: [] });
+    t.same(back.dayInProgress, { day: 2, stage: 'orders', skipped: [], news: [] });
   });
 
   /* What the screen remembers (tsi.bastion.ui) since the new screen (Build 2). */
-  test('the screen remembers only whether the grid is open and the war pop-ups seen; the old panels\' settings go', function (t) {
+  test('the screen remembers only whether the grid is open (and the Warehouse\'s Sort); the old panels\' settings and the war pop-ups seen go', function (t) {
     t.same(R.cleanUi(null), { gridOpen: true });
     t.same(R.cleanUi({}), { gridOpen: true });
     t.same(R.cleanUi({ collapsed: { war: true, diplomacy: true } }), { gridOpen: true }, 'the old panels\' open-or-closed settings');
-    t.same(R.cleanUi({ gridOpen: false, warNoticed: { 'ma-1': true }, junk: 3 }), { gridOpen: false, warNoticed: { 'ma-1': true } });
+    t.same(R.cleanUi({ gridOpen: false, warNoticed: { 'ma-1': true }, junk: 3 }), { gridOpen: false }, 'the war pop-ups seen went with the war (22 October 2026)');
     t.same(R.cleanUi({ gridOpen: 'no', warNoticed: [1] }), { gridOpen: true }, 'nonsense is ignored');
   });
 
-  /* ---------- The Secure Trade Agreement is retired (Harry, 20 October 2026) ---------- */
-  test('the Secure Trade Agreement can\'t be ordered and isn\'t shown: hidden, refused by both ways in, nothing paid; Register Port Charter takes its Level 1 place; the other Hall orders are unchanged', function (t) {
-    var s = fresh();
-    s.day = 5;
-    s.treasuryGP = 1000;
-    s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }];
-    R.ensureLevels(s, data);
-    var fac = R.facility(data, 'hall_of_emissaries');
-    var fn = R.fn(fac, 'secure_trade_agreement');
-    var av = R.fnAvailable(s, fac, fn);
-    t.same([av.ok, av.hidden], [false, true], 'hidden from the Hall');
-    var a = R.issueOrderWithMeta(s, data, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Karr', weeks: 3 }, dice([0.3]));
-    var b = R.issueOrder(s, data, 'hall_of_emissaries', 'secure_trade_agreement', 0, dice([0.3]));
-    t.same([a.ok, b.ok, s.treasuryGP, s.pendingOrders.length], [false, false, 1000, 0]);
-    var reg = R.fn(fac, 'register_port_charter');
-    t.same([reg.requiredFacilityLevel, R.fnAvailable(s, fac, reg).ok, fac.functions.map(function (f) { return f.id; }).slice(0, 3)], [1, true, ['upgrade_hall', 'register_port_charter', 'secure_trade_agreement']], 'Level 1, first of the Hall\'s visible orders');
-    ['host_delegation', 'trade_consortium', 'inter_clan_summit', 'arbitration_authority'].forEach(function (id) {
-      t.equal(R.fn(fac, id).retiredNote, undefined, id + ' is not retired');
-    });
-    s.facilityLevels.hall_of_emissaries = 5;
-    t.equal(R.fnAvailable(s, fac, R.fn(fac, 'trade_consortium')).ok, true, 'the Trade Consortium is untouched');
-  });
-
-  test('a running agreement finishes under its own terms and pays each shipment once, then simply ends; nothing is archived', function (t) {
-    var s = fresh();
-    s.day = 12;
-    s.diplomacy.agreements = [{ id: 'a', title: 'Trade Agreement', clan: 'Clan Karr', startDay: 12, endDay: 33, income: 100, lastShipmentDay: 12 }];
-    var gold = 0;
-    for (var d = 13; d <= 36; d++) {
-      s.day = d;
-      var before = s.treasuryGP;
-      R.tickDiplomacy(s, data);
-      gold += s.treasuryGP - before;
-      if (d === 20) t.same(s.diplomacy.agreements.length, 1, 'still running with days to go');
-    }
-    t.same([gold, s.diplomacy.agreements.length, s.diplomacy.archivedAgreements], [300, 0, undefined], '3 shipments (Days 19, 26, 33), once each, then it ends');
-    var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
-    t.equal('archivedAgreements' in back.diplomacy, false);
-    var old = JSON.parse(JSON.stringify(R.toSave(s)));
-    old.diplomacy.archivedAgreements = [{ id: 'x' }];
-    t.equal('archivedAgreements' in R.fromSave(old, data).diplomacy, false, 'an archive an earlier build made is dropped');
-  });
 }());

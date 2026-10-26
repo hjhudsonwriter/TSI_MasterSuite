@@ -23,7 +23,8 @@
    from, clan, port, text } (port: a key of shared/data/ports.js; clan: that
    port's Clan). Its id is a new random id with ':dm:0' (the Port Charter
    button) or ':pin:0' (a port's harbour box). The Bastion holds it once, and
-   the Hall of Emissaries registers it.
+   the Dock registers it (the Hall of Emissaries did until the Strip Back
+   Overhaul, step S08).
 
    Pull request 6 (Harry, 14 October 2026) adds a third kind: a parcel from
    the Bastion's Courier Exchange collected in the Explorer, { id, type:
@@ -38,14 +39,15 @@
    receipt. The Explorer reads the Bastion's parcels from its save (B.parcels,
    B.parcelView) but never changes them.
 
-   Pull request 7 (Harry, 14 October 2026) adds a fourth kind: a griffin or
-   a dire wolf the DM grants in the Explorer, { id, type: 'creature', day,
+   Pull request 7 (Harry, 14 October 2026) adds a fourth kind: a beast (a
+   griffin or dire wolf; since 22 October 2026 also a wyvern, buckbear or
+   fellcat) the DM grants in the Explorer, { id, type: 'creature', day,
    at, from, species, name, text } (species: one the DM can grant, from
    tools/bastion/data/creatures-data.js grantable; name: as typed, at most
    40 letters, or ''). It has no Clan. Its id is a new random id with
    ':dm:0', as the Port Charter button's. The Bastion holds the creature
-   once, waiting for a home, and the Griffin Tower's or Dire Wolf Den's
-   House order houses it.
+   once, waiting for a home, and the Beast Pen's House Beast Here order
+   houses it.
 
    Pull request 8b (Harry, 15 October 2026) adds a fifth kind: a Shrine's
    Great Rite the DM gives the party in the Explorer, { id, type: 'rite',
@@ -140,7 +142,7 @@
   /* The creatures the DM can grant (pull request 7): from the Bastion's
      creatures-data.js when the page has it, otherwise these (keep them the
      same as that file). */
-  var FALLBACK_CREATURES = { griffin: { name: 'Griffin', home: 'griffin_tower' }, dire_wolf: { name: 'Dire Wolf', home: 'dire_wolf_den' }, wyvern: { name: 'Wyvern', home: 'wyvern_roost' } };
+  var FALLBACK_CREATURES = { wyvern: { name: 'Wyvern', home: 'beast_pen' }, griffin: { name: 'Griffin', home: 'beast_pen' }, dire_wolf: { name: 'Dire Wolf', home: 'beast_pen' }, buckbear: { name: 'Buckbear', home: 'beast_pen' }, fellcat: { name: 'Fellcat', home: 'beast_pen' } };
   function creatures() { var c = window.TSI_DATA && window.TSI_DATA.bastionCreatures; return isObj(c) && isObj(c.species) ? c : null; }
   B.grantable = function () {
     var c = creatures();
@@ -411,13 +413,13 @@
       return '';
     }
     /* A Great Rite given to the party (pull request 8b): its kind, its id
-       (which names the rite) and a Great Rite the Shrines make. Its text and
+       (which names the rite) and a Great Rite the Temple makes. Its text and
        other fields are only for showing. */
     if (m.type === 'rite') {
       if (typeof m.id !== 'string' || !B.ID_PATTERN.test(m.id)) return 'Its id is damaged.';
       var rid = B.riteIdOf(m.id);
       if (!rid || !B.UID_PATTERN.test(rid)) return 'Its id isn\'t a Great Rite\'s.';
-      if (B.RITES.indexOf(m.rite) === -1) return 'It names a Great Rite the Shrines don\'t make (' + (typeof m.rite === 'string' ? str(m.rite, 40) : 'none') + ').';
+      if (B.RITES.indexOf(m.rite) === -1) return 'It names a Great Rite the Temple doesn\'t make (' + (typeof m.rite === 'string' ? str(m.rite, 40) : 'none') + ').';
       if (typeof m.riteId === 'string' && m.riteId && m.riteId !== rid) return 'It names a different rite from its id.';
       return '';
     }
@@ -546,7 +548,7 @@
       return { kind: 'applied', line: 'Applied' + (isWhole(r.day) ? ' on ' + (r.day >= 1 ? 'Day ' + r.day : 'a day before Day 1') : '') + (typeof r.was === 'number' && typeof r.now === 'number' ? ': ' + signed(r.was) + ' → ' + signed(r.now) + '.' : '.') };
     }
     if (r && r.r === 'refused') return { kind: 'refused', line: 'Refused: ' + (str(r.why) || 'the Bastion couldn\'t use it.') + ' Nothing changed.' };
-    if (r && r.r === 'skipped') return { kind: 'skipped', line: 'Skipped: sent before this Bastion started. Type it in by hand if it should count.' };
+    if (r && r.r === 'skipped') return { kind: 'skipped', line: 'Skipped: sent before this Bastion started. Use Change a score in the DM doc if it should count.' };
     if (r) return { kind: 'refused', line: 'Refused: the Bastion couldn\'t use it. Nothing changed.' };
     var day = typeof bastionSave.day === 'number' ? bastionSave.day : null;
     if (bastionSave.anchored !== true) return { kind: 'waiting', line: 'Waiting for the Bastion to open.' };
@@ -569,7 +571,7 @@
       var registering = (Array.isArray(bastionSave.pendingOrders) ? bastionSave.pendingOrders : []).some(function (o) {
         return isObj(o) && o.fnId === 'register_port_charter' && isObj(o.chosen) && o.chosen.charterId === held.id;
       });
-      return { kind: 'held', line: registering ? 'Held, and being registered at the Hall of Emissaries.' : 'Held: register it at the Hall of Emissaries.' };
+      return { kind: 'held', line: registering ? 'Held, and being registered at the Dock.' : 'Held: register it at the Dock.' };
     }
     var waiting = null;
     B.outbox(explorerSave).forEach(function (m) {

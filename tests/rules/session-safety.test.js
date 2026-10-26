@@ -5,7 +5,7 @@
   var B = TSI.backupRules;
   var BR = TSI.bastion.rules;
   var T = window.TSI_DATA;
-  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
+  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
   var DAY = 86400000;
   var now = Date.UTC(2026, 9, 18, 12, 0, 0);
 
@@ -40,16 +40,17 @@
   group('Session safety: what each upgrade unlocks');
 
   test('orders and effects are listed by level; a level with neither unlocks nothing yet', function (t) {
-    t.same(BR.levelUnlocks(bdata, 'library_scriptorium', 2), ['Prepare Overland Travel Charts']);
-    t.same(BR.levelUnlocks(bdata, 'library_scriptorium', 3), []);
-    t.same(BR.levelUnlocks(bdata, 'workshop', 2), []);
+    t.same(BR.levelUnlocks(bdata, 'workshop', 2), ['The Smith: Weapons, armour and ironwork (Smith’s Tools)'], 'the Workshop\'s levels open its staff, one by one (step S12)');
+    t.same([3, 4, 5].map(function (l) { return BR.levelUnlocks(bdata, 'workshop', l).length; }), [1, 1, 1]);
+    t.ok(/^The Scholar/.test(BR.levelUnlocks(bdata, 'workshop', 3)[0]) && /^The Alchemist/.test(BR.levelUnlocks(bdata, 'workshop', 4)[0]) && /^The Artisan/.test(BR.levelUnlocks(bdata, 'workshop', 5)[0]));
+    t.same(BR.levelUnlocks(bdata, 'library_scriptorium', 2), [], 'the Library & Scriptorium is gone: nothing to list');
     t.same(BR.levelUnlocks(bdata, 'dock', 2), ['Cargo ships: 2 lots on 1 ship']);
     t.same(BR.levelUnlocks(bdata, 'dock', 5), ['Cargo ships: 5 lots a ship, 2 ships at sea at once']);
-    t.same(BR.levelUnlocks(bdata, 'war_room', 3), ['Coordinated Muster', '2 drill places']);
-    t.same(BR.levelUnlocks(bdata, 'hall_of_emissaries', 2), ['Inter-Clan Summit', 'Diplomacy rolls +4 (from +2)']);
+    t.same(BR.levelUnlocks(bdata, 'war_room', 3), [], 'the War Room is gone (S06): nothing to list');
+    t.same(BR.levelUnlocks(bdata, 'hall_of_emissaries', 2), [], 'the Hall has one level and unlocks nothing (step S09)');
     t.same(BR.levelUnlocks(bdata, 'hall_of_emissaries', 4), []);
-    t.same(BR.levelUnlocks(bdata, 'griffin_tower', 3), ['Open-Sky Return Training', 'Aerial Sentinel Training', 'Room for one more griffin']);
-    t.same(BR.levelUnlocks(bdata, 'shrine_pelagos', 5), ['Great Rite of Pelagos']);
+    t.same(BR.levelUnlocks(bdata, 'beast_pen', 3), [], 'the Beast Pen has one level and unlocks nothing by level');
+    t.same(BR.levelUnlocks(bdata, 'temple', 5), [], 'the Temple has one level and unlocks nothing by level (its three blessings need a full bar, not a level)');
     t.same(BR.levelUnlocks(bdata, 'herbal_gardens', 2), ['Cultivate Specialist Plants', 'One more research token']);
     t.same(BR.levelUnlocks(bdata, 'nothing_here', 2), []);
     t.same(BR.levelUnlocks(bdata, 'dock', 1), [], 'Level 1 is where it starts');
@@ -57,9 +58,9 @@
 
   test('the Upgrade row: the next level, and when it unlocks nothing, which later level it is needed for', function (t) {
     var w = BR.levelUnlockSummary(bdata, 'workshop', 1);
-    t.same([w.toLevel, w.unlocks, w.later], [2, [], null], 'the Workshop gives nothing at any level');
-    var lib = BR.levelUnlockSummary(bdata, 'library_scriptorium', 2);
-    t.same([lib.toLevel, lib.unlocks, lib.later], [3, [], null]);
+    t.same([w.toLevel, w.unlocks.length, w.later], [2, 1, null], 'the Workshop\'s next level opens the Smith');
+    var w4 = BR.levelUnlockSummary(bdata, 'workshop', 4);
+    t.same([w4.toLevel, w4.unlocks.length], [5, 1], 'and Level 5 opens the Artisan');
     var courier = BR.levelUnlockSummary(bdata, 'courier_exchange', 2);
     t.same([courier.unlocks, courier.later], [[], null], 'Courier Levels 3 to 5 are still to come');
     t.equal(BR.levelUnlockSummary(bdata, 'dock', 5), null, 'nothing above the top');
@@ -76,10 +77,10 @@
     t.equal(BR.upgradeCheck(s, bdata, 'workshop').ok, true, 'the Workshop still upgrades');
     /* a synthetic case: Level 3 gives nothing, Level 4 gives something */
     var fake = JSON.parse(JSON.stringify(bdata.facilities));
-    var lib = fake.filter(function (f) { return f.id === 'library_scriptorium'; })[0];
+    var lib = fake.filter(function (f) { return f.id === 'hall_of_emissaries'; })[0];
     lib.functions.push({ id: 'later_order', label: 'A later order', requiredFacilityLevel: 4 });
     var d2 = Object.assign({}, bdata, { facilities: fake });
-    var u = BR.levelUnlockSummary(d2, 'library_scriptorium', 2);
+    var u = BR.levelUnlockSummary(d2, 'hall_of_emissaries', 2);
     t.same([u.toLevel, u.unlocks, u.later && u.later.level, u.later && u.later.unlocks], [3, [], 4, ['A later order']]);
   });
 

@@ -3,7 +3,7 @@
    the map filling the window on the laptop and the TV, the top bar (the
    day, the treasury, the counts), the facility grid and its tiles, the
    build panel, each facility's panel, the panels the bottom bar opens, the
-   Banner & War Council lock, the Party Identity badge, the shared tooltip,
+   Party Identity badge, the shared tooltip,
    and the keyboard. The Bastion's rules, played through these panels, are
    checked in tests/e2e/phase9.test.js.
    Run with:  node tests/e2e/bastion-screen.test.js */
@@ -72,8 +72,8 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       equal(lc.scrollWidth, lc.clientWidth, 'no sideways scroll');
       equal(lc.outOfView, [], 'in view');
       equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), true, 'the page doesn\'t scroll down');
-      equal(await page.$$eval('.tsi-bas-tile', ts => ts.length), 17, 'five facilities, six slots and six Development Plots');
-      equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.length), 11, 'the top row: the facilities and slots');
+      equal(await page.$$eval('.tsi-bas-tile', ts => ts.length), 14, 'two facilities, six slots and six Development Plots');
+      equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.length), 8, 'the top row: the facilities and slots');
       equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile', ts => ts.length), 6, 'the row below: the plots');
       const map = await rect(page, '.tsi-bas-map');
       assert(Math.abs(map.w / map.h - 3000 / 1250) < 0.01, 'fitted, not stretched: ' + JSON.stringify(map));
@@ -99,7 +99,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       assert(tray.y >= map.y + 1150 * k && tray.y >= map.bottom - 45, size + ': the tray rises only a little over the painting: ' + JSON.stringify([tray, map]));
       assert(tray.bottom <= bar.bottom, size + ': the tray ends inside the bar');
       const labels = await page.$$eval('.tsi-bas-maplabel', ls => ls.map(l => { const r = l.getBoundingClientRect(); return { fac: l.dataset.fac, x: r.x, y: r.y, right: r.right, bottom: r.bottom }; }));
-      equal(labels.map(l => l.fac).sort(), ['armoury', 'barracks', 'dock', 'watchtower', 'workshop'], 'a label for each built facility');
+      equal(labels.map(l => l.fac).sort(), ['dock', 'workshop'], 'a label for each built facility');
       for (const l of labels) {
         assert(!overlaps(l, tray), size + ': the tray is clear of the ' + l.fac + '\'s label');
         assert(l.x >= map.x - 1 && l.right <= map.right + 1 && l.y >= map.y - 1 && l.bottom <= map.bottom + 1, size + ': the ' + l.fac + '\'s label is on the painting');
@@ -115,12 +115,12 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       await page.setViewportSize(H.SIZES[size].viewport);
       await page.waitForTimeout(200);
       await page.evaluate(() => TSI.notify('A long notice, to see where it sits: it has two lines of words in it, at least, on both screens.', { type: 'info', title: 'Test.', id: 'tsi-bs-test' }));
-      const hits = await page.evaluate(() => ['open-influence', 'open-favour', 'open-war', 'open-warehouse'].map(t => {
+      const hits = await page.evaluate(() => ['open-management', 'open-warehouse'].map(t => {
         const b = document.querySelector('[data-test=' + t + ']').getBoundingClientRect();
         const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
         return t + ':' + !!(hit && hit.closest('[data-test=' + t + ']'));
       }));
-      equal(hits, ['open-influence:true', 'open-favour:true', 'open-war:true', 'open-warehouse:true'], size);
+      equal(hits, ['open-management:true', 'open-warehouse:true'], size);
       const n = await rect(page, '.tsi-notices');
       const bar = await rect(page, '.tsi-bas-bottom');
       assert(n.bottom <= bar.y, size + ': the notices end above the bar: ' + JSON.stringify([n, bar]));
@@ -179,12 +179,12 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   });
 
   await check('Facilities and Orders count, and hovering lists them', async () => {
-    equal(await text(page, 'facilities-n'), '5');
+    equal(await text(page, 'facilities-n'), '2');
     equal(await text(page, 'orders-n'), '0');
     await page.hover('[data-test=facilities-count]');
     await page.waitForSelector('[data-test=tooltip]:not([hidden])');
     const tip = await bare(page, '[data-test=tooltip]');
-    assert(/^Facilities/.test(tip) && /Barracks/.test(tip) && /Workshop/.test(tip), tip);
+    assert(/^Facilities/.test(tip) && /Dock/.test(tip) && /Workshop/.test(tip), tip);
     assert(!overlaps(await rect(page, '[data-test=tooltip]'), await rect(page, '[data-test=facilities-count]')), 'the tooltip doesn\'t cover what it describes');
     await page.mouse.move(5, 500);
     equal(await tipShown(page), false);
@@ -193,9 +193,9 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   /* ------------------------------------------------------------------ */
   section('The facility grid');
 
-  await check('the five starting facilities first (Workshop, Barracks, Watchtower, Dock, Armoury), then the six slots; the six Development Plots in the row below', async () => {
-    equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.slice(0, 5).map(t => t.dataset.fac)), ['workshop', 'barracks', 'watchtower', 'dock', 'armoury']);
-    equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.slice(5).map(t => t.dataset.test)), ['slot-0', 'slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5']);
+  await check('the two starting facilities first (Workshop, Dock; the Barracks, Watchtower and Armoury went on 22 October 2026), then the six slots; the six Development Plots in the row below', async () => {
+    equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.slice(0, 2).map(t => t.dataset.fac)), ['workshop', 'dock']);
+    equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.slice(2).map(t => t.dataset.test)), ['slot-0', 'slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5']);
     equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile', ts => ts.map(t => t.dataset.test)), ['plot-0', 'plot-1', 'plot-2', 'plot-3', 'plot-4', 'plot-5']);
     const a = await rect(page, '[data-test=tile-workshop]');
     const b = await rect(page, '[data-test=plot-0]');
@@ -228,11 +228,11 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   });
 
   await check('a starting facility\'s tile: its name, level and orders on hover, never covering the tile', async () => {
-    await page.hover('[data-test=tile-barracks]');
-    await page.waitForFunction(() => /Barracks/.test(document.querySelector('[data-test=tooltip]').textContent));
+    await page.hover('[data-test=tile-dock]');
+    await page.waitForFunction(() => /Dock/.test(document.querySelector('[data-test=tooltip]').textContent));
     const tip = await bare(page, '[data-test=tooltip]');
-    assert(/^Barracks/.test(tip) && /Level 1/.test(tip) && /No orders pending here/.test(tip), tip);
-    assert(!overlaps(await rect(page, '[data-test=tooltip]'), await rect(page, '[data-test=tile-barracks]')), 'beside the tile, not over it');
+    assert(/^Dock/.test(tip) && /Level 1/.test(tip) && /No orders pending here/.test(tip), tip);
+    assert(!overlaps(await rect(page, '[data-test=tooltip]'), await rect(page, '[data-test=tile-dock]')), 'beside the tile, not over it');
     await page.mouse.move(5, 500);
   });
 
@@ -253,7 +253,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   await check('▼ folds the grid away (the painting grows, and the haze and labels go), ▲ brings it back, and it\'s remembered', async () => {
     const before = await rect(page, '.tsi-bas-map');
     equal(await page.isVisible('[data-test=map-labels]'), true, 'the labels show while the grid is open');
-    equal(await text(page, 'map-label-barracks'), 'BarracksLevel 1');
+    equal(await text(page, 'map-label-dock'), 'DockLevel 1');
     assert(await page.$eval('[data-test=map]', e => getComputedStyle(e).filter !== 'none'), 'the painting is hazed');
     await page.click('[data-test=grid-toggle]');
     await page.waitForTimeout(200);
@@ -283,11 +283,12 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.waitForSelector('[data-test=panel-build]');
     equal(await panelOpen(page), 'build');
     assert(/Party level 7: 2 construction slots, 0 in use/.test(await text(page, 'build-panel')));
-    equal(await page.getAttribute('[data-test=build-war_room]', 'aria-disabled'), 'true', 'the War Room needs level 17');
-    assert(/Locked: level 17/.test(await text(page, 'build-war_room')));
-    equal(await page.getAttribute('[data-test=build-library_scriptorium]', 'aria-disabled'), null);
-    await page.hover('[data-test=build-library_scriptorium]');
-    await page.waitForFunction(() => /Library & Scriptorium/.test(document.querySelector('[data-test=tooltip]').textContent));
+    equal(await page.getAttribute('[data-test=build-temple]', 'aria-disabled'), 'true', 'the Temple needs level 8');
+    assert(/Locked: level 8/.test(await text(page, 'build-temple')));
+    equal(await page.$('[data-test=build-war_room]'), null, 'the War Room is gone (22 October 2026)');
+    equal(await page.getAttribute('[data-test=build-beast_pen]', 'aria-disabled'), null);
+    await page.hover('[data-test=build-beast_pen]');
+    await page.waitForFunction(() => /Beast Pen/.test(document.querySelector('[data-test=tooltip]').textContent));
     assert(/Takes 21 days to build/.test(await bare(page, '[data-test=tooltip]')));
     /* The production facilities go on Development Plots, which open at party level 9 (pull request 3). */
     equal(await page.getAttribute('[data-test=build-herbal_gardens]', 'aria-disabled'), 'true');
@@ -296,7 +297,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   });
 
   await check('a locked facility can\'t be chosen', async () => {
-    await page.click('[data-test=build-war_room]', { force: true });
+    await page.click('[data-test=build-temple]', { force: true });
     await page.waitForTimeout(250);
     equal(await page.$(POP), null, 'no question');
     equal((await st(page)).builtExtras.filter(Boolean), []);
@@ -314,11 +315,11 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       assert(/Plots open at party level 9/.test(await text(page, 'build-' + id)), id + ': on a Development Plot');
     }
     assert(!ids.some(id => id === 'nothing_in_development'), 'nothing is listed as in development');
-    for (const id of ['wyvern_roost', 'griffin_tower', 'dire_wolf_den']) {
-      equal(await page.$eval('[data-test=build-' + id + ']', e => e.tagName), 'BUTTON', id + ': can be built (pull request 7)');
-      assert(!/In development/.test(await text(page, 'build-' + id)), id);
-    }
-    equal(await page.$eval('[data-test=build-wyvern_roost] [data-art]', e => [e.dataset.art, /wyvern_roost\.png/.test(e.style.backgroundImage)]), ['crop', true], 'its building cut from the map painting');
+    /* The Beast Pen replaced the Wyvern Roost, Griffin Tower and Dire Wolf Den (22 October 2026): one building, one level. */
+    for (const id of ['wyvern_roost', 'griffin_tower', 'dire_wolf_den']) equal(await page.$('[data-test=build-' + id + ']'), null, id + ': gone, the Beast Pen replaces it');
+    equal(await page.$eval('[data-test=build-beast_pen]', e => e.tagName), 'BUTTON', 'the Beast Pen can be built');
+    assert(!/In development/.test(await text(page, 'build-beast_pen')), 'beast_pen');
+    equal(await page.$eval('[data-test=build-beast_pen] img', e => [e.getAttribute('src').split('/').pop(), e.naturalWidth > 0]), ['beast_pen.jpg', true], 'its tile uses Harry\'s Beast Pen painting');
     equal(await page.$eval('[data-test=build-courier_exchange] img', e => [e.getAttribute('src').split('/').pop(), e.naturalWidth > 0]), ['courier_exchange.png', true], 'Harry\'s picture (13 October 2026)');
     equal(await page.$eval('[data-test=build-courier_exchange]', e => e.tagName), 'BUTTON', 'the Courier Exchange can be built (pull request 6)');
     assert(/Plots open at party level 9/.test(await text(page, 'build-courier_exchange')), 'on a Development Plot');
@@ -327,95 +328,95 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     equal((await st(page)).builtExtras.filter(Boolean), [], 'a plot facility isn\'t built in a special slot');
   });
 
-  await check('Construct asks first ("Construct the Library & Scriptorium? It takes 21 days."); Cancel builds nothing', async () => {
-    await page.click('[data-test=build-library_scriptorium]');
+  await check('Construct asks first ("Construct the Beast Pen? It takes 21 days."); Cancel builds nothing', async () => {
+    await page.click('[data-test=build-beast_pen]');
     await page.waitForSelector(POP);
-    equal(await bare(page, POP + ' .tsi-modal__body'), 'Construct the Library & Scriptorium? It takes 21 days.');
+    equal(await bare(page, POP + ' .tsi-modal__body'), 'Construct the Beast Pen? It takes 21 days.');
     await page.click(POP + ' .tsi-modal__foot button:text-is("Cancel")');
     await page.waitForTimeout(200);
     equal((await st(page)).builtExtras.filter(Boolean), []);
     equal(await panelOpen(page), 'build', 'the panel is still open');
   });
 
-  await check('Construct: the panel closes, and the slot shows the Library & Scriptorium with an hourglass and 21 days', async () => {
+  await check('Construct: the panel closes, and the slot shows the Beast Pen with an hourglass and 21 days', async () => {
     await pause(page);
-    await page.click('[data-test=build-library_scriptorium]');
+    await page.click('[data-test=build-beast_pen]');
     await page.waitForSelector(POP);
     await page.click(POP + ' .tsi-modal__foot button:text-is("Construct")');
     await page.waitForFunction(() => !TSI.bastion.debug.panel());
-    equal((await st(page)).builtExtras[0], { facId: 'library_scriptorium', status: 'building', startDay: 1, readyDay: 22 });
-    equal(await page.$$eval('[data-test=tile-library_scriptorium]', ts => ts.map(t => [t.tagName, t.className.includes('building'), t.textContent])), [['BUTTON', true, '21']]);
-    await page.hover('[data-test=tile-library_scriptorium]');
-    await page.waitForFunction(() => /Library & Scriptorium/.test(document.querySelector('[data-test=tooltip]').textContent));
+    equal((await st(page)).builtExtras[0], { facId: 'beast_pen', status: 'building', startDay: 1, readyDay: 22 });
+    equal(await page.$$eval('[data-test=tile-beast_pen]', ts => ts.map(t => [t.tagName, t.className.includes('building'), t.textContent])), [['BUTTON', true, '21']]);
+    await page.hover('[data-test=tile-beast_pen]');
+    await page.waitForFunction(() => /Beast Pen/.test(document.querySelector('[data-test=tooltip]').textContent));
     assert(/Under construction: 21 days left/.test(await bare(page, '[data-test=tooltip]')) && /Ready on Day 22/.test(await bare(page, '[data-test=tooltip]')));
     await page.hover('[data-test=facilities-count]');
-    await page.waitForFunction(() => /Library & Scriptorium: building, 21 days left/.test(document.querySelector('[data-test=tooltip]').textContent));
+    await page.waitForFunction(() => /Beast Pen: building, 21 days left/.test(document.querySelector('[data-test=tooltip]').textContent));
     await page.mouse.move(5, 500);
-    equal(await page.$('[data-test=map-label-library_scriptorium]'), null, 'no label until it\'s built');
+    equal(await page.$('[data-test=map-label-beast_pen]'), null, 'no label until it\'s built');
   });
 
   await check('clicking a building asks whether to stop building it (Cancel keeps it); 21 days later it\'s built, its tile opens it, and its label shows on the map', async () => {
-    await page.click('[data-test=tile-library_scriptorium]');
+    await page.click('[data-test=tile-beast_pen]');
     await page.waitForSelector(POP);
-    equal(await bare(page, POP + ' .tsi-modal__body'), 'Stop building the Library & Scriptorium? Its slot is freed, and the days of work so far are lost.');
+    equal(await bare(page, POP + ' .tsi-modal__body'), 'Stop building the Beast Pen? Its slot is freed, and the days of work so far are lost.');
     await page.click(POP + ' .tsi-modal__foot button:text-is("Cancel")');
     await page.waitForTimeout(200);
     equal(await panelOpen(page), null);
     equal((await st(page)).builtExtras[0].status, 'building', 'still being built');
     await days(page, 21);
-    equal(await page.$eval('[data-test=tile-library_scriptorium]', t => t.tagName), 'BUTTON');
-    equal(await text(page, 'facilities-n'), '6');
-    equal(await text(page, 'map-label-library_scriptorium'), 'Library & ScriptoriumLevel 1');
-    await page.click('[data-test=tile-library_scriptorium]');
-    await page.waitForSelector('[data-test=panel-fac-library_scriptorium]');
-    equal(await bare(page, '[data-test=panel-fac-library_scriptorium] .tsi-modal__title'), 'Library & Scriptorium');
+    equal(await page.$eval('[data-test=tile-beast_pen]', t => t.tagName), 'BUTTON');
+    equal(await text(page, 'facilities-n'), '3');
+    equal(await text(page, 'map-label-beast_pen'), 'Beast PenOne level');
+    await page.click('[data-test=tile-beast_pen]');
+    await page.waitForSelector('[data-test=panel-fac-beast_pen]');
+    equal(await bare(page, '[data-test=panel-fac-beast_pen] .tsi-modal__title'), 'Beast Pen');
     await page.keyboard.press('Escape');
   });
 
   await check('Demolish (Harry, 13 October 2026): it asks first, saying an order here is cancelled; then the slot is free, the order gone, and the Day Log says so', async () => {
     await pause(page);
-    await setUp(page, (s) => { s.pendingOrders.push({ id: 'dm1', facId: 'library_scriptorium', fnId: 'research', chosen: { label: 'Arcana' }, optionLabel: 'Arcana', notes: '', label: 'Library & Scriptorium: Research (Arcana)', costGP: 0, issuedDay: s.day, dueDay: s.day + 5 }); });
-    await page.click('[data-test=tile-library_scriptorium]');
-    await page.waitForSelector('[data-test=demolish-library_scriptorium]');
+    await setUp(page, (s) => { s.pendingOrders.push({ id: 'dm1', facId: 'beast_pen', fnId: 'research', chosen: { label: 'Arcana' }, optionLabel: 'Arcana', notes: '', label: 'Beast Pen: Research (Arcana)', costGP: 0, issuedDay: s.day, dueDay: s.day + 5 }); });
+    await page.click('[data-test=tile-beast_pen]');
+    await page.waitForSelector('[data-test=demolish-beast_pen]');
     await pause(page);
-    await page.click('[data-test=demolish-library_scriptorium]');
+    await page.click('[data-test=demolish-beast_pen]');
     await page.waitForSelector(POP);
     const msg = await bare(page, POP + ' .tsi-modal__body');
-    assert(/^Demolish the Library & Scriptorium\? It goes from the Bastion and its slot is freed\. 1 order pending here is cancelled, and the gold spent isn't given back\./.test(msg), msg);
+    assert(/^Demolish the Beast Pen\? It goes from the Bastion and its slot is freed\. 1 order pending here is cancelled, and the gold spent isn't given back\./.test(msg), msg);
     await page.click(POP + ' .tsi-modal__foot button:text-is("Cancel")');
     await page.waitForTimeout(200);
-    equal((await st(page)).builtExtras[0].facId, 'library_scriptorium', 'Cancel keeps it');
+    equal((await st(page)).builtExtras[0].facId, 'beast_pen', 'Cancel keeps it');
     await pause(page);
-    await page.click('[data-test=demolish-library_scriptorium]');
+    await page.click('[data-test=demolish-beast_pen]');
     await page.waitForSelector(POP);
     await page.click(POP + ' .tsi-modal__foot button:text-is("Demolish")');
     await page.waitForFunction(() => !TSI.bastion.debug.panel());
     const s = await st(page);
     equal(s.builtExtras.filter(Boolean), [], 'the slot is free');
-    equal(s.pendingOrders.filter(o => o.facId === 'library_scriptorium'), [], 'its order is cancelled');
-    equal([s.log[0].title, s.log[0].body], ['Facility Demolished', 'The Library & Scriptorium was demolished; its slot is free. Cancelled: Library & Scriptorium: Research (Arcana).']);
-    equal(await text(page, 'facilities-n'), '5');
-    equal(await page.$('[data-test=tile-library_scriptorium]'), null);
-    equal(await page.$('[data-test=map-label-library_scriptorium]'), null, 'its label goes too');
+    equal(s.pendingOrders.filter(o => o.facId === 'beast_pen'), [], 'its order is cancelled');
+    equal([s.log[0].title, s.log[0].body], ['Facility Demolished', 'The Beast Pen was demolished; its slot is free. Cancelled: Beast Pen: Research (Arcana).']);
+    equal(await text(page, 'facilities-n'), '2');
+    equal(await page.$('[data-test=tile-beast_pen]'), null);
+    equal(await page.$('[data-test=map-label-beast_pen]'), null, 'its label goes too');
   });
 
   await check('stopping a building: its slot is free again, and the Day Log says so', async () => {
     await pause(page);
     await page.click('[data-test=slot-0]');
-    await page.waitForSelector('[data-test=build-library_scriptorium]');
+    await page.waitForSelector('[data-test=build-beast_pen]');
     await pause(page);
-    await page.click('[data-test=build-library_scriptorium]');
+    await page.click('[data-test=build-beast_pen]');
     await page.waitForSelector(POP);
     await page.click(POP + ' .tsi-modal__foot button:text-is("Construct")');
     await page.waitForFunction(() => !TSI.bastion.debug.panel());
     await pause(page);
-    await page.click('[data-test=tile-library_scriptorium]');
+    await page.click('[data-test=tile-beast_pen]');
     await page.waitForSelector(POP);
     await page.click(POP + ' .tsi-modal__foot button:text-is("Stop building")');
     await page.waitForTimeout(300);
     const s = await st(page);
     equal(s.builtExtras.filter(Boolean), []);
-    equal([s.log[0].title, s.log[0].body], ['Construction Stopped', 'Building work on the Library & Scriptorium stopped; its slot is free.']);
+    equal([s.log[0].title, s.log[0].body], ['Construction Stopped', 'Building work on the Beast Pen stopped; its slot is free.']);
   });
 
   /* ------------------------------------------------------------------ */
@@ -478,15 +479,15 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   });
 
   await check('with every construction slot in use but a plot free, the other facilities say "No free slot" and can\'t be chosen', async () => {
-    await setUp(page, (s) => { s.builtExtras = ['library_scriptorium', 'arcane_laboratory', 'shrine_aurush', 'hall_of_emissaries'].map(id => ({ facId: id, status: 'built' })); });
+    await setUp(page, (s) => { s.builtExtras = ['hall_of_emissaries', 'beast_pen', 'old_hall_a', 'old_hall_b'].map(id => ({ facId: id, status: 'built' })); });
     await pause(page);
     await page.click('[data-test=plot-1]');
     await page.waitForSelector('[data-test=build-panel]');
     try {
       assert(/; every construction slot is in use\./.test(await text(page, 'build-panel')), await text(page, 'build-panel'));
-      equal([await page.getAttribute('[data-test=build-shrine_telluria]', 'aria-disabled'), await text(page, 'build-shrine_telluria')], ['true', 'Shrine of TelluriaNo free slot']);
+      equal([await page.getAttribute('[data-test=build-temple]', 'aria-disabled'), await text(page, 'build-temple')], ['true', 'TempleNo free slot']);
       equal(await page.getAttribute('[data-test=build-timber_sawmill]', 'aria-disabled'), null, 'a plot facility still can');
-      await page.click('[data-test=build-shrine_telluria]', { force: true });
+      await page.click('[data-test=build-temple]', { force: true });
       await page.waitForTimeout(250);
       equal(await page.$(POP), null, 'no question');
     } finally {
@@ -496,7 +497,9 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await setUp(page, (s) => { s.builtExtras = []; });
   });
 
-  await check('the Stone Quarry and the Weavers\' Hall (19 October 2026): six orders each, what they use and make, Level 2 unlocks the next, one at a time, goods land in the Warehouse', async () => {
+  const rowsOf = (page, fac) => page.$$eval('[data-test^="issue-' + fac + '__"]', bs => bs.map(b => b.dataset.test.slice('issue-'.length)));
+
+  await check('the Stone Quarry and the Weavers\' Hall (Strip Back Overhaul, S04): each shows only its level\'s order, the Upgrade says what it replaces, an empty Warehouse is enough, and goods land in the Warehouse', async () => {
     const saved = (await st(page)).builtPlots.slice(0, 3);
     await setUp(page, (s) => {
       s.builtPlots[0] = { facId: 'stone_masonworks', status: 'built' };
@@ -507,58 +510,116 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.click('[data-test=tile-stone_masonworks]');
     await page.waitForSelector('[data-test=panel-fac-stone_masonworks]');
     const lines = sel => page.$eval(sel, e => Array.from(e.children).map(c => c.textContent));
-    equal(await lines('[data-test=goods-stone_masonworks__extract_raw_stone]'), ['Makes: 1 lot of Raw Stone']);
-    equal(await lines('[data-test=goods-stone_masonworks__produce_dressed_stone]'), ['Uses: 1 lot of Raw Stone (the Warehouse has 0 lots)', 'Makes: 1 lot of Dressed Stone', 'Needs 1 lot of Raw Stone in the Warehouse; it has 0 lots.']);
-    equal(await text(page, 'issue-stone_masonworks__produce_structural_masonry'), 'Needs Level 3.');
-    equal(await text(page, 'days-stone_masonworks__bulk_raw_stone_extraction'), 'Takes 9 days');
+    equal(await rowsOf(page, 'stone_masonworks'), ['stone_masonworks__produce_dressed_stone'], 'Level 2: only Produce Dressed Stone; Extract Raw Stone is replaced, the later orders are not shown');
+    equal(await lines('[data-test=goods-stone_masonworks__produce_dressed_stone]'), ['Makes: 1 lot of Dressed Stone'], 'it uses nothing, so no "Uses" line and no reason');
+    equal([await page.isDisabled('[data-test=issue-stone_masonworks__produce_dressed_stone]'), await text(page, 'issue-stone_masonworks__produce_dressed_stone')], [false, 'Issue Order'], 'with an empty Warehouse');
+    equal(await text(page, 'days-stone_masonworks__produce_dressed_stone'), 'Takes 4 days');
+    equal(await text(page, 'upgrade-unlocks-stone_masonworks'), 'Level 3 replaces Produce Dressed Stone with Produce Structural Masonry.');
     equal((await H.layoutCheck(page, ['[data-test=panel-fac-stone_masonworks]', '[data-test=panel-fac-stone_masonworks] .tsi-modal__foot button'])).outOfView, [], 'the panel fits');
     await H.shot(page, 'bs-06-stone');
     await pause(page);
-    await page.click('[data-test=issue-stone_masonworks__extract_raw_stone]');
-    await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'extract_raw_stone'));
+    await page.click('[data-test=issue-stone_masonworks__produce_dressed_stone]');
+    await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'produce_dressed_stone'));
+    assert(!/Taken from the Warehouse/.test((await st(page)).log[0].body), 'nothing was taken');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
     await days(page, 4);
-    equal((await st(page)).warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_stone', 1]]);
+    equal((await st(page)).warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['dressed_stone', 1]]);
     await page.click('[data-test=tile-weavers_hall]');
     await page.waitForSelector('[data-test=panel-fac-weavers_hall]');
+    equal(await rowsOf(page, 'weavers_hall'), ['weavers_hall__produce_ordinary_textiles'], 'Level 1: only Produce Ordinary Textiles');
     equal(await text(page, 'days-weavers_hall__produce_ordinary_textiles'), 'Takes 4 days');
-    equal(await text(page, 'issue-weavers_hall__produce_sailcloth'), 'Needs Level 2.');
+    equal(await text(page, 'upgrade-unlocks-weavers_hall'), 'Level 2 replaces Produce Ordinary Textiles with Produce Sailcloth.');
     equal((await H.layoutCheck(page, ['[data-test=panel-fac-weavers_hall]'])).outOfView, [], 'the panel fits');
     await page.keyboard.press('Escape');
+    /* Level 5 offers both its orders, one running at a time. */
+    await setUp(page, (s) => { s.facilityLevels.weavers_hall = 5; s.pendingOrders = []; });
+    await pause(page);
+    await page.click('[data-test=tile-weavers_hall]');
+    await page.waitForSelector('[data-test=panel-fac-weavers_hall]');
+    equal(await rowsOf(page, 'weavers_hall'), ['weavers_hall__bulk_textile_production', 'weavers_hall__bulk_sailcloth_production'], 'Level 5: both orders');
+    equal(await lines('[data-test=goods-weavers_hall__bulk_sailcloth_production]'), ['Makes: 3 lots of Sailcloth'], 'Bulk Sailcloth Production needs no Ordinary Textiles');
+    await page.click('[data-test=issue-weavers_hall__bulk_sailcloth_production]');
+    await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'bulk_sailcloth_production'));
+    equal([await page.isDisabled('[data-test=issue-weavers_hall__bulk_textile_production]'), await text(page, 'issue-weavers_hall__bulk_textile_production')], [true, 'Can\'t order yet'], 'only one runs at a time');
+    assert(/is busy: one production order at a time/.test(await text(page, 'why-weavers_hall__bulk_textile_production')), 'and it says why');
+    await H.shot(page, 'bs-06-weavers-l5');
+    await page.keyboard.press('Escape');
+    await setUp(page, (s) => { s.pendingOrders = []; s.warehouse = []; });
     const keep = JSON.stringify(saved);
     await page.evaluate(k => TSI.bastion.debug.change(s => { const b = JSON.parse(k); [0, 1, 2].forEach(i => { s.builtPlots[i] = b[i]; }); }), keep);
   });
 
-  await check('the Timber Yard: each order says what it uses and makes; Saw Lumber waits for Raw Timber; one production order at a time', async () => {
-    await setUp(page, (s) => { s.builtPlots[1] = { facId: 'timber_sawmill', status: 'built' }; s.facilityLevels.timber_sawmill = 2; s.warehouse = []; s.pendingOrders = []; });
+  await check('the Timber Yard: Level 1 shows Harvest Timber only; the Upgrade asks first; Level 2 shows Saw Lumber only; an order pending across the upgrade finishes and counts as the one running', async () => {
+    await setUp(page, (s) => { s.builtPlots[1] = { facId: 'timber_sawmill', status: 'built' }; s.facilityLevels.timber_sawmill = 1; s.warehouse = []; s.pendingOrders = []; });
     await pause(page);
     await page.click('[data-test=tile-timber_sawmill]');
     await page.waitForSelector('[data-test=panel-fac-timber_sawmill]');
     const lines = sel => page.$eval(sel, e => Array.from(e.children).map(c => c.textContent));
+    equal(await rowsOf(page, 'timber_sawmill'), ['timber_sawmill__harvest_timber'], 'Level 1: Harvest Timber only');
     equal(await lines('[data-test=goods-timber_sawmill__harvest_timber]'), ['Makes: 1 lot of Raw Timber']);
-    equal(await lines('[data-test=goods-timber_sawmill__saw_lumber]'), ['Uses: 1 lot of Raw Timber (the Warehouse has 0 lots)', 'Makes: 1 lot of Sawn Lumber', 'Needs 1 lot of Raw Timber in the Warehouse; it has 0 lots.']);
-    equal([await page.isDisabled('[data-test=issue-timber_sawmill__saw_lumber]'), await text(page, 'issue-timber_sawmill__saw_lumber')], [true, 'Can\'t order yet']);
-    equal(await text(page, 'issue-timber_sawmill__prepare_construction_timber'), 'Needs Level 3.');
     equal(await text(page, 'days-timber_sawmill__harvest_timber'), 'Takes 4 days');
+    equal(await text(page, 'upgrade-text-timber_sawmill'), 'To Level 2: takes 7 days, no gold.');
+    equal(await text(page, 'upgrade-unlocks-timber_sawmill'), 'Level 2 replaces Harvest Timber with Saw Lumber.');
     equal((await H.layoutCheck(page, ['[data-test=panel-fac-timber_sawmill]', '[data-test=panel-fac-timber_sawmill] .tsi-modal__foot button'])).outOfView, [], 'the panel fits');
     await H.shot(page, 'bs-06-timber');
     await pause(page);
     await page.click('[data-test=issue-timber_sawmill__harvest_timber]');
     await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'harvest_timber'));
-    const due = (await st(page)).pendingOrders[0].dueDay;
-    await setUp(page, (s) => { s.warehouse.push({ id: 'g1', goodId: 'raw_timber', item: 'Raw Timber', qty: 1, gp: '', notes: '' }); });
-    await page.waitForTimeout(200);
-    equal(await text(page, 'why-timber_sawmill__saw_lumber'), 'The Timber Yard & Sawmill is busy: one production order at a time (Timber Yard & Sawmill: Harvest Timber, due on Day ' + due + ').');
-    equal(await page.isDisabled('[data-test=issue-timber_sawmill__saw_lumber]'), true);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
     await days(page, 4);
-    const s = await st(page);
-    equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 2]], 'Harvest Timber made a lot, added to the same row');
+    equal((await st(page)).warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 1]], 'Harvest Timber made a lot');
+
+    /* The Upgrade asks first: Cancel changes nothing, Upgrade orders it. */
+    await pause(page);
+    await page.click('[data-test=tile-timber_sawmill]');
+    await page.waitForSelector('[data-test=panel-fac-timber_sawmill]');
+    await pause(page);
+    await page.click('[data-test=upgrade-timber_sawmill]');
+    await page.waitForSelector(POP);
+    equal(await bare(page, POP + ' .tsi-modal__body'), 'Upgrade the Timber Yard & Sawmill to Level 2? Level 2 replaces Harvest Timber with Saw Lumber. Once the upgrade finishes, Harvest Timber can no longer be started; an order already running will still finish.');
+    await H.shot(page, 'bs-06-timber-upgrade-ask');
+    await page.click(POP + ' .tsi-modal__foot button:text-is("Cancel")');
+    await page.waitForTimeout(250);
+    equal((await st(page)).pendingOrders.length, 0, 'Cancel orders nothing');
+    await pause(page);
+    await page.click('[data-test=upgrade-timber_sawmill]');
+    await page.waitForSelector(POP);
+    await page.click(POP + ' .tsi-modal__foot button:text-is("Upgrade")');
+    await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'upgrade'));
+    equal(await text(page, 'fac-level'), 'Level 1 of 5', 'still Level 1 until it finishes');
+    equal(await rowsOf(page, 'timber_sawmill'), ['timber_sawmill__harvest_timber'], 'and Harvest Timber is still on offer until then');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+
+    /* Harvest Timber is ordered late, so it is still pending when the upgrade finishes. */
+    await days(page, 6);
+    await pause(page);
+    await page.click('[data-test=tile-timber_sawmill]');
+    await page.waitForSelector('[data-test=panel-fac-timber_sawmill]');
+    await page.click('[data-test=issue-timber_sawmill__harvest_timber]');
+    await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'harvest_timber'));
+    const due = (await st(page)).pendingOrders.find(o => o.fnId === 'harvest_timber').dueDay;
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+    await days(page, 1);
+    await pause(page);
+    await page.click('[data-test=tile-timber_sawmill]');
+    await page.waitForSelector('[data-test=panel-fac-timber_sawmill]');
+    equal(await text(page, 'fac-level'), 'Level 2 of 5');
+    equal(await rowsOf(page, 'timber_sawmill'), ['timber_sawmill__saw_lumber'], 'Level 2: Saw Lumber only; Harvest Timber is replaced');
+    equal(await lines('[data-test=goods-timber_sawmill__saw_lumber]').then(l => l.slice(0, 2)), ['Makes: 1 lot of Sawn Lumber', 'The Timber Yard & Sawmill is busy: one production order at a time (Timber Yard & Sawmill: Harvest Timber, due on Day ' + due + ').'], 'no "Uses" line; the order still running holds it back');
+    equal([await page.isDisabled('[data-test=issue-timber_sawmill__saw_lumber]'), await text(page, 'issue-timber_sawmill__saw_lumber')], [true, 'Can\'t order yet']);
+    assert(/Harvest Timber/.test(await bare(page, '.tsi-bas-facpanel__orders')), 'the old order is still pending here');
+    equal(await text(page, 'upgrade-unlocks-timber_sawmill'), 'Level 3 replaces Saw Lumber with Prepare Construction Timber.');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+    await days(page, 3);
+    equal((await st(page)).warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 2]], 'the pending Harvest Timber finished, once, into the same row');
   });
 
-  await check('Saw Lumber takes its Raw Timber when it begins; the order shows what it holds; Cancel gives it back', async () => {
+  await check('Saw Lumber needs nothing from the Warehouse; Cancel gives nothing extra back and frees the slot', async () => {
     await pause(page);
     await page.click('[data-test=tile-timber_sawmill]');
     await page.waitForSelector('[data-test=panel-fac-timber_sawmill]');
@@ -567,22 +628,29 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.click('[data-test=issue-timber_sawmill__saw_lumber]');
     await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'saw_lumber'));
     let s = await st(page);
-    equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 1]]);
-    assert(/Taken from the Warehouse: 1 lot of Raw Timber\./.test(s.log[0].body), s.log[0].body);
+    equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 2]], 'the Raw Timber is untouched');
+    assert(!/Taken from the Warehouse/.test(s.log[0].body), s.log[0].body);
+    assert(!/Holding/.test(await bare(page, '[data-test=panel-fac-timber_sawmill]')), 'the order holds nothing');
     const i = s.pendingOrders.findIndex(o => o.fnId === 'saw_lumber');
-    assert(/Holding 1 lot of Raw Timber \(Cancel gives them back\)/.test(await bare(page, '[data-test=panel-fac-timber_sawmill]')), 'the panel\'s pending list says what it holds');
+    equal(s.pendingOrders[i].inputs, undefined);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
     await pause(page);
     await page.click('[data-test=orders-count]');
-    await page.waitForSelector('[data-test=pending-held-' + i + ']');
-    equal(await text(page, 'pending-held-' + i), 'Holding 1 lot of Raw Timber (Cancel gives them back)');
+    await page.waitForSelector('[data-test=cancel-' + i + ']');
+    equal(await page.$('[data-test=pending-held-' + i + ']'), null, 'no "Holding" line');
     await pause(page);
     await page.click('[data-test=cancel-' + i + ']');
     await page.waitForTimeout(250);
     s = await st(page);
-    equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 2]]);
-    equal([s.log[0].title, s.log[0].body], ['Orders', 'Cancelled Timber Yard & Sawmill: Saw Lumber. 1 lot of Raw Timber went back to the Warehouse.']);
+    equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 2]], 'nothing extra came back');
+    equal([s.log[0].title, s.log[0].body], ['Orders', 'Cancelled an order.']);
+    equal(s.pendingOrders.length, 0);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+    await page.click('[data-test=tile-timber_sawmill]');
+    await page.waitForSelector('[data-test=panel-fac-timber_sawmill]');
+    equal(await page.isDisabled('[data-test=issue-timber_sawmill__saw_lumber]'), false, 'the slot is free again');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
   });
@@ -639,79 +707,85 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   /* ------------------------------------------------------------------ */
   section('A facility\'s panel');
 
-  await check('the Barracks: its painting, level, orders pending here, and its orders with their days', async () => {
+  await check('the Dock: its painting, level, orders pending here, and its orders with their days', async () => {
+    await setUp(page, (s) => { s.treasuryGP = 500; });
     await pause(page);
-    await page.click('[data-test=tile-barracks]');
-    await page.waitForSelector('[data-test=panel-fac-barracks]');
-    equal(await page.$('[data-test=demolish-barracks]'), null, 'a starting facility can\'t be demolished');
+    await page.click('[data-test=tile-dock]');
+    await page.waitForSelector('[data-test=panel-fac-dock]');
+    await page.click('[data-test=dock-tab-orders]'); /* the Dock opens on Cargo (step S08): its orders are under Orders */
+    equal(await page.$('[data-test=demolish-dock]'), null, 'a starting facility can\'t be demolished');
     assert(/Level 1/.test(await text(page, 'fac-panel')));
-    equal(await text(page, 'days-barracks__recruit_defenders'), 'Takes 5 days');
-    await page.click('[data-test="issue-barracks__recruit_defenders"]');
+    equal(await text(page, 'days-dock__charter_berth'), 'Takes 7 days');
+    await page.click('[data-test="issue-dock__charter_berth"]');
     await page.waitForTimeout(200);
-    const due = (await st(page)).day + 5;
+    const due = (await st(page)).day + 7;
     const here = await bare(page, '.tsi-bas-facpanel__orders');
-    assert(/Recruit Defenders/.test(here) && here.indexOf('Due Day ' + due + ' (in 5 days)') !== -1, here);
+    assert(/Charter Berth/.test(here) && here.indexOf('Due Day ' + due + ' (in 7 days)') !== -1, here);
     equal(await page.$$eval('.tsi-bas-facpanel__orders [data-test^=cancel-]', bs => bs.length), 1, 'with Cancel');
-    await H.shot(page, 'bs-03-barracks');
+    await H.shot(page, 'bs-03-dock');
   });
 
   await check('Escape closes it and puts the focus back on its tile; the tile counts its order, and so does the top bar', async () => {
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
     equal(await panelOpen(page), null);
-    equal(await page.evaluate(() => document.activeElement && document.activeElement.dataset.test), 'tile-barracks');
-    equal(await text(page, 'tile-orders-barracks'), '1');
+    equal(await page.evaluate(() => document.activeElement && document.activeElement.dataset.test), 'tile-dock');
+    equal(await text(page, 'tile-orders-dock'), '1');
     equal(await text(page, 'orders-n'), '1');
     await page.click('[data-test=orders-count]');
     await page.waitForSelector('[data-test=panel-orders]');
-    assert(/Recruit Defenders/.test(await text(page, 'pending')));
+    assert(/Charter Berth/.test(await text(page, 'pending')));
     await page.keyboard.press('Escape');
+    await setUp(page, (s) => { s.pendingOrders = []; });
   });
 
   await check('levels (step 1b): a facility\'s panel shows its level and an Upgrade, first among its orders, which takes 7 days and no gold; then it\'s Level 2', async () => {
     await pause(page);
-    await page.click('[data-test=tile-watchtower]');
-    await page.waitForSelector('[data-test=panel-fac-watchtower]');
+    await page.click('[data-test=tile-dock]');
+    await page.waitForSelector('[data-test=panel-fac-dock]');
+    await page.click('[data-test=dock-tab-orders]'); /* the Dock opens on Cargo (step S08): its orders are under Orders */
     equal(await text(page, 'fac-level'), 'Level 1 of 5');
-    equal(await page.$eval('.tsi-bas-facpanel__fns > .tsi-bas-fn', e => e.dataset.test), 'upgrade-row-watchtower', 'Upgrade comes first');
-    equal(await text(page, 'upgrade-text-watchtower'), 'To Level 2: takes 7 days, no gold.');
+    equal(await page.$eval('.tsi-bas-facpanel__fns > .tsi-bas-fn', e => e.dataset.test), 'upgrade-row-dock', 'Upgrade comes first');
+    equal(await text(page, 'upgrade-text-dock'), 'To Level 2: takes 7 days, no gold.');
     const gp = (await st(page)).treasuryGP;
-    await page.click('[data-test=upgrade-watchtower]');
+    await page.click('[data-test=upgrade-dock]');
     await page.waitForTimeout(250);
     const s = await st(page);
-    const up = s.pendingOrders.find(o => o.facId === 'watchtower');
-    equal([up.label, up.dueDay - s.day, s.treasuryGP], ['Watchtower: Upgrade to Level 2', 7, gp]);
-    equal([await text(page, 'upgrade-watchtower'), await page.isDisabled('[data-test=upgrade-watchtower]')], ['Upgrading', true]);
-    equal(await text(page, 'upgrade-text-watchtower'), 'Upgrading to Level 2: ready on Day ' + up.dueDay + '.');
+    const up = s.pendingOrders.find(o => o.facId === 'dock');
+    equal([up.label, up.dueDay - s.day, s.treasuryGP], ['Dock: Upgrade to Level 2', 7, gp]);
+    equal([await text(page, 'upgrade-dock'), await page.isDisabled('[data-test=upgrade-dock]')], ['Upgrading', true]);
+    equal(await text(page, 'upgrade-text-dock'), 'Upgrading to Level 2: ready on Day ' + up.dueDay + '.');
     assert(/Upgrade to Level 2/.test(await bare(page, '.tsi-bas-facpanel__orders')), 'it\'s pending here, with Cancel');
-    equal(await page.isDisabled('[data-test="issue-watchtower__patrol"]'), false, 'its other orders carry on');
+    equal(await page.isDisabled('[data-test="issue-dock__charter_berth"]'), false, 'its other orders carry on');
     await page.keyboard.press('Escape');
     await days(page, 7);
     await pause(page);
-    await page.click('[data-test=tile-watchtower]');
-    await page.waitForSelector('[data-test=panel-fac-watchtower]');
+    await page.click('[data-test=tile-dock]');
+    await page.waitForSelector('[data-test=panel-fac-dock]');
+    await page.click('[data-test=dock-tab-orders]'); /* the Dock opens on Cargo (step S08): its orders are under Orders */
     equal(await text(page, 'fac-level'), 'Level 2 of 5');
-    equal(await text(page, 'upgrade-text-watchtower'), 'To Level 3: takes 14 days, no gold.');
-    assert((await st(page)).log.some(l => l.body === 'Watchtower: Upgrade to Level 2 → The Watchtower is now Level 2.'));
+    equal(await text(page, 'upgrade-text-dock'), 'To Level 3: takes 14 days, no gold.');
+    assert((await st(page)).log.some(l => l.body === 'Dock: Upgrade to Level 2 → The Dock is now Level 2.'));
     await H.shot(page, 'bs-04-upgrade');
     await page.keyboard.press('Escape');
   });
 
   await check('no upgrading while Under Repair (D6); at Level 5, no Upgrade button', async () => {
-    await setUp(page, (s) => { s.repairs = { watchtower: s.day + 3 }; s.facilityLevels.armoury = 5; });
+    await setUp(page, (s) => { s.repairs = { dock: s.day + 3 }; s.facilityLevels.workshop = 5; });
     await pause(page);
-    await page.click('[data-test=tile-watchtower]');
-    await page.waitForSelector('[data-test=panel-fac-watchtower]');
-    equal([await text(page, 'upgrade-watchtower'), await page.isDisabled('[data-test=upgrade-watchtower]')], ['Under Repair', true]);
+    await page.click('[data-test=tile-dock]');
+    await page.waitForSelector('[data-test=panel-fac-dock]');
+    await page.click('[data-test=dock-tab-orders]'); /* the Dock opens on Cargo (step S08): its orders are under Orders */
+    equal([await text(page, 'upgrade-dock'), await page.isDisabled('[data-test=upgrade-dock]')], ['Under Repair', true]);
     await page.keyboard.press('Escape');
     await pause(page);
-    await page.click('[data-test=tile-armoury]');
-    await page.waitForSelector('[data-test=panel-fac-armoury]');
+    await page.click('[data-test=tile-workshop]');
+    await page.waitForSelector('[data-test=panel-fac-workshop]');
     equal(await text(page, 'fac-level'), 'Level 5 of 5');
-    equal(await text(page, 'upgrade-text-armoury'), 'Level 5 is the highest.');
-    equal(await page.$('[data-test=upgrade-armoury]'), null);
+    equal(await text(page, 'upgrade-text-workshop'), 'Level 5 is the highest.');
+    equal(await page.$('[data-test=upgrade-workshop]'), null);
     await page.keyboard.press('Escape');
-    await setUp(page, (s) => { s.repairs = {}; s.facilityLevels.armoury = 1; });
+    await setUp(page, (s) => { s.repairs = {}; s.facilityLevels.workshop = 1; s.facilityLevels.dock = 1; s.pendingOrders = []; s.treasuryGP = 0; });
   });
 
   /* ------------------------------------------------------------------ */
@@ -723,7 +797,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     equal(await page.$$eval('.tsi-bas-facpanel__fns > .tsi-bas-fn', es => es.slice(0, 2).map(e => e.dataset.test)), ['upgrade-row-herbal_gardens', 'research-row-herbal_gardens'], 'after Upgrade');
     equal(await text(page, 'research-tokens-herbal_gardens'), 'Tokens: 0 of 0 free');
     equal(await text(page, 'research-text-herbal_gardens'), 'Research opens at Level 2: upgrade the Herbal Gardens to earn its first token.');
-    equal(await page.$('[data-test=research-row-watchtower]'), null);
+    equal(await page.$('[data-test=research-row-workshop]'), null);
     await page.click('[data-test=open-research-herbal_gardens]');
     await page.waitForSelector('[data-test=panel-research-herbal_gardens]');
     equal(await page.$$eval('[data-test^=branch-]', bs => bs.map(b => b.querySelector('.tsi-bas-research__bname').textContent)), ['Agricultural Development', 'Herbal Medicine', 'Botanical Research', 'Commercial Cultivation']);
@@ -797,24 +871,22 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await setUp(page, (s) => { s.builtExtras = []; s.research = {}; s.treasuryGP = 0; });
   });
 
-  await check('the Workshop\'s panel holds the Artisan Tools its Craft list uses', async () => {
+  await check('the Workshop\'s panel holds its five staff, not the Artisan Tools (the full click-through is tests/e2e/workshop.test.js)', async () => {
     await pause(page);
     await page.click('[data-test=tile-workshop]');
-    await page.waitForSelector('[data-test=panel-fac-workshop] [data-test=artisan-0]');
-    await page.selectOption('[data-test=artisan-0]', { index: 1 });
-    await page.waitForTimeout(150);
-    assert((await st(page)).artisanTools[0], 'saved');
-    equal(await page.$$eval('[data-test="sel-workshop__craft"] option', os => os.length > 1), true, 'Craft lists what the tools make');
+    await page.waitForSelector('[data-test=panel-fac-workshop] [data-test=staff-handyman]');
+    equal(await page.$('[data-test=artisan-0]'), null, 'no Artisan Tools picker');
+    equal(await page.$$eval('[data-test="sel-workshop__craft"] option', os => os.length > 1), true, 'the Handyman\'s Craft lists what he can make');
     await page.keyboard.press('Escape');
   });
 
   await check('the keyboard: Tab reaches a tile, its tooltip shows, and Enter opens it', async () => {
-    await page.focus('[data-test=tile-watchtower]');
+    await page.focus('[data-test=tile-dock]');
     await page.keyboard.press('Shift+Tab');
     await page.keyboard.press('Tab');
-    await page.waitForFunction(() => /Watchtower/.test(document.querySelector('[data-test=tooltip]').textContent) && !document.querySelector('[data-test=tooltip]').hidden);
+    await page.waitForFunction(() => /Dock/.test(document.querySelector('[data-test=tooltip]').textContent) && !document.querySelector('[data-test=tooltip]').hidden);
     await page.keyboard.press('Enter');
-    await page.waitForSelector('[data-test=panel-fac-watchtower]');
+    await page.waitForSelector('[data-test=panel-fac-dock]');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
   });
@@ -822,9 +894,20 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   /* ------------------------------------------------------------------ */
   section('The panels the bottom bar opens');
 
-  const PANELS = [['open-warehouse', 'warehouse', 'Warehouse', 'warehouse'], ['open-management', 'management', 'Management', 'defenders'],
-    ['open-log', 'log', 'Day Log', 'log'], ['open-events', 'events', 'Bastion Events', 'roll-event'],
-    ['open-influence', 'influence', 'Clan Influence', 'influence'], ['open-favour', 'favour', 'Favour of the Gods', 'favour-telluria']];
+  const PANELS = [['open-warehouse', 'warehouse', 'Warehouse', 'warehouse'], ['open-management', 'management', 'Management', 'explorer-changes']];
+  await check('the bottom bar has only Warehouse and Management (S10: the Day Log and Clan Influence went with S05, S06 and S11\'s other removals): nothing on the right, no removed button, no removed panel', async () => {
+    equal(await page.$$eval('.tsi-bas-pbtns [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-warehouse', 'open-management']);
+    equal(await page.$('.tsi-bas-pbtns--right'), null, 'nothing on the right');
+    for (const gone of ['open-log', 'open-influence']) equal(await page.$('[data-test=' + gone + ']'), null, gone + ' is gone');
+    equal(await page.evaluate(() => TSI.bastion.debug.reveal('clear-log')), false, 'and nothing to reveal for Clear log');
+    const words = await page.evaluate(() => document.body.innerText);
+    assert(!/Day Log|Clan Influence|Clear log|Honour Change|Favour Tokens/.test(words), 'no removed panel is named on the page');
+    equal(await page.$('[data-test=open-war]'), null, 'no War Council button');
+    equal(await page.$('[data-test=open-favour]'), null, 'no Favour button');
+    equal(await page.$('[data-test=open-events]'), null);
+    equal(await page.$('[data-test=open-favour]'), null);
+    equal(await page.evaluate(() => TSI.bastion.debug.reveal('roll-event')), false, 'and nothing to reveal for the old button');
+  });
   for (const [button, id, title, inside] of PANELS) {
     await check(title + ': its button opens it over the map, and it fits', async () => {
       await pause(page);
@@ -839,122 +922,139 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     });
   }
 
-  await check('one panel at a time: the Day Log keeps the day of each entry', async () => {
-    await page.click('[data-test=open-log]');
-    await page.waitForSelector('[data-test=panel-log]');
-    assert(/Day 22 ·/.test(await text(page, 'log')), 'the Herbal Gardens finished on Day 22');
+  await check('one panel at a time: opening Management over Warehouse leaves one panel open', async () => {
+    await page.click('[data-test=open-warehouse]');
+    await page.waitForSelector('[data-test=panel-warehouse]');
+    await page.keyboard.press('Escape');
+    await page.click('[data-test=open-management]');
+    await page.waitForSelector('[data-test=panel-management]');
     equal(await page.$$eval('.tsi-bas-panel', ps => ps.length), 1);
     await page.keyboard.press('Escape');
   });
 
-  await check('Clan Influence: each Clan\'s Political Capital, Honour/Respect and support on one row; Favour Tokens below', async () => {
-    await setUp(page, (s) => { s.politicalCapital.karr = 40; s.honourRespectByClan.karr = 2; s.diplomacy.tokens = 3; });
-    await page.click('[data-test=open-influence]');
-    await page.waitForSelector('[data-test=panel-influence]');
-    const support = await page.evaluate(() => TSI.bastion.rules.supportForClanKey(TSI.bastion.debug.state(), 'karr'));
-    equal([await text(page, 'pc-karr'), await page.inputValue('[data-test=hr-karr]'), await text(page, 'support-karr'), await text(page, 'tokens')], ['40', '2', support + '/100', '3']);
-    await page.fill('[data-test=hr-karr]', '9');
-    await page.press('[data-test=hr-karr]', 'Tab');
-    await page.waitForTimeout(150);
-    equal((await st(page)).honourRespectByClan.karr, 5, 'kept within −5 to +5');
-    await page.keyboard.press('Escape');
-  });
-
   /* ------------------------------------------------------------------ */
-  section('The Banner & War Council lock, and the crest badge');
+  section('The crest badge');
 
-  await check('locked while the Bastion has nothing that can fight: the padlock\'s tooltip says how to raise a banner', async () => {
-    await setUp(page, (s) => { s.defenders.count = 0; s.defenderBeasts = []; s.military = []; s.pendingOrders = []; });
-    equal(await page.$eval('[data-test=open-war]', b => b.classList.contains('is-locked')), true);
-    await page.click('[data-test=open-war]');
-    await page.waitForTimeout(200);
-    equal(await panelOpen(page), null);
-    assert(/Recruit defenders at the Barracks to raise your banner/.test(await bare(page, '[data-test=tooltip]')));
-    await page.mouse.move(5, 500);
-  });
-
-  await check('one defender unlocks it', async () => {
-    await page.click('[data-test=open-management]');
-    await page.click('[data-test=add-defender]');
-    await page.keyboard.press('Escape');
-    equal(await page.$eval('[data-test=open-war]', b => b.classList.contains('is-locked')), false);
-    await pause(page);
-    await page.click('[data-test=open-war]');
-    await page.waitForSelector('[data-test=panel-war] [data-test=queue-war]');
-    await page.keyboard.press('Escape');
-  });
-
-  await check('Party Identity, Form Clan\'s pop-up and the question about a crest sent from the Creator fit the laptop, full screen, the TV and a small window (Build 3)', async () => {
+  const LONG = 'The Honourable Company of the Ironbow';   /* 37 letters: two lines on the badge */
+  const FORTY = 'Wardens of the Ironbow Keep and Sea Road';   /* 40 letters */
+  await check('Party Identity (a small panel) and the question about a crest sent from the Creator fit the laptop, full screen, the TV and a small window, with a 40-letter Party Name or none', async () => {
     const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-    const keep = await page.evaluate(() => { const s = TSI.bastion.debug.state(); return { level: s.partyLevel, pc: Object.assign({}, s.politicalCapital) }; });
-    await setUp(page, (s) => { s.partyLevel = 9; s.politicalCapital.blackstone = 10; s.politicalCapital.bacca = 10; s.politicalCapital.farmer = 10; s.politicalCapital.slade = -10; });
+    equal(FORTY.length, 40);
     for (const size of ['laptop', 'laptopFull', 'tv', 'smallWindow']) {
-      await page.setViewportSize(H.SIZES[size].viewport);
-      await page.waitForTimeout(250);
-      await pause(page);
-      await page.click('[data-test=identity-badge]');
-      await page.waitForSelector('[data-test=panel-identity] [data-test=crest-create]');
-      equal((await H.layoutCheck(page, ['[data-test=panel-identity]', '[data-test=crest-create]', '[data-test=crest-add]', '[data-test=form-clan]', '[data-test=panel-identity] .tsi-modal__foot button'])).outOfView, [], size + ': Party Identity');
-      await page.click('[data-test=form-clan]');
-      await page.waitForSelector('[data-test=crest-field]');
-      equal((await H.layoutCheck(page, ['[data-test=clan-name]', '[data-test=crest-field]', '[data-test=crest-new]', '[data-test=crest-upload]', POP + ' .tsi-modal__foot button'])).outOfView, [], size + ': Form Clan');
-      if (size === 'laptop') await H.shot(page, 'bs-06-form-clan');
-      await page.click(POP + ' .tsi-modal__foot button:text-is("Cancel")');
-      await page.waitForTimeout(200);
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(200);
-      await page.evaluate(p => TSI.handoff.write('crest', { id: 'crest-fit', at: 1, name: 'Fit', dataUrl: p, design: { clanName: 'Fit' } }), png);
-      await page.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
-      equal((await H.layoutCheck(page, ['[data-test=crest-offer]', POP + ' .tsi-modal__foot button'])).outOfView, [], size + ': the crest question');
-      await page.click(POP + ' .tsi-modal__foot button:text-is("No")');
-      await page.waitForTimeout(200);
+      for (const name of ['', FORTY]) {
+        await setUp(page, (s) => { s.partyName = ''; });
+        await page.setViewportSize(H.SIZES[size].viewport);
+        await page.waitForTimeout(250);
+        await pause(page);
+        await page.click('[data-test=identity-badge]');
+        await page.waitForSelector('[data-test=panel-identity] [data-test=crest-create]');
+        if (name) { await page.fill('[data-test=party-name]', name); await page.press('[data-test=party-name]', 'Enter'); await page.waitForFunction(n => TSI.bastion.debug.state().partyName === n, name); }
+        const label = size + (name ? ' with a name' : '');
+        equal((await H.layoutCheck(page, ['[data-test=panel-identity]', '[data-test=party-name]', '[data-test=party-name-shown]:not([hidden])', '[data-test=crest-create]', '[data-test=crest-add]', '[data-test=panel-identity] .tsi-modal__foot button'].filter(q => name || q.indexOf('party-name-shown') === -1))).outOfView, [], label + ': Party Identity');
+        const w = (await rect(page, '[data-test=panel-identity]')).w;
+        assert(w <= 541, label + ': a small panel, not the 760-pixel one: ' + w);
+        if (size === 'laptop') await H.shot(page, 'bs-06-party-identity' + (name ? '-named' : ''));
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(200);
+        if (name) {
+          await page.evaluate(p => TSI.handoff.write('crest', { id: 'crest-fit', at: 1, name: 'Fit', dataUrl: p, design: { clanName: 'Fit' } }), png);
+          await page.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
+          equal((await H.layoutCheck(page, ['[data-test=crest-offer]', POP + ' .tsi-modal__foot button'])).outOfView, [], size + ': the crest question');
+          await page.click(POP + ' .tsi-modal__foot button:text-is("No")');
+          await page.waitForTimeout(200);
+        }
+      }
     }
     await page.setViewportSize(H.SIZES.laptop.viewport);
-    await page.evaluate(k => TSI.bastion.debug.change(s => { s.partyLevel = k.level; s.politicalCapital = k.pc; }), keep);
+    await setUp(page, (s) => { s.partyName = ''; });
     equal(await page.evaluate(() => TSI.store.has('tsi.bastion.crest')), false, 'No each time: no crest');
-    equal((await st(page)).organization.type, 'unsworn');
   });
 
-  await check('the badge says "Add a crest" until there is one, and opens Party Identity; with a crest (even Unsworn) it shows it, then the Clan\'s name (Build 3)', async () => {
-    equal(await bare(page, '[data-test=identity-badge]'), 'Add a crest');
+  await check('the badge says "Add a crest" until there is a crest, opens Party Identity from the keyboard, and Escape gives the focus back to it', async () => {
+    equal(await page.$eval('[data-test=identity-badge]', n => Array.from(n.children).filter(c => !c.hidden).map(c => c.textContent).join(' ').trim()), 'Add a crest', 'the words on it, as typed (the style makes them capitals)');
     equal(await page.getAttribute('[data-test=identity-badge]', 'aria-label'), 'Crest of the Ironbow: no crest yet. Open Party Identity.');
+    equal(await page.$eval('[data-test=identity-badge]', n => n.tagName), 'BUTTON', 'a button, so Enter and Space work');
     await page.focus('[data-test=identity-badge]');
     await page.keyboard.press('Enter');
-    await page.waitForSelector('[data-test=panel-identity] [data-test=form-clan]');
     await page.waitForSelector('[data-test=panel-identity] [data-test=crest-create]');
-    equal(await page.evaluate(() => !!document.activeElement.closest('[data-test=panel-identity]')), true, 'from the keyboard, the focus goes into the panel (Clan Honour is hidden until there\'s a Clan)');
+    equal(await page.evaluate(() => !!document.activeElement.closest('[data-test=panel-identity]')), true, 'from the keyboard, the focus goes into the panel');
     await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('[data-test=panel-identity]'));
+    equal(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-test')), 'identity-badge', 'the focus is back on the badge');
+    await page.keyboard.press('Space');
+    await page.waitForSelector('[data-test=panel-identity]');
+    await page.keyboard.press('Escape');
+  });
+
+  await check('with a crest the badge shows only the crest; with a Party Name it shows the name above the crest, and says "Crest of <name>" aloud', async () => {
     const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
     await page.evaluate(p => TSI.store.set('tsi.bastion.crest', { dataUrl: p, key: 'k1', name: 'c.png' }), png);
     await page.evaluate(() => TSI.store.flush());
     await page.reload();
     await page.waitForSelector('[data-test=day-status]');
-    equal(await bare(page, '[data-test=identity-badge]'), 'Unsworn');
-    equal(await page.$eval('.tsi-bas-badge__img', i => !i.hidden && i.getAttribute('src').indexOf('data:image/png') === 0), true);
-    equal(await page.getAttribute('[data-test=identity-badge]', 'aria-label'), 'Crest of the Ironbow. Open Party Identity.');
-    await setUp(page, (s) => { s.organization = { type: 'clan', name: 'Clan Ironbow', chief: 'Harry', motto: '', foundedAtDay: 22 }; });
+    const look = () => page.evaluate(() => {
+      const b = document.querySelector('[data-test=identity-badge]');
+      return { text: Array.from(b.children).filter(c => !c.hidden).map(c => c.textContent).join(' ').trim(), aria: b.getAttribute('aria-label'), title: b.title, img: !b.querySelector('img').hidden && b.querySelector('img').getAttribute('src').indexOf('data:image/png') === 0 };
+    });
+    equal(await look(), { text: '', aria: 'Crest of the Ironbow. Open Party Identity.', title: 'Party Identity', img: true });
+    await setUp(page, (s) => { s.partyName = 'Wardens of the Ironbow'; });
+    equal(await look(), { text: 'Wardens of the Ironbow', aria: 'Crest of Wardens of the Ironbow. Open Party Identity.', title: 'Wardens of the Ironbow', img: true });
     await page.evaluate(() => TSI.store.flush());
     await page.reload();
     await page.waitForSelector('[data-test=day-status]');
-    equal(await bare(page, '[data-test=identity-badge]'), 'Clan Ironbow');
-    equal(await page.$eval('.tsi-bas-badge__img', i => !i.hidden && i.getAttribute('src').indexOf('data:image/png') === 0), true);
-    equal(await page.getAttribute('[data-test=identity-badge]', 'aria-label'), 'Crest of Clan Ironbow. Open Party Identity.');
+    equal((await look()).text, 'Wardens of the Ironbow', 'kept after a reload');
+    await setUp(page, (s) => { s.partyName = ''; });
+  });
+
+  await check('the badge, with or without a crest and with a name of 1, 2 or 40 letters, stays inside the painting, clear of the Hall and of every label, on all four sizes; a name of two lines shows whole', async () => {
+    for (const crest of [true, false]) {
+      if (!crest) {
+        await page.evaluate(() => { TSI.store.remove('tsi.bastion.crest'); return TSI.store.flush(); });
+        await page.reload();
+        await page.waitForSelector('[data-test=day-status]');
+      }
+      for (const size of ['laptop', 'laptopFull', 'tv', 'smallWindow']) {
+        await page.setViewportSize(H.SIZES[size].viewport);
+        await page.waitForTimeout(250);
+        for (const name of ['', 'Ironbow', LONG, FORTY]) {
+          await page.evaluate(n => TSI.bastion.debug.change(s => { s.partyName = n; }), name);
+          await page.waitForTimeout(220);
+          const map = await rect(page, '.tsi-bas-map');
+          const badge = await rect(page, '[data-test=identity-badge]');
+          const k = map.w / 3000;
+          const hall = { x: map.x + 2595 * k, y: map.y + 376 * k, right: map.x + 2943 * k, bottom: map.y + 649 * k };
+          const tag = size + ', ' + (crest ? 'a crest' : 'no crest') + ', name ' + JSON.stringify(name);
+          assert(badge.bottom <= hall.y - 1 || badge.right <= hall.x || badge.x >= hall.right, tag + ': clear of the Hall: ' + JSON.stringify([badge, hall]));
+          assert(badge.x >= map.x && badge.right <= map.right - 8 && badge.y >= map.y && badge.bottom <= map.bottom, tag + ': inside the painting');
+          const labels = await page.$$eval('.tsi-bas-maplabel', ls => ls.map(l => { const r = l.getBoundingClientRect(); return { fac: l.dataset.fac, x: r.x, y: r.y, right: r.right, bottom: r.bottom }; }));
+          for (const l of labels) assert(!overlaps(l, badge), tag + ': the ' + l.fac + '\'s label is clear of the badge');
+          if (name) {
+            const shown = await page.$eval('[data-test=badge-name]', n => ({ cut: n.scrollHeight > n.clientHeight + 1, lines: Math.round(n.getBoundingClientRect().height / parseFloat(getComputedStyle(n).lineHeight)), text: n.textContent }));
+            assert(!shown.cut && shown.lines <= 2 && shown.text === name, tag + ': the whole name shows, in at most two lines: ' + JSON.stringify(shown));
+          }
+          assert(badge.h <= 126, tag + ': no taller than 126 pixels (' + Math.round(badge.h) + ')');
+        }
+      }
+    }
+    await page.setViewportSize(H.SIZES.laptop.viewport);
+    await setUp(page, (s) => { s.partyName = ''; });
   });
 
   /* ------------------------------------------------------------------ */
   section('What the screen remembers');
 
-  await check('the old panels\' open-or-closed settings are dropped; the grid\'s and the war pop-ups\' are kept', async () => {
+  await check('the old panels\' open-or-closed settings are dropped, and so are the war pop-ups\' (the war went on 22 October 2026); the grid\'s are kept', async () => {
     await page.evaluate(() => TSI.store.set('tsi.bastion.ui', { collapsed: { war: true, diplomacy: true }, gridOpen: false, warNoticed: { ma1: true } }));
     await page.evaluate(() => TSI.store.flush());
     await page.reload();
     await page.waitForSelector('[data-test=day-status]');
+    /* Favour Tokens left by an earlier check make the Bastion say it tidied them once more (the Hall's wind-down, S09): read it. */
+    await H.ackChanges(page, 800);
     await page.click('[data-test=grid-toggle]');
     await page.waitForTimeout(150);
     await page.evaluate(() => TSI.store.flush());
     const ui = await page.evaluate(() => TSI.store.get('tsi.bastion.ui', null));
-    /* ("ma1" is no Military Action waiting, so the war pop-ups' list tidies it away, as before.) */
-    equal(ui, { gridOpen: true, warNoticed: {} });
+    equal(ui, { gridOpen: true });
   });
 
   await check('nothing reached for the internet, and nothing failed', async () => {

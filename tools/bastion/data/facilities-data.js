@@ -1,9 +1,12 @@
-/* The Ironbow Bastion Manager: the 22 facilities, their functions, options, costs and specials.
-   A word-for-word copy of the old tool's data/facilities.json, stored as a script so it
+/* The Ironbow Bastion Manager: the 15 facilities, their functions, options, costs and specials.
+   A copy of the old tool's data/facilities.json, stored as a script so it
    loads from a double-clicked file. Edit it here.
-   One change since: the War Room's Recruit list is the war mini-game's units (phase 2,
-   Harry's decision of 2 October 2026), in the order and with the labels of
-   war-units-data.js (TSI_DATA.bastionWar.warRoom); keep the two the same.
+   The Strip Back Overhaul (Harry, 22 October 2026, step S06): the war game is gone, and
+   with it five facilities: the Barracks, Armoury and Watchtower (starting facilities),
+   the War Room and the Menagerie. Their blocks are deleted; a Bastion that had them is
+   converted once (R.migrateToV4, strip-back-rules.js: their orders are cancelled with
+   what they cost given back, the slots are freed). To see them again, check out commit
+   4f1db26.
    And since the days overhaul (Harry, 8 October 2026): every order has "days", how
    many in-game days after it's issued it completes (docs/BASTION-OVERHAUL.md
    section 2), and the Hall's records last "durationDays" (they lasted
@@ -51,37 +54,302 @@
    Textiles), Produce Specialist Garments (L3, 5, uses 1 Ordinary Textiles), Improved
    Specialist Garment Production (L4, 7, 2 Ordinary Textiles to 2 Specialist Garments),
    Bulk Textile Production (L5, 9, 3 Ordinary Textiles) and Bulk Sailcloth Production
-   (L5, 8, 3 Ordinary Textiles to 3 Sailcloth). The ingredients (which good feeds which) are
-   proposals Harry hasn't confirmed: change them here, nothing else needs to move.
-   Pull request 7 (Harry, 14 October 2026) opens the Wyvern Roost, the Griffin
-   Tower and the Dire Wolf Den, leaving two facilities in development (the Stone
-   Quarry & Masonworks and the Weavers' Hall). Each takes a construction slot,
-   needs party level 5 and takes 21 days to build ("requiredLevel": 5). Each has
-   one Level 1 order, 3 days and no gold, that houses a creature
-   (creatures-data.js; the rules are in creature-rules.js):
-   - "housesCreature": the id of a creature that already exists in the story
-     (creatures-data.js unique): the Roost's House Elara's Wyvern records her
-     wyvern, once ever;
-   - "housesSpecies": a kind of creature the DM grants in the Explorer: the
-     order's list is built when it's shown, from the creatures of that kind
-     waiting for a home (as Register Port Charter lists the Charters held), and
-     the order keeps the chosen creature's id. Each level of the building
-     houses one. Upgrade works as everywhere, and its levels only add room. */
+   (L5, 8, 3 Ordinary Textiles to 3 Sailcloth). Those ingredients were dropped in the
+   Strip Back Overhaul (see "levelOrders" below): the orders above are as they were at
+   19 October 2026 apart from what they use.
+   The Strip Back Overhaul (Harry, 22 October 2026, step S04): the four production
+   facilities built to the Timber Yard's pattern (timber_sawmill, fishery_smokehouse,
+   stone_masonworks, weavers_hall) carry "levelOrders": "replace". Each level offers only
+   its own order(s): the ones whose "requiredFacilityLevel" is the facility's level (two
+   at Level 5, still one running at a time: "productionLimit": 1), and an upgrade REPLACES
+   the last level's order (R.fnAvailable hides the others, "That order belongs to Level
+   N."). Orders are self-contained: none lists "inputs", so every level works with an
+   empty Warehouse. Nothing is ever deleted or renumbered: an order issued at Level N
+   that is still pending when the upgrade completes finishes as usual, because the
+   engine finds it by its id. Without the flag (the Herbal Gardens, the Courier
+   Exchange) every order stays listed at every level, locked until its level.
+   The Strip Back Overhaul (Harry, 22 October 2026, steps S08 and S09): Register Port Charter moved from the
+   Hall of Emissaries to the Dock (a 3-day order, "portCharter": true), and the Hall lost every other order
+   (Host Delegation, Inter-Clan Summit, Secure Writ of Authority, Trade Consortium and the retired Secure
+   Trade Agreement) and its levels: it has "functions": [] and "singleLevel": true, so it shows the Clans'
+   standing and the Diplomatic Events ledger and nothing else. An order that an older Bastion still held for it
+   is cancelled, with its gold given back, when the Bastion is converted (tools/bastion/strip-back-rules.js).
+   Pull request 7 (Harry, 14 October 2026) opened the Wyvern Roost, the Griffin Tower and the
+   Dire Wolf Den. The Strip Back Overhaul (Harry, 22 October 2026, step S14) replaced all three
+   with ONE building, the Beast Pen: it takes a construction slot, needs party level 5 and takes
+   21 days to build ("requiredLevel": 5), has one level only ("singleLevel": true: no Upgrade
+   row) and holds one beast of each kind (creatures-data.js, "pen"). It has two orders, and
+   both are about a creature (creatures-data.js; the rules are in creature-rules.js):
+   - "housesSpecies": "*" (House Beast Here, 3 days, no gold): a beast the DM granted in the
+     Explorer, waiting for a home. The order's list is built when it is shown, from the beasts
+     waiting, and the order keeps the chosen beast's id. ("housesCreature", the id of a creature
+     that already exists in the story, is only kept for an order issued before the change: Elara's
+     wyvern is no longer housed by the Bastion.)
+   - "acclimatise": true (Acclimatise With Beast): not an order with days but an instant roll,
+     typed by the DM at the table ("instant": true; its "days" is only there so every order
+     has one). Its DC and lock are in creatures-data.js ("acclimatise").
+   Training, harnesses, first flight and the three old buildings' other orders are gone; the
+   conversion (R.migrateToV4, strip-back-rules.js, step rehomeBeasts) moves a House order to
+   House Beast Here and cancels the rest. */
+/* The Strip Back Overhaul (Harry, 22 October 2026, step S12): THE WORKSHOP'S STAFF. The Workshop has five staff ("staff": id,
+   name, the Workshop level that opens them, a line about each) who open one by one: the Handyman (Level 1), Smith (2), Scholar
+   (3), Alchemist (4) and Artisan (5). Each order names its staff member ("staff") and the level that opens it
+   ("requiredFacilityLevel"); a staff member does one job at a time and the five work side by side. A craft order has "craftTables"
+   (the tables of tools-data.js whose items it offers, A to Z, 3 days each) and "artisanExtras" (the Artisan's hook: items added to
+   it at Level 5, empty until Harry supplies them). The Handyman's list and the Artisan's extras are PLACEHOLDERS ("placeholder":
+   true): Harry will supply them, by editing this file. The Library & Scriptorium's Research and Prepare Overland Travel Charts
+   are the Scholar's; the Arcane Laboratory's Craft Common, Craft Uncommon and Alchemy are the Alchemist's (the three potions
+   that the Alchemist's Supplies list already has, Potion of Climbing, Resistance and Water Breathing, are left out; no party
+   level is needed). The two facilities are gone (a saved Bastion is converted: R.migrateToV4, step workshopStaff). Craft
+   Magic Item has no staff member. The Smithy's Smithing is "retired": hidden, kept only so one already pending still finishes
+   (the Smith crafts the same items). The Artisan Tools (six picked tool tables) are gone. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionFacilities = [
   {
     "name": "Workshop",
     "id": "workshop",
     "requiredLevel": 5,
+    "staff": [
+      {
+        "id": "handyman",
+        "name": "Handyman",
+        "level": 1,
+        "blurb": "Common crafting",
+        "placeholder": true,
+        "note": "PLACEHOLDER: the Handyman’s list is to be supplied. Until then he crafts from the six tool tables nobody else claims."
+      },
+      {
+        "id": "smith",
+        "name": "Smith",
+        "level": 2,
+        "blurb": "Weapons, armour and ironwork (Smith’s Tools)"
+      },
+      {
+        "id": "scholar",
+        "name": "Scholar",
+        "level": 3,
+        "blurb": "Calligraphy, Overland charts and scripture Research"
+      },
+      {
+        "id": "alchemist",
+        "name": "Alchemist",
+        "level": 4,
+        "blurb": "Alchemist’s Supplies, poisons and the laboratory’s magic items"
+      },
+      {
+        "id": "artisan",
+        "name": "Artisan",
+        "level": 5,
+        "blurb": "Extra options for every list above",
+        "placeholder": true,
+        "note": "Extra options: to come."
+      }
+    ],
     "functions": [
       {
         "id": "craft",
         "label": "Craft",
+        "jobLabel": "Craft (common crafting)",
         "days": 3,
         "options": [],
         "costGP": 0,
         "costText": "0",
-        "notes": "Outputs/dropdowns for the Craft function will be populated based on the selected toolsets added to the workshop facility (see TOOLS_TABLES sheet):\nSmith’s Tools\nTinker’s Tools\nAlchemist’s Supplies\nWeaver’s Tools\nLeatherworker’s Tools\nCarpenter’s Tools\nMason’s Tools\nGlassblower’s Tools\nCobbler’s Tools\nThieves’ Tools\nBrewer’s Supplies\nCalligrapher’s Supplies"
+        "staff": "handyman",
+        "requiredFacilityLevel": 1,
+        "craftTables": [
+          "Weaver’s Tools",
+          "Leatherworker’s Tools",
+          "Carpenter’s Tools",
+          "Mason’s Tools",
+          "Glassblower’s Tools",
+          "Brewer’s Supplies"
+        ],
+        "artisanExtras": [],
+        "notes": "PLACEHOLDER (Harry will supply the Handyman’s list): until then the Handyman crafts from the six tool tables no other staff member claims.",
+        "placeholder": true
+      },
+      {
+        "id": "craft_smith",
+        "label": "Craft",
+        "jobLabel": "Craft (Smith’s Tools)",
+        "days": 3,
+        "options": [],
+        "costGP": 0,
+        "costText": "0",
+        "staff": "smith",
+        "requiredFacilityLevel": 2,
+        "craftTables": [
+          "Smith’s Tools"
+        ],
+        "artisanExtras": [],
+        "notes": null
+      },
+      {
+        "id": "craft_scholar",
+        "label": "Craft",
+        "jobLabel": "Craft (Calligrapher’s Supplies)",
+        "days": 3,
+        "options": [],
+        "costGP": 0,
+        "costText": "0",
+        "staff": "scholar",
+        "requiredFacilityLevel": 3,
+        "craftTables": [
+          "Calligrapher’s Supplies"
+        ],
+        "artisanExtras": [],
+        "notes": null
+      },
+      {
+        "id": "research",
+        "label": "Research",
+        "days": 5,
+        "options": [
+          {
+            "label": "Geographical Scriptures"
+          },
+          {
+            "label": "Religious Scriptures"
+          },
+          {
+            "label": "Combat Scriptures"
+          },
+          {
+            "label": "Political scriptures"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "jobLabel": "Research (scriptures)",
+        "staff": "scholar",
+        "requiredFacilityLevel": 3
+      },
+      {
+        "id": "prepare_overland_travel_charts",
+        "label": "Prepare Overland Travel Charts",
+        "days": 4,
+        "costGP": 0,
+        "costText": "0",
+        "notes": "Each Overland chart gives 3 days of use in the Travel bags: one more 6-mile hex on a day it's used. The Courier Exchange can send it to the party.",
+        "requiredFacilityLevel": 3,
+        "production": true,
+        "options": [
+          {
+            "label": "1 Overland chart",
+            "outputs": [
+              {
+                "good": "overland_chart",
+                "qty": 1
+              }
+            ]
+          }
+        ],
+        "jobLabel": "Prepare Overland Travel Charts",
+        "staff": "scholar"
+      },
+      {
+        "id": "craft_alchemist",
+        "label": "Craft",
+        "jobLabel": "Craft (Alchemist’s Supplies)",
+        "days": 3,
+        "options": [],
+        "costGP": 0,
+        "costText": "0",
+        "staff": "alchemist",
+        "requiredFacilityLevel": 4,
+        "craftTables": [
+          "Alchemist’s Supplies"
+        ],
+        "artisanExtras": [],
+        "notes": null
+      },
+      {
+        "id": "alchemy",
+        "label": "Alchemy",
+        "days": 5,
+        "options": [
+          {
+            "label": "Burnt Othur Fumes (Poison)"
+          },
+          {
+            "label": "Essence of Ether (Poison)"
+          },
+          {
+            "label": "Torpor (Poison)"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": "The three poisons the Alchemist’s Supplies list does not cover (5 days each).",
+        "jobLabel": "Alchemy (three poisons)",
+        "staff": "alchemist",
+        "requiredFacilityLevel": 4
+      },
+      {
+        "id": "craft_common",
+        "label": "Craft Common",
+        "days": 5,
+        "options": [
+          {
+            "label": "Bead of Nourishment"
+          },
+          {
+            "label": "Bead of Refreshment"
+          },
+          {
+            "label": "Lock of Trickery"
+          },
+          {
+            "label": "Mystery Key"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "jobLabel": "Craft Common",
+        "staff": "alchemist",
+        "requiredFacilityLevel": 4
+      },
+      {
+        "id": "craft_uncommon",
+        "label": "Craft Uncommon",
+        "days": 10,
+        "options": [
+          {
+            "label": "Bag of Holding"
+          },
+          {
+            "label": "Cap of Water Breathing"
+          },
+          {
+            "label": "Circlet of Blasting"
+          },
+          {
+            "label": "Cloak of Protection"
+          },
+          {
+            "label": "Gem of Brightness"
+          },
+          {
+            "label": "Hat of Disguise"
+          },
+          {
+            "label": "Potion of Poison"
+          },
+          {
+            "label": "Saddle of the Cavalier"
+          },
+          {
+            "label": "Sending Stones"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "jobLabel": "Craft Uncommon",
+        "staff": "alchemist",
+        "requiredFacilityLevel": 4
       },
       {
         "id": "craft_magic_item",
@@ -157,7 +425,7 @@ window.TSI_DATA.bastionFacilities = [
         ],
         "costGP": 0,
         "costText": "0",
-        "notes": "This function (Craft Magic Item) is not available until the players reach Level 9."
+        "notes": "Not a staff job: it is made by the Workshop itself, with no party level needed."
       },
       {
         "id": "smithing",
@@ -254,64 +522,9 @@ window.TSI_DATA.bastionFacilities = [
         ],
         "costGP": null,
         "costText": null,
-        "notes": "The old Smithy's order, kept for Bastions that had a Smithy before it joined the Workshop (13 October 2026). Craft with Smith's Tools makes the same items in 3 days.",
-        "onlyIfLegacy": "smithy"
-      }
-    ]
-  },
-  {
-    "name": "Barracks",
-    "id": "barracks",
-    "requiredLevel": 5,
-    "functions": [
-      {
-        "id": "recruit_defenders",
-        "label": "Recruit Defenders",
-        "days": 5,
-        "options": [],
-        "costGP": 0,
-        "costText": "0",
-        "notes": "1d4 defenders recruited and added to Bastion Defenders Panel"
-      },
-      {
-        "id": "guard_commercial_convoy",
-        "label": "Guard Commercial Convoy",
-        "days": 3,
-        "options": [],
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "protectionCharge": "commercial_convoy",
-        "protectionMax": 1,
-        "notes": "Prepares one Commercial Convoy from the Bastion's available personnel (no soldiers, defenders or regiments are used up): the next ship the Dock sends with cargo takes it, and its chance of trouble at sea is 5 points lower. One is kept at a time; another can be ordered once it has been used."
-      }
-    ]
-  },
-  {
-    "name": "Watchtower",
-    "id": "watchtower",
-    "requiredLevel": 5,
-    "functions": [
-      {
-        "id": "patrol",
-        "label": "Patrol",
-        "days": 1,
-        "options": [],
-        "costGP": 0,
-        "costText": "0",
-        "notes": "Gives Advantage on all rolls for Bastion Defenders if the Bastion is attacked during the next 7 days"
-      },
-      {
-        "id": "protect_maritime_approaches",
-        "label": "Protect Maritime Approaches",
-        "days": 2,
-        "options": [],
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "protectionWindow": "maritime_approaches",
-        "windowDays": 7,
-        "notes": "Protects the sea lanes for 7 days (the day it completes is Day 1): every ship the Dock sends with cargo in that time has its chance of trouble at sea 5 points lower. Not used up, and not extended: the next order can be issued once it ends. Separate from Patrol."
+        "notes": "RETIRED: the Smithy’s old order (5 days). The Smith crafts the same items in 3 days. Kept only so a Smithing order that was already pending finishes.",
+        "retired": true,
+        "staff": "smith"
       }
     ]
   },
@@ -369,295 +582,18 @@ window.TSI_DATA.bastionFacilities = [
         "costGP": null,
         "costText": "100GP\n200GP\n400GP\n500GP\n750GP\n900 GP\n1000GP\n1250GP",
         "notes": null
-      }
-    ]
-  },
-  {
-    "name": "Armoury",
-    "id": "armoury",
-    "requiredLevel": 5,
-    "functions": [
+      },
       {
-        "id": "arm_defenders",
-        "label": "Arm Defenders",
+        "id": "register_port_charter",
+        "label": "Register Port Charter",
         "days": 3,
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 1,
+        "portCharter": true,
         "options": [],
-        "costGP": null,
-        "costText": "100GP + (current bastion defenders x 100GP)",
-        "notes": "Once action completed, Bastion Defenders Panel shows 'Armed'"
+        "notes": "Registers a Port Charter the DM granted in the Explorer, so the Dock can ship cargo to that port. No gold and no roll."
       }
-    ]
-  },
-  {
-    "name": "War Room",
-    "id": "war_room",
-    "requiredLevel": 17,
-    "functions": [
-      {
-        "id": "recruit",
-        "label": "Recruit",
-        "days": 7,
-        "options": [
-          {
-            "label": "Lieutenant (1)"
-          },
-          {
-            "label": "Archers (50)"
-          },
-          {
-            "label": "Levy Infantry (150)"
-          },
-          {
-            "label": "Line Infantry (100)"
-          },
-          {
-            "label": "Heavy Infantry (50)"
-          },
-          {
-            "label": "Light Cavalry (50)"
-          },
-          {
-            "label": "Shock Cavalry (25)"
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": "No cost to recruit, but each soldier costs 1 gp every 7 days. Hover over a choice to see its stat block. Lieutenants and units join the Military panel when the order completes; a unit of a type that came home depleted brings that regiment back to full strength first."
-      },
-      {
-        "id": "drill",
-        "label": "Drill a Regiment",
-        "days": 7,
-        "costGP": 0,
-        "costText": "25 gp × Battle Value (Trained), 50 gp × (Veteran)",
-        "requiredFacilityLevel": 2,
-        "drill": true,
-        "notes": "Choose one regiment at full strength. Trained (7 days): +1 Resolve and +0.5 Battle Value. Veteran (14 more days): +1 Cohesion and +0.5 Battle Value more. The gold is paid when the drill starts. A regiment drilling stays at the Ironbow: it can't go on a War Action, but it defends the Ironbow if it's attacked."
-      },
-      {
-        "id": "coordinated_muster",
-        "label": "Coordinated Muster",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 3,
-        "muster": 2,
-        "notes": "Raises two formations in one order, in any mix (a regiment of a kind that came home depleted is refilled first, as Recruit does)."
-      },
-      {
-        "id": "grand_muster",
-        "label": "Grand Muster",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 5,
-        "muster": 3,
-        "notes": "Raises three formations in one order, in any mix (a regiment of a kind that came home depleted is refilled first, as Recruit does)."
-      }
-    ]
-  },
-  {
-    "name": "Arcane Laboratory",
-    "id": "arcane_laboratory",
-    "requiredLevel": 5,
-    "mergedFrom": [
-      "arcane_study",
-      "laboratory"
-    ],
-    "functions": [
-      {
-        "id": "craft_common",
-        "label": "Craft Common",
-        "days": 5,
-        "options": [
-          {
-            "label": "Bead of Nourishment"
-          },
-          {
-            "label": "Bead of Refreshment"
-          },
-          {
-            "label": "Lock of Trickery"
-          },
-          {
-            "label": "Mystery Key"
-          },
-          {
-            "label": "Potion of Climbing"
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
-      },
-      {
-        "id": "craft_uncommon",
-        "label": "Craft Uncommon",
-        "days": 10,
-        "options": [
-          {
-            "label": "Bag of Holding"
-          },
-          {
-            "label": "Cap of Water Breathing"
-          },
-          {
-            "label": "Circlet of Blasting"
-          },
-          {
-            "label": "Cloak of Protection"
-          },
-          {
-            "label": "Gem of Brightness"
-          },
-          {
-            "label": "Hat of Disguise"
-          },
-          {
-            "label": "Potion of Poison"
-          },
-          {
-            "label": "Potion of Resistance"
-          },
-          {
-            "label": "Potion of Water Breathing"
-          },
-          {
-            "label": "Saddle of the Cavalier"
-          },
-          {
-            "label": "Sending Stones"
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
-      },
-      {
-        "id": "alchemy",
-        "label": "Alchemy",
-        "days": 5,
-        "options": [
-          {
-            "label": "Burnt Othur Fumes (Poison)"
-          },
-          {
-            "label": "Essence of Ether (Poison)"
-          },
-          {
-            "label": "Torpor (Poison)"
-          },
-          {
-            "label": "Acid vial"
-          },
-          {
-            "label": "Alchemist’s fire"
-          },
-          {
-            "label": "Basic poison"
-          },
-          {
-            "label": "Antitoxin"
-          },
-          {
-            "label": "Firebomb (reskinned alchemist’s fire)"
-          },
-          {
-            "label": "Frost vial (cold variant)"
-          },
-          {
-            "label": "Sticky bomb (glue grenade)"
-          },
-          {
-            "label": "Potion of healing (common)"
-          },
-          {
-            "label": "Potion of greater healing (base item)"
-          },
-          {
-            "label": "Potion of superior healing (base item)"
-          },
-          {
-            "label": "Potion of supreme healing (base item)"
-          },
-          {
-            "label": "Potion of climbing (base item)"
-          },
-          {
-            "label": "Potion of water breathing (base item)"
-          },
-          {
-            "label": "Potion of resistance (base item)"
-          },
-          {
-            "label": "Darkvision draught (base item)"
-          },
-          {
-            "label": "Stoneskin varnish (base item)"
-          },
-          {
-            "label": "Vitality tonic (base item)"
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null,
-        "requiredPartyLevel": 9
-      }
-    ]
-  },
-  {
-    "name": "Library & Scriptorium",
-    "id": "library_scriptorium",
-    "requiredLevel": 5,
-    "productionLimit": 1,
-    "functions": [
-      {
-        "id": "research",
-        "label": "Research",
-        "days": 5,
-        "options": [
-          {
-            "label": "Geographical Scriptures"
-          },
-          {
-            "label": "Religious Scriptures"
-          },
-          {
-            "label": "Combat Scriptures"
-          },
-          {
-            "label": "Political scriptures"
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
-      },
-      {
-        "id": "prepare_overland_travel_charts",
-        "label": "Prepare Overland Travel Charts",
-        "days": 4,
-        "costGP": 0,
-        "costText": "0",
-        "notes": "Each Overland chart gives 3 days of use in the Travel bags: one more 6-mile hex on a day it's used. The Courier Exchange can send it to the party.",
-        "requiredFacilityLevel": 2,
-        "production": true,
-        "options": [
-          {
-            "label": "1 Overland chart",
-            "outputs": [
-              {
-                "good": "overland_chart",
-                "qty": 1
-              }
-            ]
-          }
-        ]
-      }
-    ],
-    "mergedFrom": [
-      "library"
     ]
   },
   {
@@ -741,7 +677,7 @@ window.TSI_DATA.bastionFacilities = [
         "days": 4,
         "costGP": 0,
         "costText": "0",
-        "notes": "Crafting ingredients for the Herbal Gardens' own recipes (and, later, the Arcane Laboratory's).",
+        "notes": "Crafting ingredients for the Herbal Gardens' own recipes (and, later, the Workshop's Alchemist's).",
         "requiredFacilityLevel": 2,
         "production": true,
         "options": [
@@ -992,6 +928,7 @@ window.TSI_DATA.bastionFacilities = [
     "requiredLevel": 5,
     "plot": true,
     "productionLimit": 1,
+    "levelOrders": "replace",
     "functions": [
       {
         "id": "catch_fresh_fish",
@@ -1026,12 +963,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Preserved Fish (1 lot)",
-            "inputs": [
-              {
-                "good": "fresh_fish",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "preserved_fish",
@@ -1053,12 +984,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "5 Expedition Provision Packs",
-            "inputs": [
-              {
-                "good": "preserved_fish",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "expedition_provision_pack",
@@ -1122,12 +1047,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Preserved Fish (3 lots)",
-            "inputs": [
-              {
-                "good": "fresh_fish",
-                "qty": 3
-              }
-            ],
             "outputs": [
               {
                 "good": "preserved_fish",
@@ -1145,6 +1064,7 @@ window.TSI_DATA.bastionFacilities = [
     "requiredLevel": 5,
     "plot": true,
     "productionLimit": 1,
+    "levelOrders": "replace",
     "functions": [
       {
         "id": "harvest_timber",
@@ -1179,12 +1099,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Sawn Lumber (1 lot)",
-            "inputs": [
-              {
-                "good": "raw_timber",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "sawn_lumber",
@@ -1206,12 +1120,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Construction Timber (1 lot)",
-            "inputs": [
-              {
-                "good": "sawn_lumber",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "construction_timber",
@@ -1275,12 +1183,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Sawn Lumber (3 lots)",
-            "inputs": [
-              {
-                "good": "raw_timber",
-                "qty": 3
-              }
-            ],
             "outputs": [
               {
                 "good": "sawn_lumber",
@@ -1298,6 +1200,7 @@ window.TSI_DATA.bastionFacilities = [
     "requiredLevel": 5,
     "plot": true,
     "productionLimit": 1,
+    "levelOrders": "replace",
     "functions": [
       {
         "id": "extract_raw_stone",
@@ -1332,12 +1235,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Dressed Stone (1 lot)",
-            "inputs": [
-              {
-                "good": "raw_stone",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "dressed_stone",
@@ -1359,12 +1256,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Structural Masonry (1 lot)",
-            "inputs": [
-              {
-                "good": "dressed_stone",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "structural_masonry",
@@ -1386,12 +1277,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Decorative Stonework (1 lot)",
-            "inputs": [
-              {
-                "good": "dressed_stone",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "decorative_stonework",
@@ -1434,12 +1319,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Dressed Stone (3 lots)",
-            "inputs": [
-              {
-                "good": "raw_stone",
-                "qty": 3
-              }
-            ],
             "outputs": [
               {
                 "good": "dressed_stone",
@@ -1457,6 +1336,7 @@ window.TSI_DATA.bastionFacilities = [
     "requiredLevel": 5,
     "plot": true,
     "productionLimit": 1,
+    "levelOrders": "replace",
     "functions": [
       {
         "id": "produce_ordinary_textiles",
@@ -1491,12 +1371,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Sailcloth (1 lot)",
-            "inputs": [
-              {
-                "good": "ordinary_textiles",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "sailcloth",
@@ -1518,12 +1392,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Specialist Garments (1 lot)",
-            "inputs": [
-              {
-                "good": "ordinary_textiles",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "specialist_garments",
@@ -1545,12 +1413,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Specialist Garments (2 lots)",
-            "inputs": [
-              {
-                "good": "ordinary_textiles",
-                "qty": 2
-              }
-            ],
             "outputs": [
               {
                 "good": "specialist_garments",
@@ -1593,12 +1455,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Sailcloth (3 lots)",
-            "inputs": [
-              {
-                "good": "ordinary_textiles",
-                "qty": 3
-              }
-            ],
             "outputs": [
               {
                 "good": "sailcloth",
@@ -1622,877 +1478,84 @@ window.TSI_DATA.bastionFacilities = [
     "name": "Hall of Emissaries",
     "id": "hall_of_emissaries",
     "requiredLevel": 5,
-    "threshold": "Political / Trade",
-    "description": "A neutral hall for delegations, contracts, arbitration and inter-clan diplomacy.",
-    "functions": [
-      {
-        "id": "upgrade_hall",
-        "retired": true,
-        "label": "Upgrade Hall (Level Up)",
-        "days": 14,
-        "costGP": 0,
-        "special": {
-          "type": "upgrade_facility",
-          "maxLevel": 3,
-          "costByNextLevel": {
-            "2": 600,
-            "3": 1200
-          }
-        }
-      },
-      {
-        "id": "register_port_charter",
-        "label": "Register Port Charter",
-        "days": 3,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 1,
-        "portCharter": true,
-        "options": [],
-        "notes": "Registers a Port Charter the DM granted in the Explorer, so the Dock can ship cargo to that port. No gold and no roll."
-      },
-      {
-        "id": "secure_trade_agreement",
-        "label": "Secure Trade Agreement",
-        "retiredNote": "The Secure Trade Agreement is retired; Port Charters replace it.",
-        "days": 7,
-        "costGP": 250,
-        "requiredFacilityLevel": 1,
-        "options": [
-          {
-            "label": "Clan Blackstone",
-            "value": "Blackstone"
-          },
-          {
-            "label": "Clan Rowthorn",
-            "value": "Rowthorn"
-          },
-          {
-            "label": "Clan Karr",
-            "value": "Karr"
-          },
-          {
-            "label": "Clan Farmer",
-            "value": "Farmer"
-          },
-          {
-            "label": "Clan Slade",
-            "value": "Slade"
-          },
-          {
-            "label": "Clan Bacca",
-            "value": "Bacca"
-          },
-          {
-            "label": "Clan Molten",
-            "value": "Molten"
-          }
-        ],
-        "special": {
-          "type": "emissary_action",
-          "kind": "trade_agreement",
-          "durationDays": 21,
-          "incomeMin": 60,
-          "incomeMax": 140
-        }
-      },
-      {
-        "id": "host_delegation",
-        "label": "Host Delegation",
-        "days": 5,
-        "costGP": 150,
-        "requiredFacilityLevel": 1,
-        "options": [
-          {
-            "label": "Clan Blackstone",
-            "value": "Blackstone"
-          },
-          {
-            "label": "Clan Rowthorn",
-            "value": "Rowthorn"
-          },
-          {
-            "label": "Clan Karr",
-            "value": "Karr"
-          },
-          {
-            "label": "Clan Farmer",
-            "value": "Farmer"
-          },
-          {
-            "label": "Clan Slade",
-            "value": "Slade"
-          },
-          {
-            "label": "Clan Bacca",
-            "value": "Bacca"
-          },
-          {
-            "label": "Clan Molten",
-            "value": "Molten"
-          }
-        ],
-        "special": {
-          "type": "emissary_action",
-          "kind": "host_delegation",
-          "durationDays": 14,
-          "oneTimeTreasuryMin": 80,
-          "oneTimeTreasuryMax": 220
-        }
-      },
-      {
-        "id": "inter_clan_summit",
-        "label": "Inter-Clan Summit",
-        "days": 14,
-        "costGP": 450,
-        "requiredFacilityLevel": 2,
-        "options": [
-          {
-            "label": "Blackstone + Rowthorn",
-            "value": "Blackstone/Rowthorn"
-          },
-          {
-            "label": "Blackstone + Karr",
-            "value": "Blackstone/Karr"
-          },
-          {
-            "label": "Rowthorn + Karr",
-            "value": "Rowthorn/Karr"
-          },
-          {
-            "label": "Farmer + Slade",
-            "value": "Farmer/Slade"
-          },
-          {
-            "label": "Bacca + Molten",
-            "value": "Bacca/Molten"
-          }
-        ],
-        "special": {
-          "type": "emissary_action",
-          "kind": "summit",
-          "durationDays": 21,
-          "costReductionPct": 25
-        }
-      },
-      {
-        "id": "arbitration_authority",
-        "label": "Secure Writ of Authority",
-        "days": 10,
-        "costGP": 600,
-        "requiredFacilityLevel": 3,
-        "special": {
-          "type": "emissary_action",
-          "kind": "arbitration",
-          "durationDays": 28,
-          "incomeMin": 90,
-          "incomeMax": 190
-        }
-      },
-      {
-        "id": "trade_consortium",
-        "label": "Trade Consortium",
-        "days": 14,
-        "costGP": 900,
-        "requiredFacilityLevel": 3,
-        "special": {
-          "type": "emissary_action",
-          "kind": "consortium",
-          "durationDays": 35,
-          "incomeMin": 140,
-          "incomeMax": 260
-        }
-      }
-    ]
+    "singleLevel": true,
+    "threshold": "Political",
+    "description": "Where the Ironbow keeps track of how each Clan regards it: Honour/Respect, Political Capital, and the Diplomatic Events that changed them. It has no orders and one level only.",
+    "functions": []
   },
   {
-    "name": "Menagerie",
-    "id": "menagerie",
-    "requiredLevel": 13,
-    "functions": [
-      {
-        "id": "recruit_beast",
-        "label": "Recruit Beast",
-        "days": 10,
-        "options": [
-          {
-            "label": "Ape",
-            "costGP": 500,
-            "costText": "500 GP"
-          },
-          {
-            "label": "Black Bear",
-            "costGP": 500,
-            "costText": "500 GP"
-          },
-          {
-            "label": "Brown Bear",
-            "costGP": 1000,
-            "costText": "1,000 GP"
-          },
-          {
-            "label": "Constrictor Snake",
-            "costGP": 250,
-            "costText": "250 GP"
-          },
-          {
-            "label": "Crocodile",
-            "costGP": 500,
-            "costText": "500 GP"
-          },
-          {
-            "label": "Dire Wolf",
-            "costGP": 1000,
-            "costText": "1,000 GP"
-          },
-          {
-            "label": "Giant Vulture",
-            "costGP": 1000,
-            "costText": "1,000 GP"
-          },
-          {
-            "label": "Hyena",
-            "costGP": 50,
-            "costText": "50 GP"
-          },
-          {
-            "label": "Jackal",
-            "costGP": 50,
-            "costText": "50 GP"
-          },
-          {
-            "label": "Lion",
-            "costGP": 1000,
-            "costText": "1,000 GP"
-          },
-          {
-            "label": "Owlbear",
-            "costGP": 3500,
-            "costText": "3,500 GP"
-          },
-          {
-            "label": "Panther",
-            "costGP": 250,
-            "costText": "250 GP"
-          },
-          {
-            "label": "Tiger",
-            "costGP": 1000,
-            "costText": "1,000 GP"
-          }
-        ],
-        "costGP": null,
-        "costText": "500 GP\n500 GP\n1,000 GP\n250 GP\n500 GP\n1,000 GP\n1,000 GP\n50 GP\n50 GP\n1,000 GP\n3,500 GP\n250 GP\n1,000 GP",
-        "notes": "Recruited Beasts are listed in the Bastion Defenders Panel"
-      }
-    ]
-  },
-  {
-    "name": "Wyvern Roost",
-    "id": "wyvern_roost",
+    "name": "Beast Pen",
+    "id": "beast_pen",
     "requiredLevel": 5,
-    "description": "Home to Elara's wyvern and to the wyverns the DM grants, one more than the Roost's level; they guard the Ironbow when it is attacked.",
+    "singleLevel": true,
+    "description": "Home to the party's beasts: one wyvern, one griffin, one dire wolf, one buckbear and one fellcat. A beast that has been acclimatised can go out on the road with its handler, and bonds with them day by day.",
     "functions": [
       {
-        "id": "house_elara_wyvern",
-        "label": "House Elara's Wyvern",
+        "id": "house_beast",
+        "label": "House Beast Here",
         "days": 3,
         "costGP": 0,
         "costText": "0",
-        "housesCreature": "elara_wyvern",
+        "housesSpecies": "*",
         "options": [],
-        "notes": "Records Elara's own wyvern at the Ironbow, once: it is never a new animal. It guards the Ironbow when it is attacked (Defend Bastion battles only). No gold and no roll."
+        "notes": "Gives a home to a beast the DM granted in the Explorer. The Beast Pen keeps one beast of each kind (wyvern, griffin, dire wolf, buckbear and fellcat). Housing a beast never makes one: the DM grants it. No gold and no roll."
       },
       {
-        "id": "house_wyvern",
-        "label": "House a Wyvern",
-        "days": 3,
-        "costGP": 0,
-        "costText": "0",
-        "housesSpecies": "wyvern",
-        "options": [],
-        "notes": "Gives a home to a wyvern the DM granted in the Explorer. The Roost houses one more than its level (Elara's wyvern is one of them): 2 at Level 1, up to 6 at Level 5. Building or upgrading the Roost never makes a wyvern. Housed wyverns guard the Ironbow when it is attacked (Defend Bastion battles only). No gold and no roll."
-      },
-      {
-        "id": "wyr_safe_acclimatisation",
-        "label": "Safe Acclimatisation",
-        "days": 5,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 1,
-        "trains": true,
-        "needsBond": 0,
-        "bondTarget": 1,
-        "options": [],
-        "notes": "Teaches one named wyvern to accept its handler's approach and the keepers' routines. Needs a handler. When it finishes, the next bond milestone is ready: you confirm it after a scene at the table (the timer never raises the bond by itself)."
-      },
-      {
-        "id": "wyr_keeper_routine",
-        "label": "Establish Keeper's Routine",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 1,
-        "trains": true,
-        "needsBond": 1,
-        "bondTarget": 2,
-        "options": [],
-        "notes": "Settles a familiar daily routine with one named wyvern. Needs Bond 1. When it finishes, the Bond 2 milestone is ready for you to confirm."
-      },
-      {
-        "id": "wyr_signal_recall",
-        "label": "Signal & Recall Training",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "trains": true,
-        "needsBond": 2,
-        "bondTarget": 3,
-        "options": [],
-        "notes": "Teaches one named wyvern familiar signals and to return to them. Needs Bond 2. When it finishes, the Bond 3 milestone is ready for you to confirm."
-      },
-      {
-        "id": "wyr_defence_drills",
-        "label": "Territorial Defence Drills",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "trains": true,
-        "needsBond": 2,
-        "options": [],
-        "notes": "Drills one named wyvern to hold the Ironbow's skies: +1 Resolve for it when the Ironbow is attacked (Defend Bastion). Needs Bond 2. Once for each wyvern."
-      },
-      {
-        "id": "wyr_open_sky_return",
-        "label": "Open-Sky Return Training",
-        "days": 10,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 3,
-        "trains": true,
-        "needsBond": 3,
-        "bondTarget": 4,
-        "options": [],
-        "notes": "Teaches one named wyvern to return from open sky. Needs Bond 3. When it finishes, the Bond 4 milestone is ready for you to confirm."
-      },
-      {
-        "id": "wyr_aerial_sentinel",
-        "label": "Aerial Sentinel Training",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 3,
-        "trains": true,
-        "needsBond": 3,
-        "options": [],
-        "notes": "Trains one named wyvern as an aerial sentinel: +1 Defence for it when the Ironbow is attacked (Defend Bastion). Needs Bond 3. Once for each wyvern."
-      },
-      {
-        "id": "wyr_riding_harness",
-        "label": "Commission Riding Harness",
-        "days": 7,
-        "costGP": 150,
-        "costText": "150 gp",
-        "requiredFacilityLevel": 4,
-        "trains": true,
-        "role": "harness",
-        "needsBond": 4,
-        "fitsHarness": true,
-        "options": [],
-        "notes": "Commissions one bespoke riding harness for one named wyvern: 150 gp, paid once when the order starts (it is not refunded if you cancel it). Needs Bond 4. The harness stays with that wyvern for good. It is not permission to ride."
-      },
-      {
-        "id": "wyr_ascent_landing",
-        "label": "Controlled Ascent & Landing",
-        "days": 14,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 4,
-        "trains": true,
-        "role": "ascent",
-        "needsBond": 4,
-        "needsHarness": true,
-        "options": [],
-        "notes": "Teaches one named wyvern controlled take-off and landing in its harness. Needs Bond 4 and a fitted harness. It records controlled-flight proficiency; it is not permission to mount yet."
-      },
-      {
-        "id": "wyr_emergency_recall",
-        "label": "Emergency Recall Training",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 4,
-        "trains": true,
-        "role": "recall",
-        "needsBond": 4,
-        "needsTrained": ["wyr_ascent_landing"],
-        "options": [],
-        "notes": "Teaches one named wyvern to break off and return at once. Needs Bond 4 and Controlled Ascent & Landing."
-      },
-      {
-        "id": "wyr_riders_pact",
-        "label": "The Rider's Pact",
-        "days": 14,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 5,
-        "trains": true,
-        "role": "pact",
-        "needsBond": 4,
-        "needsFirstFlight": true,
-        "bondTarget": 5,
-        "options": [],
-        "notes": "Prepares the Legendary Partnership between one named wyvern and its handler. Needs Bond 4 and the first mounted flight confirmed by you. When it finishes, the Bond 5 milestone is ready for you to confirm."
-      },
-      {
-        "id": "wyr_elite_defence",
-        "label": "Elite Aerial Defence",
-        "days": 10,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 5,
-        "trains": true,
-        "needsBond": 4,
-        "needsTrained": ["wyr_aerial_sentinel"],
-        "options": [],
-        "notes": "Elite aerial-defence drills for one named wyvern: +1 Attack for it when the Ironbow is attacked (Defend Bastion). Needs Bond 4 and Aerial Sentinel Training. Once for each wyvern."
-      },
-      {
-        "id": "wyr_combat_signals",
-        "label": "Aerial Combat Signals",
-        "days": 14,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 5,
-        "trains": true,
-        "role": "signals",
-        "needsBond": 5,
-        "needsFirstFlight": true,
-        "options": [],
-        "notes": "Teaches one named wyvern and its handler the signals a future mounted-combat system will need. Needs Bond 5 and the first flight confirmed. It records the prerequisite only: there is no new combat action yet."
-      }
-    ]
-  },
-  {
-    "name": "Griffin Tower",
-    "id": "griffin_tower",
-    "requiredLevel": 5,
-    "description": "Houses the griffins the DM grants, one for each level of the Tower; they guard the Ironbow when it is attacked.",
-    "functions": [
-      {
-        "id": "house_griffin",
-        "label": "House a Griffin",
-        "days": 3,
-        "costGP": 0,
-        "costText": "0",
-        "housesSpecies": "griffin",
-        "options": [],
-        "notes": "Gives a home to a griffin the DM granted in the Explorer. Each level of the Tower houses one griffin. Housed griffins guard the Ironbow when it is attacked (Defend Bastion battles only). No gold and no roll."
-      },
-      {
-        "id": "grf_safe_acclimatisation",
-        "label": "Safe Acclimatisation",
-        "days": 5,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 1,
-        "trains": true,
-        "needsBond": 0,
-        "bondTarget": 1,
-        "options": [],
-        "notes": "Teaches one named griffin to accept its handler's approach and the keepers' routines. Needs a handler. When it finishes, the next bond milestone is ready: you confirm it after a scene at the table (the timer never raises the bond by itself)."
-      },
-      {
-        "id": "grf_keeper_routine",
-        "label": "Establish Keeper's Routine",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 1,
-        "trains": true,
-        "needsBond": 1,
-        "bondTarget": 2,
-        "options": [],
-        "notes": "Settles a familiar daily routine with one named griffin. Needs Bond 1. When it finishes, the Bond 2 milestone is ready for you to confirm."
-      },
-      {
-        "id": "grf_signal_recall",
-        "label": "Signal & Recall Training",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "trains": true,
-        "needsBond": 2,
-        "bondTarget": 3,
-        "options": [],
-        "notes": "Teaches one named griffin familiar signals and to return to them. Needs Bond 2. When it finishes, the Bond 3 milestone is ready for you to confirm."
-      },
-      {
-        "id": "grf_defence_drills",
-        "label": "Territorial Defence Drills",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "trains": true,
-        "needsBond": 2,
-        "options": [],
-        "notes": "Drills one named griffin to hold the Ironbow: +1 Resolve for it when the Ironbow is attacked (Defend Bastion). Needs Bond 2. Once for each griffin."
-      },
-      {
-        "id": "grf_open_sky_return",
-        "label": "Open-Sky Return Training",
-        "days": 10,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 3,
-        "trains": true,
-        "needsBond": 3,
-        "bondTarget": 4,
-        "options": [],
-        "notes": "Teaches one named griffin to return from open sky. Needs Bond 3. When it finishes, the Bond 4 milestone is ready for you to confirm."
-      },
-      {
-        "id": "grf_aerial_sentinel",
-        "label": "Aerial Sentinel Training",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 3,
-        "trains": true,
-        "needsBond": 3,
-        "options": [],
-        "notes": "Trains one named griffin as a sentinel: +1 Defence for it when the Ironbow is attacked (Defend Bastion). Needs Bond 3. Once for each griffin."
-      },
-      {
-        "id": "grf_riding_harness",
-        "label": "Commission Riding Harness",
-        "days": 7,
-        "costGP": 150,
-        "costText": "150 gp",
-        "requiredFacilityLevel": 4,
-        "trains": true,
-        "role": "harness",
-        "needsBond": 4,
-        "fitsHarness": true,
-        "options": [],
-        "notes": "Commissions one bespoke riding harness for one named griffin: 150 gp, paid once when the order starts (it is not refunded if you cancel it). Needs Bond 4. The harness stays with that griffin for good. It is not permission to ride."
-      },
-      {
-        "id": "grf_ascent_landing",
-        "label": "Controlled Ascent & Landing",
-        "days": 14,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 4,
-        "trains": true,
-        "role": "ascent",
-        "needsBond": 4,
-        "needsHarness": true,
-        "options": [],
-        "notes": "Teaches one named griffin controlled take-off and landing with a rider. Needs Bond 4 and a fitted harness. It records riding proficiency; it is not permission to mount yet."
-      },
-      {
-        "id": "grf_emergency_recall",
-        "label": "Emergency Recall Training",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 4,
-        "trains": true,
-        "role": "recall",
-        "needsBond": 4,
-        "needsTrained": ["grf_ascent_landing"],
-        "options": [],
-        "notes": "Teaches one named griffin to break off and return at once. Needs Bond 4 and Controlled Ascent & Landing."
-      },
-      {
-        "id": "grf_riders_pact",
-        "label": "The Rider's Pact",
-        "days": 14,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 5,
-        "trains": true,
-        "role": "pact",
-        "needsBond": 4,
-        "bondTarget": 5,
-        "needsFirstFlight": true,
-        "options": [],
-        "notes": "Prepares the Legendary Partnership between one named griffin and its handler. Needs Bond 4 and the first mounted flight confirmed by you. When it finishes, the Bond 5 milestone is ready for you to confirm."
-      },
-      {
-        "id": "grf_elite_defence",
-        "label": "Diving Strike Drills",
-        "days": 10,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 5,
-        "trains": true,
-        "needsBond": 4,
-        "needsTrained": ["grf_aerial_sentinel"],
-        "options": [],
-        "notes": "Diving-strike drills for one named griffin: +1 Attack for it when the Ironbow is attacked (Defend Bastion). Needs Bond 4 and Aerial Sentinel Training. Once for each griffin."
-      },
-      {
-        "id": "grf_combat_signals",
-        "label": "Aerial Combat Signals",
-        "days": 14,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 5,
-        "trains": true,
-        "role": "signals",
-        "needsBond": 5,
-        "needsFirstFlight": true,
-        "options": [],
-        "notes": "Teaches one named griffin and its handler the signals a future mounted-combat system will need. Needs Bond 5 and the first flight confirmed. It records the prerequisite only: there is no new combat action yet."
-      }
-    ]
-  },
-  {
-    "name": "Dire Wolf Den",
-    "id": "dire_wolf_den",
-    "requiredLevel": 5,
-    "description": "Houses the dire wolves the DM grants, one for each level of the Den; they guard the Ironbow when it is attacked.",
-    "functions": [
-      {
-        "id": "house_dire_wolf",
-        "label": "House a Dire Wolf",
-        "days": 3,
-        "costGP": 0,
-        "costText": "0",
-        "housesSpecies": "dire_wolf",
-        "options": [],
-        "notes": "Gives a home to a dire wolf the DM granted in the Explorer. Each level of the Den houses one dire wolf. Housed dire wolves guard the Ironbow when it is attacked (Defend Bastion battles only). No gold and no roll."
-      },
-      {
-        "id": "dwf_safe_acclimatisation",
-        "label": "Safe Acclimatisation",
-        "days": 5,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 1,
-        "trains": true,
-        "needsBond": 0,
-        "bondTarget": 1,
-        "options": [],
-        "notes": "Teaches one named dire wolf to accept its handler's approach and the keepers' routines. Needs a handler. When it finishes, the next bond milestone is ready: you confirm it after a scene at the table (the timer never raises the bond by itself)."
-      },
-      {
-        "id": "dwf_keeper_routine",
-        "label": "Establish Keeper's Routine",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 1,
-        "trains": true,
-        "needsBond": 1,
-        "bondTarget": 2,
-        "options": [],
-        "notes": "Settles a familiar daily routine with one named dire wolf. Needs Bond 1. When it finishes, the Bond 2 milestone is ready for you to confirm."
-      },
-      {
-        "id": "dwf_heel_recall",
-        "label": "Heel & Recall Training",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "trains": true,
-        "needsBond": 2,
-        "bondTarget": 3,
-        "options": [],
-        "notes": "Teaches one named dire wolf to heel and to come to a call. Needs Bond 2. When it finishes, the Bond 3 milestone is ready for you to confirm."
-      },
-      {
-        "id": "dwf_defence_drills",
-        "label": "Den Defence Drills",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "trains": true,
-        "needsBond": 2,
-        "options": [],
-        "notes": "Drills one named dire wolf to hold the Ironbow: +1 Resolve for it when the Ironbow is attacked (Defend Bastion). Needs Bond 2. Once for each dire wolf."
-      },
-      {
-        "id": "dwf_roaming_return",
-        "label": "Roaming Return Training",
-        "days": 10,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 3,
-        "trains": true,
-        "needsBond": 3,
-        "bondTarget": 4,
-        "options": [],
-        "notes": "Teaches one named dire wolf to return from roaming free. Needs Bond 3. When it finishes, the Bond 4 milestone is ready for you to confirm."
-      },
-      {
-        "id": "dwf_pack_sentinel",
-        "label": "Pack Sentinel Training",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 3,
-        "trains": true,
-        "needsBond": 3,
-        "options": [],
-        "notes": "Trains one named dire wolf as a sentinel: +1 Defence for it when the Ironbow is attacked (Defend Bastion). Needs Bond 3. Once for each dire wolf."
-      },
-      {
-        "id": "dwf_riding_harness",
-        "label": "Commission Riding Harness",
-        "days": 7,
-        "costGP": 150,
-        "costText": "150 gp",
-        "requiredFacilityLevel": 4,
-        "trains": true,
-        "role": "harness",
-        "needsBond": 4,
-        "fitsHarness": true,
-        "options": [],
-        "notes": "Commissions one bespoke riding harness for one named dire wolf: 150 gp, paid once when the order starts (it is not refunded if you cancel it). Needs Bond 4. The harness stays with that dire wolf for good. It is not permission to ride."
-      },
-      {
-        "id": "dwf_steady_gait",
-        "label": "Steady Gait & Halt Training",
-        "days": 14,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 4,
-        "trains": true,
-        "role": "ascent",
-        "needsBond": 4,
-        "needsHarness": true,
-        "options": [],
-        "notes": "Teaches one named dire wolf a steady gait and to halt on command with a rider. Needs Bond 4 and a fitted harness. It records riding proficiency; it is not permission to mount yet."
-      },
-      {
-        "id": "dwf_emergency_recall",
-        "label": "Emergency Recall Training",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 4,
-        "trains": true,
-        "role": "recall",
-        "needsBond": 4,
-        "needsTrained": ["dwf_steady_gait"],
-        "options": [],
-        "notes": "Teaches one named dire wolf to break off and return at once. Needs Bond 4 and Steady Gait & Halt Training."
-      },
-      {
-        "id": "dwf_riders_oath",
-        "label": "The Rider's Oath",
-        "days": 14,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 5,
-        "trains": true,
-        "role": "pact",
-        "needsBond": 4,
-        "bondTarget": 5,
-        "needsFirstFlight": true,
-        "options": [],
-        "notes": "Prepares the Legendary Partnership between one named dire wolf and its handler. Needs Bond 4 and the first mounted ride confirmed by you. When it finishes, the Bond 5 milestone is ready for you to confirm."
-      },
-      {
-        "id": "dwf_elite_defence",
-        "label": "Pack Hunt Drills",
-        "days": 10,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 5,
-        "trains": true,
-        "needsBond": 4,
-        "needsTrained": ["dwf_pack_sentinel"],
-        "options": [],
-        "notes": "Pack hunting drills for one named dire wolf: +1 Attack for it when the Ironbow is attacked (Defend Bastion). Needs Bond 4 and Pack Sentinel Training. Once for each dire wolf."
-      },
-      {
-        "id": "dwf_combat_signals",
-        "label": "Mounted Pack Signals",
-        "days": 14,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 5,
-        "trains": true,
-        "role": "signals",
-        "needsBond": 5,
-        "needsFirstFlight": true,
-        "options": [],
-        "notes": "Teaches one named dire wolf and its handler the signals a future mounted-combat system will need. Needs Bond 5 and the first ride confirmed. It records the prerequisite only: there is no new combat action yet."
-      }
-    ]
-  },
-  {
-    "name": "Shrine of Telluria",
-    "id": "shrine_telluria",
-    "requiredLevel": 8,
-    "functions": [
-      {
-        "id": "craft",
-        "label": "Craft",
-        "days": 5,
-        "options": [
-          {
-            "label": "Tellurian Root Charm",
-            "notes": "Advantage on CON saving throws once per short rest. Value = 100gp."
-          },
-          {
-            "label": "Tellurian Stone Charm",
-            "notes": "Advantage on WIS saving throws once per short rest when on natural ground (earth, rock, etc). Value = 120gp."
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
-      },
-      {
-        "id": "pray",
-        "label": "Pray",
+        "id": "acclimatise",
+        "label": "Acclimatise With Beast",
         "days": 1,
-        "options": [
-          {
-            "label": "Telluria's Guidance",
-            "special": {
-              "type": "oracle_hint",
-              "god": "telluria"
-            }
-          },
-          {
-            "label": "Telluria's Embrace",
-            "special": {
-              "type": "blessing_rest",
-              "god": "telluria"
-            }
-          },
-          {
-            "label": "Telluria's Blessing",
-            "special": {
-              "type": "favour_blessing",
-              "god": "telluria"
-            }
-          }
-        ],
+        "instant": true,
         "costGP": 0,
         "costText": "0",
-        "notes": null
-      },
+        "acclimatise": true,
+        "options": [],
+        "notes": "A beast housed here must be acclimatised with its handler before it can bond. The handler rolls at the table; you type their total. A pass makes it Bond 1 and it leaves this list. A fail locks that beast for a few days. It happens at once, with no days."
+      }
+    ]
+  },
+  /* The Temple (the Strip Back Overhaul, Harry, 22 October 2026, step S11). The three Shrines (Telluria, Aurush
+     and Pelagos) became ONE building. It takes a construction slot, needs party level 8 and takes 21 days to build
+     ("requiredLevel": 8), and has one level only ("singleLevel": true: no Upgrade row). Its panel is split into
+     thirds, one for each god, and nothing in it is an order with days:
+     - Pray to (god) is instant: it adds a random whole number from 1 to "prayDie" (50) to that god's Favour bar,
+       which stops at 100. The roll is the Bastion's own (temple-rules.js, R.templePray).
+     - Receive Blessing is instant too, and only possible when the god's bar is full ("full": 100). It spends the
+       WHOLE bar (the bar goes back to 0) and the chosen blessing happens at once (R.templeReceive).
+     The three blessings for each god are the functions below that name the god ("god"), in the order the dropdown
+     lists them. Goods blessings ("production": true, with an option listing "outputs") go into the Warehouse,
+     "protectionCharge" keeps a Blessing of Pelagos for the Dock's next ship, and "greatRite" makes a Great Rite
+     that waits at the Ironbow until the DM gives it to the party on an expedition in the Explorer.
+     "days" on a blessing is only used by a pending order carried over from an old Shrine (the conversion, step
+     shrinesToTemple in strip-back-rules.js, moves the Shrines' Bless, Prepare and Great Rite orders here, keeping
+     their due days; their function ids are the same as the Shrines' were, so they complete as before).
+     The Craft charms, the hint and long-rest prayers, Purification Incense, the Aquatic Protection Charm and Bless
+     Bastion Foundations are gone. Their goods (and the Courier's and the Travel bags' names for them) stay, so
+     anything already made keeps its name. */
+  {
+    "name": "Temple",
+    "id": "temple",
+    "requiredLevel": 8,
+    "singleLevel": true,
+    "description": "One Temple for the three gods. Each god has a Favour bar: Pray to the god adds to it, and once it is full the god gives a blessing, which spends the whole bar.",
+    "temple": {
+      "full": 100,
+      "prayDie": 50,
+      "gods": [
+        { "id": "telluria", "name": "Telluria", "art": "shrine_of_telluria.png" },
+        { "id": "aurush", "name": "Aurush", "art": "shrine_of_aurush.png" },
+        { "id": "pelagos", "name": "Pelagos", "art": "shrine_of_pelagos.png" }
+      ]
+    },
+    "functions": [
       {
         "id": "prepare_earthward_talisman",
-        "label": "Prepare Earthward Talisman",
+        "label": "Earthward Talisman",
+        "god": "telluria",
+        "blessing": true,
+        "instant": true,
         "days": 3,
         "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "favourCost": 0,
+        "costText": "The whole bar",
         "production": true,
         "options": [
           {
@@ -2509,12 +1572,13 @@ window.TSI_DATA.bastionFacilities = [
       },
       {
         "id": "prepare_rootguard_salve",
-        "label": "Prepare Rootguard Salve",
+        "label": "Rootguard Salve",
+        "god": "telluria",
+        "blessing": true,
+        "instant": true,
         "days": 4,
         "costGP": 0,
-        "costText": "5% Favour",
-        "requiredFacilityLevel": 3,
-        "favourCost": 5,
+        "costText": "The whole bar",
         "production": true,
         "options": [
           {
@@ -2527,94 +1591,29 @@ window.TSI_DATA.bastionFacilities = [
             ]
           }
         ],
-        "notes": "Two doses, into the Warehouse: each gives advantage on one saving throw against being Restrained by nonmagical vegetation. Takes 5% of Telluria's Favour when it starts."
-      },
-      {
-        "id": "bless_bastion_foundations",
-        "label": "Bless Bastion Foundations",
-        "days": 5,
-        "costGP": 0,
-        "costText": "10% Favour",
-        "requiredFacilityLevel": 4,
-        "favourCost": 10,
-        "waiting": "Not available yet: no Bastion event damages a facility by natural causes yet (an attack's damage never counts). This order opens once one exists.",
-        "notes": "One charge, kept at the Ironbow: it prevents one facility going Under Repair from an environmental cause. It never prevents damage from a military defeat."
+        "notes": "Two doses, into the Warehouse: each gives advantage on one saving throw against being Restrained by nonmagical vegetation."
       },
       {
         "id": "great_rite_telluria",
         "label": "Great Rite of Telluria",
+        "god": "telluria",
+        "blessing": true,
+        "instant": true,
         "days": 7,
         "costGP": 0,
-        "costText": "25% Favour",
-        "requiredFacilityLevel": 5,
-        "favourCost": 25,
+        "costText": "The whole bar",
         "greatRite": "earths_endurance",
         "notes": "Earth's Endurance: one Major Expedition Blessing. It waits at the Ironbow until the DM gives it to the party on an expedition; then it prevents one level of Exhaustion from a failed travel or environmental saving throw, once."
-      }
-    ]
-  },
-  {
-    "name": "Shrine of Aurush",
-    "id": "shrine_aurush",
-    "requiredLevel": 8,
-    "functions": [
-      {
-        "id": "craft",
-        "label": "Craft",
-        "days": 5,
-        "options": [
-          {
-            "label": "Aurush Sun Charm",
-            "notes": "Advantage on DEX saving throws once per short rest while in bright light. Value = 100gp."
-          },
-          {
-            "label": "Aurush Ember Charm",
-            "notes": "Advantage on CHA saving throws once per short rest against fear or charm. Value = 120gp."
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
-      },
-      {
-        "id": "pray",
-        "label": "Pray",
-        "days": 1,
-        "options": [
-          {
-            "label": "Aurush's Insight",
-            "special": {
-              "type": "oracle_hint",
-              "god": "aurush"
-            }
-          },
-          {
-            "label": "Aurush's Radiance",
-            "special": {
-              "type": "blessing_rest",
-              "god": "aurush"
-            }
-          },
-          {
-            "label": "Aurush's Blessing",
-            "special": {
-              "type": "favour_blessing",
-              "god": "aurush"
-            }
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
       },
       {
         "id": "prepare_blessed_lantern",
-        "label": "Prepare Blessed Lantern",
+        "label": "Blessed Lantern",
+        "god": "aurush",
+        "blessing": true,
+        "instant": true,
         "days": 3,
         "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "favourCost": 0,
+        "costText": "The whole bar",
         "production": true,
         "options": [
           {
@@ -2630,35 +1629,14 @@ window.TSI_DATA.bastionFacilities = [
         "notes": "One lantern, into the Warehouse: fuel-free light, 20 ft bright and 20 ft dim, for three days. The Courier Exchange can send it to the party."
       },
       {
-        "id": "prepare_purification_incense",
-        "label": "Prepare Purification Incense",
-        "days": 4,
-        "costGP": 0,
-        "costText": "5% Favour",
-        "requiredFacilityLevel": 3,
-        "favourCost": 5,
-        "production": true,
-        "options": [
-          {
-            "label": "2 portions of Purification Incense",
-            "outputs": [
-              {
-                "good": "purification_incense",
-                "qty": 2
-              }
-            ]
-          }
-        ],
-        "notes": "Two portions, into the Warehouse: each gives advantage on one saving throw against nonmagical poison or disease. Takes 5% of Aurush's Favour when it starts."
-      },
-      {
         "id": "consecrate_expedition_supplies",
         "label": "Consecrate Expedition Supplies",
+        "god": "aurush",
+        "blessing": true,
+        "instant": true,
         "days": 5,
         "costGP": 0,
-        "costText": "10% Favour",
-        "requiredFacilityLevel": 4,
-        "favourCost": 10,
+        "costText": "The whole bar",
         "production": true,
         "options": [
           {
@@ -2671,83 +1649,29 @@ window.TSI_DATA.bastionFacilities = [
             ]
           }
         ],
-        "notes": "Three Cleansing Portions, into the Warehouse: each removes the ordinary Poisoned condition from one creature (no hit points, and no disease or curse cured). Takes 10% of Aurush's Favour when it starts."
+        "notes": "Three Cleansing Portions, into the Warehouse: each removes the ordinary Poisoned condition from one creature (no hit points, and no disease or curse cured)."
       },
       {
         "id": "great_rite_aurush",
         "label": "Great Rite of Aurush",
+        "god": "aurush",
+        "blessing": true,
+        "instant": true,
         "days": 7,
         "costGP": 0,
-        "costText": "25% Favour",
-        "requiredFacilityLevel": 5,
-        "favourCost": 25,
+        "costText": "The whole bar",
         "greatRite": "cleansing_radiance",
         "notes": "Cleansing Radiance: one Major Expedition Blessing. It waits at the Ironbow until the DM gives it to the party on an expedition; then it removes Poisoned or Frightened from up to two party members present, once."
-      }
-    ]
-  },
-  {
-    "name": "Shrine of Pelagos",
-    "id": "shrine_pelagos",
-    "requiredLevel": 8,
-    "functions": [
-      {
-        "id": "craft",
-        "label": "Craft",
-        "days": 5,
-        "options": [
-          {
-            "label": "Pelagos Tide Charm",
-            "notes": "Advantage on STR saving throws once per short rest while wet or near open water. Value = 100gp."
-          },
-          {
-            "label": "Pelagos Current Charm",
-            "notes": "Advantage on INT saving throws once per short rest to resist disorientation/illusion. Value = 120gp."
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
-      },
-      {
-        "id": "pray",
-        "label": "Pray",
-        "days": 1,
-        "options": [
-          {
-            "label": "Pelagos's Tidings",
-            "special": {
-              "type": "oracle_hint",
-              "god": "pelagos"
-            }
-          },
-          {
-            "label": "Pelagos's Deep Rest",
-            "special": {
-              "type": "blessing_rest",
-              "god": "pelagos"
-            }
-          },
-          {
-            "label": "Pelagos's Blessing",
-            "special": {
-              "type": "favour_blessing",
-              "god": "pelagos"
-            }
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
       },
       {
         "id": "bless_voyage",
-        "label": "Bless Voyage",
+        "label": "Voyage Blessing",
+        "god": "pelagos",
+        "blessing": true,
+        "instant": true,
         "days": 3,
         "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "favourCost": 0,
+        "costText": "The whole bar",
         "production": true,
         "options": [
           {
@@ -2763,46 +1687,26 @@ window.TSI_DATA.bastionFacilities = [
         "notes": "One blessing, into the Warehouse: +2 to one navigation or maritime hazard check during an expedition. The Courier Exchange can send it to the party."
       },
       {
-        "id": "prepare_aquatic_protection_charm",
-        "label": "Prepare Aquatic Protection Charm",
-        "days": 4,
-        "costGP": 0,
-        "costText": "5% Favour",
-        "requiredFacilityLevel": 3,
-        "favourCost": 5,
-        "production": true,
-        "options": [
-          {
-            "label": "1 Aquatic Protection Charm",
-            "outputs": [
-              {
-                "good": "aquatic_protection_charm",
-                "qty": 1
-              }
-            ]
-          }
-        ],
-        "notes": "One charm, into the Warehouse: advantage on one Athletics check involving swimming, currents or a nonmagical water hazard. Takes 5% of Pelagos' Favour when it starts."
-      },
-      {
         "id": "bless_commercial_shipment",
         "label": "Bless Commercial Shipment",
+        "god": "pelagos",
+        "blessing": true,
+        "instant": true,
         "days": 5,
         "costGP": 0,
-        "costText": "10% Favour",
-        "requiredFacilityLevel": 4,
-        "favourCost": 10,
+        "costText": "The whole bar",
         "protectionCharge": "pelagos_blessing",
-        "notes": "One Blessing of Pelagos, kept at the Ironbow: the next ship the Dock sends with cargo takes it, and its chance of trouble at sea is 10 points lower. Takes 10% of Pelagos' Favour when it starts."
+        "notes": "One Blessing of Pelagos, kept at the Ironbow: the next ship the Dock sends with cargo takes it, and its chance of trouble at sea is 10 points lower."
       },
       {
         "id": "great_rite_pelagos",
         "label": "Great Rite of Pelagos",
+        "god": "pelagos",
+        "blessing": true,
+        "instant": true,
         "days": 7,
         "costGP": 0,
-        "costText": "25% Favour",
-        "requiredFacilityLevel": 5,
-        "favourCost": 25,
+        "costText": "The whole bar",
         "greatRite": "tides_passage",
         "notes": "Tide's Passage: one Major Expedition Blessing. It waits at the Ironbow until the DM gives it to the party on an expedition; then it turns one failed water-related navigation or environmental check into a success, once."
       }

@@ -304,23 +304,23 @@ All 139 media files from the old Bastion (131 PNGs and 8 SVGs). 121 distinct fil
 | `data/compendium_cards/Truth Serum.png` | `tools/bastion/assets/compendium_cards/Truth Serum.png` | 23 KB, 444 × 175 | Yes: the Compendium card for Truth Serum |
 | `data/compendium_cards/Walloping Ammunition.png` | `tools/bastion/assets/compendium_cards/Walloping Ammunition.png` | 40 KB, 436 × 341 | Yes: the Compendium card for Walloping Ammunition |
 | `assets/facilities/arcane_study.png` | `tools/bastion/assets/extras/facilities/arcane_study.png` | 1.73 MB, 1024 × 1024 | No longer: the Arcane Study's picture, until it merged into the Arcane Laboratory (13 October 2026) |
-| `assets/facilities/armoury.png` | `tools/bastion/assets/facilities/armoury.png` | 1.99 MB, 1024 × 1024 | Yes: the Armoury card's picture |
-| `assets/facilities/barracks.png` | `tools/bastion/assets/facilities/barracks.png` | 1.95 MB, 1024 × 1024 | Yes: the Barracks card's picture |
+| `assets/facilities/armoury.png` | `tools/bastion/assets/extras/facilities/armoury.png` | 1.99 MB, 1024 × 1024 | No longer: the Armoury's picture, until the war game and the Armoury were removed (22 October 2026) |
+| `assets/facilities/barracks.png` | `tools/bastion/assets/extras/facilities/barracks.png` | 1.95 MB, 1024 × 1024 | No longer: the Barracks' picture, until the war game and the Barracks were removed (22 October 2026) |
 | `assets/facilities/docks.png` | `tools/bastion/assets/facilities/docks.png` | 1.83 MB, 1024 × 1024 | Yes: the Dock card's picture |
 | `assets/facilities/gambling_hall.png` | `tools/bastion/assets/extras/facilities/gambling_hall.png` | 1.90 MB, 1024 × 1024 | No longer: the Gaming Hall's picture, until it left the Bastion (13 October 2026) |
 | `assets/facilities/garden.png` | `tools/bastion/assets/extras/facilities/garden.png` | 2.06 MB, 1024 × 1024 | No longer: the Garden's picture, until it merged into the Herbal Gardens (13 October 2026) |
 | `assets/facilities/greenhouse.png` | `tools/bastion/assets/facilities/greenhouse.png` | 2.09 MB, 1024 × 1024 | Yes: the Herbal Gardens' picture (the Greenhouse's until 13 October 2026) |
 | `assets/facilities/hall_inner.png` | `tools/bastion/assets/facilities/hall_inner.png` | 2.61 MB, 1536 × 1024 | Yes: the painted hall behind the Hall's pop-ups |
 | `assets/facilities/hall_of_emissaries.png` | `tools/bastion/assets/facilities/hall_of_emissaries.png` | 1.65 MB, 1024 × 1024 | Yes: the Hall's picture, and faint behind the Diplomacy & Trade panel |
-| `assets/facilities/laboratory.png` | `tools/bastion/assets/facilities/laboratory.png` | 2.06 MB, 1024 × 1024 | Yes: the Arcane Laboratory's picture (the Laboratory's until 13 October 2026) |
-| `assets/facilities/library.png` | `tools/bastion/assets/facilities/library.png` | 1.77 MB, 1024 × 1024 | Yes: the Library & Scriptorium's picture (the Library's until 13 October 2026) |
-| `assets/facilities/menagerie.png` | `tools/bastion/assets/facilities/menagerie.png` | 1.95 MB, 1024 × 1024 | Yes: the Menagerie card's picture |
+| `assets/facilities/laboratory.png` | `tools/bastion/assets/extras/facilities/laboratory.png` | 2.06 MB, 1024 × 1024 | No longer: the Arcane Laboratory's picture, until it joined the Workshop's Alchemist (22 October 2026, step S12) |
+| `assets/facilities/library.png` | `tools/bastion/assets/extras/facilities/library.png` | 1.77 MB, 1024 × 1024 | No longer: the Library & Scriptorium's picture, until it joined the Workshop's Scholar (22 October 2026, step S12) |
+| `assets/facilities/menagerie.png` | `tools/bastion/assets/facilities/menagerie.png` | 1.95 MB, 1024 × 1024 | Yes: the Beast Pen's tile (Harry, 22 October 2026: the Menagerie went with the war game, and its painting stays as the Pen's card until Harry paints another). Not moved to extras |
 | `assets/facilities/shrine_of_aurush.png` | `tools/bastion/assets/facilities/shrine_of_aurush.png` | 2.54 MB, 1536 × 1024 | Yes: the Shrine of Aurush card's picture |
 | `assets/facilities/shrine_of_pelagos.png` | `tools/bastion/assets/facilities/shrine_of_pelagos.png` | 2.51 MB, 1536 × 1024 | Yes: the Shrine of Pelagos card's picture |
 | `assets/facilities/shrine_of_telluria.png` | `tools/bastion/assets/facilities/shrine_of_telluria.png` | 2.57 MB, 1536 × 1024 | Yes: the Shrine of Telluria card's picture |
 | `assets/facilities/smithy.png` | `tools/bastion/assets/extras/facilities/smithy.png` | 1.93 MB, 1024 × 1024 | No longer: the Smithy's picture, until it joined the Workshop (13 October 2026) |
-| `assets/facilities/war_room.png` | `tools/bastion/assets/facilities/war_room.png` | 1.93 MB, 1024 × 1024 | Yes: the War Room card's picture |
-| `assets/facilities/watchtower.png` | `tools/bastion/assets/facilities/watchtower.png` | 2.10 MB, 1024 × 1024 | Yes: the Watchtower card's picture |
+| `assets/facilities/war_room.png` | `tools/bastion/assets/extras/facilities/war_room.png` | 1.93 MB, 1024 × 1024 | No longer: the War Room's picture, until the war game and the War Room were removed (22 October 2026) |
+| `assets/facilities/watchtower.png` | `tools/bastion/assets/extras/facilities/watchtower.png` | 2.10 MB, 1024 × 1024 | No longer: the Watchtower's picture, until the war game and the Watchtower were removed (22 October 2026) |
 | `assets/facilities/workshop.png` | `tools/bastion/assets/facilities/workshop.png` | 1.90 MB, 1024 × 1024 | Yes: the Workshop card's picture |
 | `assets/arcane_study_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/arcane_study_overlay.png` | 67 KB, 1152 × 768 | No longer: showed the Arcane Study on the old map, until 13 October 2026 |
 | `assets/garden_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/garden_overlay.png` | 76 KB, 1152 × 768 | No longer: showed the Garden on the old map, until 13 October 2026 |
@@ -330,9 +330,9 @@ All 139 media files from the old Bastion (131 PNGs and 8 SVGs). 121 distinct fil
 | `assets/library_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/library_overlay.png` | 73 KB, 1152 × 768 | No longer: showed the Library on the old map, until 13 October 2026 |
 | `assets/smithy_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/smithy_overlay.png` | 66 KB, 1152 × 768 | No longer: showed the Smithy on the old map, until 13 October 2026 |
 | `assets/war_room_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/war_room_overlay.png` | 191 KB, 1152 × 768 | No longer: showed the War Room on the old map, until 13 October 2026 |
-| `assets/artisan_tools.png` | `tools/bastion/assets/panels/artisan_tools.png` | 1.88 MB, 1024 × 1024 | Yes: faint behind the Artisan Tools panel |
-| `assets/bastion_defenders.png` | `tools/bastion/assets/panels/bastion_defenders.png` | 1.82 MB, 1024 × 1024 | Yes: faint behind the Bastion Defenders box |
-| `assets/military.png` | `tools/bastion/assets/panels/military.png` | 1.84 MB, 1024 × 1024 | Yes: faint behind the Military box |
+| `assets/artisan_tools.png` | `tools/bastion/assets/extras/panels/artisan_tools.png` | 1.88 MB, 1024 × 1024 | No longer: it sat faintly behind the Artisan Tools card, which the Workshop's five staff replaced (22 October 2026, step S12) |
+| `assets/bastion_defenders.png` | `tools/bastion/assets/extras/panels/bastion_defenders.png` | 1.82 MB, 1024 × 1024 | No longer: was faint behind the Bastion Defenders box, until the war game was removed (22 October 2026) |
+| `assets/military.png` | `tools/bastion/assets/extras/panels/military.png` | 1.84 MB, 1024 × 1024 | No longer: was faint behind the Military box, until the war game was removed (22 October 2026) |
 | `assets/treasury.png` | `tools/bastion/assets/panels/treasury.png` | 1.99 MB, 1024 × 1024 | Yes: faint behind the Treasury box |
 | `assets/warehouse.png` | `tools/bastion/assets/panels/warehouse.png` | 2.04 MB, 1024 × 1024 | Yes: faint behind the Warehouse panel |
 | `assets/ui/bacca_trade_route.png` | `tools/bastion/assets/ui/bacca_trade_route.png` | 27 KB, 1494 × 1996 | Yes: Bacca's glowing route on the Sea Trade Routes map |
@@ -343,9 +343,9 @@ All 139 media files from the old Bastion (131 PNGs and 8 SVGs). 121 distinct fil
 | `assets/ui/molten_trade_route.png` | `tools/bastion/assets/ui/molten_trade_route.png` | 38 KB, 1494 × 1996 | Yes: Molten's glowing route on the Sea Trade Routes map |
 | `assets/ui/rowthorn_trade_route.png` | `tools/bastion/assets/ui/rowthorn_trade_route.png` | 32 KB, 1494 × 1996 | Yes: Rowthorn's glowing route on the Sea Trade Routes map |
 | `assets/ui/slade_trade_route.png` | `tools/bastion/assets/ui/slade_trade_route.png` | 35 KB, 1494 × 1996 | Yes: Slade's glowing route on the Sea Trade Routes map |
-| `assets/ui/trade_disputes.png` | `tools/bastion/assets/ui/trade_disputes.png` | 2.57 MB, 1536 × 1024 | Yes: faint behind the Council Ledger |
-| `assets/ui/trade_signing.png` | `tools/bastion/assets/ui/trade_signing.png` | 4.39 MB, 2048 × 1365 | Yes: the trade network's result boxes |
-| `assets/ui/wax_stamp.png` | `tools/bastion/assets/ui/wax_stamp.png` | 2.09 MB, 1536 × 1024 | Yes: the Council Verdict box |
+| `assets/ui/trade_disputes.png` | `tools/bastion/assets/extras/ui/trade_disputes.png` | 2.57 MB, 1536 × 1024 | No longer: the Council Ledger went with the Hall's stripping (S09); moved to extras (S19) |
+| `assets/ui/trade_signing.png` | `tools/bastion/assets/extras/ui/trade_signing.png` | 4.39 MB, 2048 × 1365 | No longer: the trade network's result boxes went (S09); moved to extras (S19) |
+| `assets/ui/wax_stamp.png` | `tools/bastion/assets/extras/ui/wax_stamp.png` | 2.09 MB, 1536 × 1024 | No longer: the Council Verdict box went (S09); moved to extras (S19) |
 | `data/compendium_cards/Acid.png` | `tools/bastion/assets/extras/compendium_cards/Acid.png` | 29 KB, 444 × 229 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
 | `data/compendium_cards/Alchemist's Fire.png` | `tools/bastion/assets/extras/compendium_cards/Alchemist's Fire.png` | 33 KB, 444 × 229 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
 | `data/compendium_cards/Arcane Focus.png` | `tools/bastion/assets/extras/compendium_cards/Arcane Focus.png` | 28 KB, 444 × 300 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
@@ -419,7 +419,7 @@ Not from an old repo: Harry supplied this picture himself for the Bastion's Defe
 
 | New path | Size | Used |
 |---|---|---|
-| `tools/bastion/assets/war/defend-bastion-coast.jpg` | 371 KB, 1254 × 1254 | Yes: the War Table's battle map for the Defend Bastion event (the Ironbow coast with its pier). Its painted terrain is in `tools/bastion/data/war-units-data.js` (`presetMaps.defend_coast`). |
+| `tools/bastion/assets/extras/war/defend-bastion-coast.jpg` | 371 KB, 1254 × 1254 | No longer: was the War Table's battle map for the Defend Bastion event (the Ironbow coast with its pier), until the war game was removed (22 October 2026). Its painted terrain was in `war-units-data.js` (`presetMaps.defend_coast`), which is in git at commit 4f1db26. |
 
 ### Harry's new Bastion map (12 October 2026; in use from 13 October)
 
@@ -428,17 +428,17 @@ Harry's own art, uploaded to `bastion-new-art/` (kept there untouched, with its 
 | Original | In the suite | Size | Used? |
 |---|---|---|---|
 | `bastion-new-art/Bastion_Base_3000x1250.jpg` | `tools/bastion/assets/map/bastion_base.jpg` | 1.53 MB, 3000 × 1250 | Yes: the Bastion Map |
-| `bastion-new-art/1-first-upload/01_Library_Overlay.png` | `tools/bastion/assets/map/overlays/library.png` | 3000 × 1250 | Yes: the Library & Scriptorium, once built |
-| `bastion-new-art/1-first-upload/02_Laboratory_Overlay.png` | `tools/bastion/assets/map/overlays/laboratory.png` | 3000 × 1250 | Yes: the Arcane Laboratory, once built |
+| `bastion-new-art/1-first-upload/01_Library_Overlay.png` | `tools/bastion/assets/extras/map/overlays/library.png` | 3000 × 1250 | No longer: the Library & Scriptorium's building, until it joined the Workshop (step S12) |
+| `bastion-new-art/1-first-upload/02_Laboratory_Overlay.png` | `tools/bastion/assets/extras/map/overlays/laboratory.png` | 3000 × 1250 | No longer: the Arcane Laboratory's building, until it joined the Workshop (step S12) |
 | `bastion-new-art/1-first-upload/03_Greenhouse_Overlay.png` | `tools/bastion/assets/map/overlays/greenhouse.png` | 3000 × 1250 | Yes: the Herbal Gardens, once built |
-| `bastion-new-art/1-first-upload/04_War_Room_Overlay.png` | `tools/bastion/assets/map/overlays/war_room.png` | 3000 × 1250 | Yes: the War Room |
+| `bastion-new-art/1-first-upload/04_War_Room_Overlay.png` | `tools/bastion/assets/extras/map/overlays/war_room.png` | 3000 × 1250 | No longer: showed the War Room on the map, until the war game was removed (22 October 2026) |
 | `bastion-new-art/1-first-upload/05_Hall_of_Emissaries_Overlay.png` | `tools/bastion/assets/map/overlays/hall_of_emissaries.png` | 3000 × 1250 | Yes: the Hall of Emissaries |
 | `bastion-new-art/1-first-upload/06_Shrine_of_Aurush_Overlay.png` | `tools/bastion/assets/map/overlays/shrine_of_aurush.png` | 3000 × 1250 | Yes: the Shrine of Aurush |
 | `bastion-new-art/1-first-upload/07_Shrine_of_Telluria_Overlay.png` | `tools/bastion/assets/map/overlays/shrine_of_telluria.png` | 3000 × 1250 | Yes: the Shrine of Telluria |
 | `bastion-new-art/1-first-upload/08_Shrine_of_Pelagos_Overlay.png` | `tools/bastion/assets/map/overlays/shrine_of_pelagos.png` | 3000 × 1250 | Yes: the Shrine of Pelagos |
 | `bastion-new-art/2-second-upload/09_Wyvern_Roost_Overlay.png` | `tools/bastion/assets/map/overlays/wyvern_roost.png` | 3000 × 1250 | Yes: in Construction, the Wyvern Roost's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
-| `bastion-new-art/2-second-upload/10_Griffin_Tower_Overlay.png` | `tools/bastion/assets/map/overlays/griffin_tower.png` | 3000 × 1250 | Yes: in Construction, the Griffin Tower's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
-| `bastion-new-art/2-second-upload/11_Dire_Wolf_Den_Overlay.png` | `tools/bastion/assets/map/overlays/dire_wolf_den.png` | 3000 × 1250 | Yes: in Construction, the Dire Wolf Den's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
+| `bastion-new-art/2-second-upload/10_Griffin_Tower_Overlay.png` | `tools/bastion/assets/extras/map/overlays/griffin_tower.png` | 3000 × 1250 | No longer: the Griffin Tower's tile art; the Beast Pen replaced the three pens (S10); moved to extras (S19) |
+| `bastion-new-art/2-second-upload/11_Dire_Wolf_Den_Overlay.png` | `tools/bastion/assets/extras/map/overlays/dire_wolf_den.png` | 3000 × 1250 | No longer: the Dire Wolf Den's tile art; the Beast Pen replaced the three pens (S10); moved to extras (S19) |
 | `bastion-new-art/2-second-upload/12_Weavers_Sailmakers_Hall_Overlay.png` | `tools/bastion/assets/map/overlays/weavers_sailmakers_hall.png` | 3000 × 1250 | Yes: in Construction, the Weavers' Hall's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
 | `bastion-new-art/2-second-upload/13_Stone_Quarry_Masonworks_Overlay.png` | `tools/bastion/assets/map/overlays/stone_quarry_masonworks.png` | 3000 × 1250 | Yes: in Construction, the Stone Quarry & Masonworks's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
 | `bastion-new-art/2-second-upload/14_Fishery_Smokehouse_Overlay.png` | `tools/bastion/assets/map/overlays/fishery_smokehouse.png` | 3000 × 1250 | Yes: in Construction, the Fishery & Smokehouse's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
@@ -525,3 +525,26 @@ Ten PNGs (941 × 1672, about 3 MB each), each named for its Regional Variety: `W
 
 **Still unused, kept:** `tools/beasthandler/assets/extras/wyvern/wyvern-1-mossy-green-misty-valleys.webp` and `wyvern-2-volcanic-copper-wings.webp` (first sent in the chat; they belong to none of the five varieties).
 
+
+
+## Strip Back Overhaul, step S19: pictures moved to extras (25 October 2026)
+
+Nothing deleted. Five pictures no longer used moved with `git mv` (byte-for-byte). The Temple shows its three Shrine paintings (tile) and three map overlays; the Beast Pen's tile is `facilities/menagerie.png`, its panel strip `facilities/beast_pen.jpg` and its map overlay `map/overlays/wyvern_roost.png`.
+
+| Old location | New location |
+|---|---|
+| `tools/bastion/assets/ui/trade_signing.png` | `tools/bastion/assets/extras/ui/trade_signing.png` |
+| `tools/bastion/assets/ui/trade_disputes.png` | `tools/bastion/assets/extras/ui/trade_disputes.png` |
+| `tools/bastion/assets/ui/wax_stamp.png` | `tools/bastion/assets/extras/ui/wax_stamp.png` |
+| `tools/bastion/assets/map/overlays/griffin_tower.png` | `tools/bastion/assets/extras/map/overlays/griffin_tower.png` |
+| `tools/bastion/assets/map/overlays/dire_wolf_den.png` | `tools/bastion/assets/extras/map/overlays/dire_wolf_den.png` |
+
+## Variety pictures added 26 October 2026
+
+| New file | Subspecies |
+|---|---|
+| `tools/beasthandler/assets/wyvern/leafwing.webp` | Leafwing (new) |
+| `tools/beasthandler/assets/wyvern/ironcrown.webp` | Ironcrown (replaces the old one, kept at `assets/extras/wyvern-previous/ironcrown-old.webp`) |
+| `tools/beasthandler/assets/wyvern/bloodcrest.webp` | Bloodcrest (replaces the old one, kept at `assets/extras/wyvern-previous/bloodcrest-old.webp`) |
+| `tools/beasthandler/assets/buckbear/shovelhorn.webp` | Shovelhorn (new) |
+| `tools/beasthandler/assets/fellcat/smokecoat.webp` | Smokecoat (new) |

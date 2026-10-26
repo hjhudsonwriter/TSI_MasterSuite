@@ -8,7 +8,7 @@
   var EE = window.TSI_DATA.journeyEvents;
   var BR = TSI.bastion.rules;
   var T = window.TSI_DATA;
-  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents };
+  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools };
 
   function dice(list) {
     var i = 0;
@@ -29,12 +29,13 @@
     ED.provinces.forEach(function (p) { t.equal(REG[p.id].label, p.label, p.id); });
     var clans = T.bastion.clans.map(function (c) { return c.key; }).sort();
     t.same(Object.keys(REG).map(function (id) { return REG[id].clanKey; }).sort(), clans, 'one region for each of the Bastion\'s seven Clans');
-    var gods = T.bastion.gods.map(function (g) { return g.key; });
+    var temple = BR.templeGods(bdata);
+    var gods = temple.map(function (g) { return g.id; });
     Object.keys(REG).forEach(function (id) {
       var r = REG[id];
       t.equal(T.bastion.clans.filter(function (c) { return c.key === r.clanKey; })[0].name, r.clan, id + ': the Clan\'s name as the Bastion spells it');
       t.ok(gods.indexOf(r.god) >= 0, id + ': a god the Bastion keeps Favour for');
-      t.equal(T.bastion.gods.filter(function (g) { return g.key === r.god; })[0].name, r.godName, id + ': the god\'s name as the Bastion spells it');
+      t.equal(temple.filter(function (g) { return g.id === r.god; })[0].name, r.godName, id + ': the god\'s name as the Temple spells it');
     });
   });
 
@@ -44,13 +45,18 @@
     t.same(s.level, { value: 7, fromBastion: false });
     t.same([s.heroes, s.day, s.daysPassed, s.orders, s.nextWord], [[], null, null, null, null]);
     t.same([s.region, s.clan, s.god, s.effects], [null, null, null, []]);
+    t.same([s.partyEffects, s.rite], [[], null]);
+    t.same(s.expedition, { n: 0, state: 'none', startedDay: null, endedDay: null, daysRunning: null }, 'no Explorer, no expedition');
   });
 
   test('a fresh Explorer and Bastion: Day 1, five heroes, no orders yet, the Northern Province', function (t) {
     var s = sum(explorer(), bastion());
-    t.same(s.heroes, ['Kaelen', 'Umbrys', 'Magnus', 'Elara', 'Charles']);
+    t.same(s.heroes.map(function (h) { return h.name; }), ['Kaelen', 'Umbrys', 'Magnus', 'Elara', 'Charles']);
+    t.same(s.heroes.map(function (h) { return h.id; }), ['kaelen', 'umbrys', 'magnus', 'elara', 'charles'], 'each hero carries the Explorer\'s id');
+    t.same(s.heroes.map(function (h) { return h.effects.length; }), [0, 0, 0, 0, 0]);
+    t.same([s.partyEffects, s.rite, s.expedition.state], [[], null, 'none']);
     t.same([s.day, s.daysPassed], [1, 0]);
-    t.same([s.orders, s.nextWord], [{ count: 0, next: null }, null], 'a Bastion that hasn\'t read the Explorer\'s day yet has no word to send');
+    t.same([s.orders, s.nextWord], [{ count: 0, next: null, list: [] }, null], 'a Bastion that hasn\'t read the Explorer\'s day yet has no word to send');
     t.same(s.level, { value: 7, fromBastion: true });
     t.same(s.region, { id: 'northern_province', label: 'Northern Province' });
     t.same(s.clan, { name: 'Blackstone', chief: 'Boris Blackstone', politicalCapital: 0, honourRespect: 0 });
@@ -62,20 +68,12 @@
     var b = bastion();
     b.day = 10;
     b.anchored = true;
-    b.builtExtras = [{ facId: 'arcane_laboratory', status: 'building', startDay: 1, readyDay: 22 }, { facId: 'shrine_aurush', status: 'built' }];
+    b.builtExtras = [{ facId: 'hall_of_emissaries', status: 'building', startDay: 1, readyDay: 22 }, { facId: 'shrine_aurush', status: 'built' }];
     b.pendingOrders = [
-      { id: 'a', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', issuedDay: 9, dueDay: 14 },
-      { id: 'h', facId: 'hall_of_emissaries', fnId: 'secure_trade_agreement', label: 'Hall of Emissaries: Secure Trade Agreement (Clan Karr)', issuedDay: 10, dueDay: 17 },
-      { id: 'w', facId: 'war_council', fnId: 'war_action', label: 'War Action', issuedDay: 10, dueDay: 13, meta: { kind: 'war_action', objective: 'raid', targetName: 'Bacca' } },
+      { id: 'a', facId: 'workshop', fnId: 'prepare_overland_travel_charts', label: 'Workshop: Scholar - Prepare Overland Travel Charts', issuedDay: 9, dueDay: 14 },
+      { id: 'h', facId: 'dock', fnId: 'register_port_charter', label: 'Dock: Register Port Charter (Goldport)', issuedDay: 10, dueDay: 17 },
       { id: 'd', facId: 'dock', fnId: 'charter_berth', label: 'Dock: Charter Berth (Longship)', issuedDay: 8, dueDay: 15 }
     ];
-    b.repairs = { dock: 16 };
-    b.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', startDay: 5, endDay: 26, income: 90, lastShipmentDay: 5 }];
-    b.diplomacy.delegations = [{ title: 'Hosted Delegation (assertive)', clan: 'Clan Slade', startDay: 9, endDay: 23 }];
-    b.tradeNetwork.active = true;
-    b.tradeNetwork.routes = [{ id: 'r', clan: 'Karr', risk: 'high', status: 'active', nextDay: 12, expiresDay: 40 }, { id: 's', clan: 'Farmer', risk: 'low', status: 'active', nextDay: 12, expiresDay: 40 }];
-    b.warRecovery = [{ id: 'x', kind: 'beast', name: 'Ape', status: 'wounded', untilDay: 11 }];
-    b.wars = { bacca: { since: 6, last: 10, next: 13 } };
     return b;
   }
 
@@ -83,27 +81,185 @@
     var e = explorer();
     e.travel.day = 10;
     var s = sum(e, busy());
-    t.same(s.orders, { count: 4, next: { day: 13, label: 'War Action', inDays: 3 } });
-    t.same(s.nextWord, { day: 11, inDays: 1, lines: ['The Ape is fit to fight again.'] });
+    t.same(s.orders, { count: 3, next: { day: 14, label: 'Workshop: Scholar - Prepare Overland Travel Charts', inDays: 4 }, list: [
+      { day: 14, label: 'Workshop: Scholar - Prepare Overland Travel Charts', inDays: 4 },
+      { day: 15, label: 'Dock: Charter Berth (Longship)', inDays: 5 },
+      { day: 17, label: 'Dock: Register Port Charter (Goldport)', inDays: 7 }
+    ] });
+    t.same(s.nextWord, { day: 14, inDays: 4, lines: ['Workshop: Scholar - Prepare Overland Travel Charts is complete.'] });
     e.travel.day = 11;
-    t.same(sum(e, busy()).nextWord.day, 12, 'the Bastion\'s day 11 is still to come, but the DM doc looks after the Explorer\'s day');
+    t.same(sum(e, busy()).nextWord.day, 14, 'the Bastion\'s day 11 is still to come, but the DM doc looks after the Explorer\'s day');
     var old = { treasuryGP: 5, partyLevel: 9, turn: 4, builtExtras: [], pendingOrders: [{ completeTurn: 5 }], defenders: {}, warehouse: [] };
     s = sum(e, old);
     t.same([s.orders, s.nextWord, s.level.value], [null, null, 9], 'a Bastion saved in turns has neither (it\'s set aside when the Bastion opens)');
   });
 
-  test('"The Ironbow sends word…": an upgrade (step 1b) is complete on its day, the Hall\'s too (no roll)', function (t) {
+  test('a Bastion saved by the Strip Back Overhaul (version 4) is read like version 2 and 3 (a version missed here would blank the DM doc\'s orders and the word from the Ironbow without any error)', function (t) {
+    var e = explorer();
+    e.travel.day = 10;
+    [2, 3, 4].forEach(function (v) {
+      var b = busy();
+      b.v = v;
+      var s = sum(e, b);
+      t.ok(s.orders && s.orders.count > 0, 'version ' + v + ': its orders are shown');
+      t.ok(s.nextWord, 'version ' + v + ': it has a next word');
+      t.ok(C.ironbowNews(b, 10, 17).length > 0, 'version ' + v + ': "The Ironbow sends word…"');
+    });
+    var future = busy();
+    future.v = 5;
+    t.same([sum(e, future).orders, sum(e, future).nextWord, C.ironbowNews(future, 10, 17)], [null, null, []], 'a version this page has never heard of is not guessed at');
+    t.equal(sum(e, bastion()).orders.count, 0, 'a new Bastion (version 4)');
+  });
+
+  test('the 13 retired facilities: a version 3 Bastion read before it is converted does not forecast the orders the conversion will CANCEL, but still forecasts the ones it only MOVES; a converted (version 4) one is never filtered', function (t) {
+    t.same(C.RETIRED_FACILITIES, {
+      barracks: 'cancel', armoury: 'cancel', watchtower: 'cancel', war_room: 'cancel', menagerie: 'cancel',
+      library_scriptorium: 'move', arcane_laboratory: 'move',
+      shrine_telluria: 'move', shrine_aurush: 'move', shrine_pelagos: 'move',
+      wyvern_roost: 'move', griffin_tower: 'move', dire_wolf_den: 'move'
+    });
+    Object.keys(C.RETIRED_FACILITIES).forEach(function (id) { t.ok(!!T.bastion.stripBack.facilities[id], id + ' is in the Bastion\'s own list too'); });
+    t.equal(Object.keys(C.RETIRED_FACILITIES).length, 13);
+    var e = explorer();
+    e.travel.day = 10;
+    function order(id, facId, fnId, label, dueDay, extra) {
+      return Object.assign({ id: id, facId: facId, fnId: fnId, label: label, issuedDay: 9, dueDay: dueDay }, extra || {});
+    }
+    function withOrders(v) {
+      var b = bastion();
+      b.v = v;
+      b.day = 10;
+      b.anchored = true;
+      b.pendingOrders = [
+        /* Cancelled by the conversion. */
+        order('a', 'barracks', 'recruit_defenders', 'Barracks: Recruit Defenders', 14),
+        order('m', 'menagerie', 'recruit_beast', 'Menagerie: Recruit Beast (Tiger)', 15),
+        order('x', 'war_council', 'war_action', 'War Action', 13, { meta: { kind: 'war_action', objective: 'raid', targetName: 'Bacca' } }),
+        order('u', 'library_scriptorium', 'upgrade', 'Library & Scriptorium: Upgrade to Level 3', 20, { meta: { kind: 'upgrade', toLevel: 3 } }),
+        order('h', 'shrine_pelagos', 'pray', 'Shrine of Pelagos: Pray (Pelagos\'s Tidings)', 11, { chosen: { label: 'Pelagos\'s Tidings', special: { type: 'oracle_hint', god: 'pelagos' } } }),
+        order('c', 'shrine_aurush', 'prepare_purification_incense', 'Shrine of Aurush: Prepare Purification Incense', 12),
+        order('f', 'shrine_telluria', 'pray', 'Shrine of Telluria: Pray (Telluria\'s Blessing)', 12, { chosen: { label: 'Telluria\'s Blessing', special: { type: 'favour_blessing', god: 'telluria' } } }),
+        order('t', 'dire_wolf_den', 'dwf_riding_harness', 'Dire Wolf Den: Riding Harness (Ashfang)', 17),
+        order('q', 'arcane_laboratory', 'some_old_order', 'Arcane Laboratory: An order the Workshop does not give', 16),
+        /* Only moved by the conversion: still forecast. */
+        order('r', 'library_scriptorium', 'research', 'Library & Scriptorium: Research (Geographical Scriptures)', 18),
+        order('l', 'arcane_laboratory', 'alchemy', 'Arcane Laboratory: Alchemy (Antitoxin)', 19),
+        order('b', 'shrine_pelagos', 'bless_voyage', 'Shrine of Pelagos: Bless Voyage', 13),
+        order('g', 'shrine_aurush', 'great_rite_aurush', 'Shrine of Aurush: Great Rite of Aurush', 15),
+        order('w2', 'wyvern_roost', 'house_wyvern', 'Wyvern Roost: House a Wyvern (Skyrender)', 14),
+        /* Never retired. */
+        order('d', 'dock', 'charter_berth', 'Dock: Charter Berth (Longship)', 16),
+        order('w', 'workshop', 'craft', 'Workshop: Craft (Dagger)', 13)
+      ];
+      return b;
+    }
+    /* The Temple's Pray is instant, so even the Favour prayer ends; the Temple's nine blessings carry on (a Great Rite and a Voyage Blessing here). */
+    var cancelled = ['a', 'm', 'x', 'u', 'h', 'c', 'f', 't', 'q'];
+    var kept = ['r', 'l', 'b', 'g', 'w2', 'd', 'w'];
+    cancelled.forEach(function (id) { t.equal(C.cancelledByConversion(withOrders(3).pendingOrders.filter(function (o) { return o.id === id; })[0]), true, id + ' is cancelled'); });
+    kept.forEach(function (id) { t.equal(C.cancelledByConversion(withOrders(3).pendingOrders.filter(function (o) { return o.id === id; })[0]), false, id + ' is kept or moved'); });
+    var old = withOrders(3);
+    var s3 = sum(e, old);
+    t.equal(s3.orders.count, kept.length, 'only what will survive');
+    t.equal(s3.orders.next.label, 'Shrine of Pelagos: Bless Voyage', 'the Voyage Blessing moves to the Temple, so it is still due on Day 13 (the Favour prayer due on Day 12 ends)');
+    var news = JSON.stringify([s3, C.ironbowNews(old, 10, 30)]);
+    ['Barracks', 'Menagerie', 'War Action', 'Pelagos\'s Tidings', 'Telluria\'s Blessing', 'Purification', 'Riding Harness', 'Upgrade to Level 3'].forEach(function (name) { t.ok(news.indexOf(name) === -1, name + ' is never named'); });
+    ['Research (Geographical Scriptures)', 'Alchemy (Antitoxin)', 'Bless Voyage', 'Great Rite of Aurush', 'House a Wyvern', 'Charter Berth', 'Craft (Dagger)'].forEach(function (name) { t.ok(news.indexOf(name) !== -1, name + ' is still forecast'); });
+    t.equal(sum(e, withOrders(2)).orders.count, kept.length, 'a version 2 Bastion is also converted when it opens, so it is read the same way');
+    var converted = withOrders(4);
+    t.equal(sum(e, converted).orders.count, kept.length + cancelled.filter(function (id) { return id !== 'x'; }).length, 'version 4: nothing is left out (a War Action an older copy put back is never forecast)');
+    t.ok(/Barracks: Recruit Defenders is complete/.test(JSON.stringify(C.ironbowNews(converted, 10, 20))), 'its Barracks order is still forecast');
+    var before = JSON.stringify(old);
+    C.ironbowNews(old, 10, 20);
+    t.equal(JSON.stringify(old), before, 'the save is only read');
+    t.equal(C.cancelledByConversion(null), false);
+    t.equal(C.cancelledByConversion({ facId: 'toString', fnId: 'x' }), false, 'a name that is not a facility');
+    t.equal(C.cancelledByConversion(order('x', 'war_room', 'recruit', 'War Room: Recruit (Archers (50))', 14)), true, 'every War Room order ends');
+    t.equal(C.cancelledByConversion(order('x', 'wyvern_roost', 'house_elara_wyvern', 'Wyvern Roost: House Elara\'s Wyvern', 14)), false);
+  });
+
+  test('the war game is gone (S06): a Clan at war, a regiment or beast recovering, a facility Under Repair, a War Action and a War Room being built are never forecast, in a version 3 save read before it is converted or in any other', function (t) {
+    [3, 4].forEach(function (v) {
+      var b = bastion();
+      b.v = v;
+      b.day = 10;
+      b.anchored = true;
+      b.builtExtras = [{ facId: 'war_room', status: 'building', startDay: 1, readyDay: 22 }, { facId: 'menagerie', status: 'building', startDay: 1, readyDay: 23 }];
+      b.pendingOrders = [{ id: 'x', facId: 'war_council', fnId: 'war_action', label: 'War Action', issuedDay: 9, dueDay: 13, meta: { kind: 'war_action', objective: 'raid', targetName: 'Bacca' } }];
+      b.wars = { bacca: { since: 6, last: 10, next: 13 } };
+      b.warRecovery = [{ id: 'x', kind: 'beast', name: 'Ape', status: 'wounded', untilDay: 11 }];
+      b.repairs = { dock: 16 };
+      var text = JSON.stringify(C.bastionComing(b));
+      t.ok(!/army|attack|fit to fight|fit for duty|Repairs|War Room|Menagerie/.test(text), 'version ' + v + ': ' + text);
+    });
+  });
+
+  test('the three Shrines are ONE Temple to a version 3 Bastion read before it is converted: one construction (the built one, else the one ready first), none at all of a version 4', function (t) {
+    function save(v, extra) {
+      var b = bastion();
+      b.v = v;
+      b.day = 10;
+      b.anchored = true;
+      Object.keys(extra).forEach(function (k) { b[k] = extra[k]; });
+      return b;
+    }
+    function lines(b) { return C.bastionComing(b).map(function (x) { return x.day + ' ' + x.line; }); }
+    function building(id, ready) { return { facId: id, status: 'building', startDay: 1, readyDay: ready }; }
+    var three = save(3, { builtExtras: [building('shrine_telluria', 26), building('shrine_aurush', 22), building('shrine_pelagos', 30)] });
+    t.same(lines(three), ['22 The Temple is built.'], 'one Temple, on the day of the one ready first');
+    t.same(lines(save(2, { builtExtras: [building('shrine_telluria', 26), building('shrine_pelagos', 30)] })), ['26 The Temple is built.'], 'a version 2 Bastion is converted too');
+    t.same(lines(save(3, { builtExtras: ['shrine_telluria', building('shrine_aurush', 22)] })), [], 'one of them already built: that one is the Temple, the others\' construction ends');
+    t.same(lines(save(3, { builtExtras: [building('shrine_aurush', 22), { facId: 'temple', status: 'building', startDay: 2, readyDay: 40 }] })), ['40 The Temple is built.'], 'a Temple already in a slot is the Temple');
+    t.same(lines(save(3, { builtExtras: [building('shrine_telluria', 'soon')] })), [], 'a damaged day is never guessed');
+    t.same(lines(save(3, { builtExtras: [building('herbal_gardens', 15), building('shrine_aurush', 26), building('wyvern_roost', 30)] })), ['15 The Herbal Gardens is built.', '26 The Temple is built.', '30 The Beast Pen is built.'], 'the Temple and the Pen are each counted once, beside other buildings');
+    /* A blessing order at a Shrine that carries on is still forecast on its own day. */
+    t.same(lines(save(3, { pendingOrders: [{ id: 'b', facId: 'shrine_pelagos', fnId: 'bless_voyage', label: 'Shrine of Pelagos: Bless Voyage', issuedDay: 9, dueDay: 15 }] })), ['15 Shrine of Pelagos: Bless Voyage is complete.']);
+    var v4 = save(4, { builtExtras: [building('temple', 31)] });
+    t.same(lines(v4), ['31 The Temple is built.'], 'a converted Bastion says what it holds, by its own name');
+  });
+
+  test('the three beast buildings are ONE Beast Pen to a version 3 Bastion read before it is converted: one construction (the one ready first), none at all of a version 4', function (t) {
+    function save(v, extra) {
+      var b = bastion();
+      b.v = v;
+      b.day = 10;
+      b.anchored = true;
+      Object.keys(extra).forEach(function (k) { b[k] = extra[k]; });
+      return b;
+    }
+    function lines(b) { return C.bastionComing(b).map(function (x) { return x.day + ' ' + x.line; }); }
+    function building(id, ready) { return { facId: id, status: 'building', startDay: 1, readyDay: ready }; }
+    var three = save(3, { builtExtras: [building('wyvern_roost', 26), building('griffin_tower', 22), building('dire_wolf_den', 30)] });
+    t.same(lines(three), ['22 The Beast Pen is built.'], 'one Pen, on the day of the one ready first');
+    t.equal(JSON.stringify(C.bastionComing(three)).match(/is built/g).length, 1);
+    t.same(lines(save(2, { builtExtras: [building('wyvern_roost', 26), building('dire_wolf_den', 30)] })), ['26 The Beast Pen is built.'], 'a version 2 Bastion is converted too');
+    t.same(lines(save(3, { builtExtras: ['wyvern_roost', building('griffin_tower', 22)] })), [], 'one of them already built: that one is the Pen, the others\' construction ends');
+    t.same(lines(save(3, { builtExtras: [{ facId: 'dire_wolf_den', status: 'built' }, building('griffin_tower', 22)] })), []);
+    t.same(lines(save(3, { builtExtras: [building('griffin_tower', 22), { facId: 'beast_pen', status: 'building', startDay: 2, readyDay: 40 }] })), ['40 The Beast Pen is built.'], 'a Pen already in a slot is the Pen');
+    t.same(lines(save(3, { builtExtras: ['', building('wyvern_roost', 26)], builtPlots: [building('griffin_tower', 19)] })), ['19 The Beast Pen is built.'], 'slots and plots alike');
+    t.same(lines(save(3, { builtExtras: [building('wyvern_roost', 'soon')] })), [], 'a damaged day is never guessed');
+    t.same(lines(save(3, { builtExtras: [building('herbal_gardens', 15), building('wyvern_roost', 26)] })), ['15 The Herbal Gardens is built.', '26 The Beast Pen is built.'], 'other buildings are named as before');
+    /* A House order at the Tower is still forecast on its own day (it only moves to the Pen). */
+    t.same(lines(save(3, { pendingOrders: [{ id: 'h', facId: 'griffin_tower', fnId: 'house_griffin', label: 'Griffin Tower: House a Griffin (Swiftwing)', issuedDay: 9, dueDay: 15 }] })), ['15 Griffin Tower: House a Griffin (Swiftwing) is complete.']);
+    /* A converted Bastion (version 4) is never filtered: it says what it holds, by its own names. */
+    var v4 = save(4, { builtExtras: [building('beast_pen', 31), building('griffin_tower', 22)] });
+    t.same(lines(v4), ['22 The Griffin Tower is built.', '31 The Beast Pen is built.']);
+    var before = JSON.stringify(three);
+    C.bastionComing(three);
+    t.equal(JSON.stringify(three), before, 'the save is only read');
+  });
+
+  test('"The Ironbow sends word…": an upgrade (step 1b) is complete on its day, the Dock\'s too (no roll)', function (t) {
     var b = bastion();
     b.day = 10;
     b.anchored = true;
-    b.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }];
     b.pendingOrders = [
-      { id: 'u', facId: 'hall_of_emissaries', fnId: 'upgrade', label: 'Hall of Emissaries: Upgrade to Level 2', costGP: 0, issuedDay: 10, dueDay: 17, meta: { kind: 'upgrade', toLevel: 2 } },
-      { id: 'v', facId: 'barracks', fnId: 'upgrade', label: 'Barracks: Upgrade to Level 3', costGP: 0, issuedDay: 10, dueDay: 24, meta: { kind: 'upgrade', toLevel: 3 } }
+      { id: 'u', facId: 'dock', fnId: 'upgrade', label: 'Dock: Upgrade to Level 2', costGP: 0, issuedDay: 10, dueDay: 17, meta: { kind: 'upgrade', toLevel: 2 } },
+      { id: 'v', facId: 'workshop', fnId: 'upgrade', label: 'Workshop: Upgrade to Level 3', costGP: 0, issuedDay: 10, dueDay: 24, meta: { kind: 'upgrade', toLevel: 3 } }
     ];
     t.same(C.ironbowNews(b, 10, 24).filter(function (w) { return w.day === 17 || w.day === 24; }), [
-      { day: 17, lines: ['Hall of Emissaries: Upgrade to Level 2 is complete.'] },
-      { day: 24, lines: ['Barracks: Upgrade to Level 3 is complete.'] }
+      { day: 17, lines: ['Dock: Upgrade to Level 2 is complete.'] },
+      { day: 24, lines: ['Workshop: Upgrade to Level 3 is complete.'] }
     ]);
   });
 
@@ -111,18 +267,16 @@
     var b = busy();
     var before = JSON.stringify(b);
     t.same(C.ironbowNews(b, 10, 17), [
-      { day: 11, lines: ['The Ape is fit to fight again.'] },
-      { day: 12, lines: ['The sea route to Karr needs a roll.'] },
-      { day: 13, lines: ['Your army is ready to march on Bacca (Raid).', 'Clan Bacca may attack: the Bastion rolls to see.'] },
-      { day: 14, lines: ['Barracks: Recruit Defenders is complete.'] },
-      { day: 17, lines: ['Hall of Emissaries: Secure Trade Agreement (Clan Karr) needs your roll.', 'Dock: Charter Berth (Longship) is complete.', 'Repairs: the Dock is working again.'] }
-    ], 'the Dock\'s order waits for its repairs; the low-risk route pays without a roll');
+      { day: 14, lines: ['Workshop: Scholar - Prepare Overland Travel Charts is complete.'] },
+      { day: 15, lines: ['Dock: Charter Berth (Longship) is complete.'] },
+      { day: 17, lines: ['Dock: Register Port Charter (Goldport) is complete.'] }
+    ], 'no war, recovery, repair or roll lines any more (S06), and the Hall has no actions or sea routes to ask for one (S09)');
     t.same(C.ironbowNews(b, 17, 29), [
-      { day: 22, lines: ['The Arcane Laboratory is built.'] },
-      { day: 23, lines: ['Your delegation from Clan Slade has ended.'] },
-      { day: 26, lines: ['Your Trade Agreement with Clan Karr has ended (its last shipment arrived).'] },
-      { day: 29, lines: ['A Bastion event is due.'] }
-    ]);
+      { day: 22, lines: ['The Hall of Emissaries is built.'] }
+    ], 'no contract ends and no delegation: the Hall has none now');
+    t.same(C.ironbowNews(b, 28, 100), [], 'no Bastion event is due on Day 29, or any day (S05)');
+    t.equal(JSON.stringify(C.bastionComing(b)).indexOf('event'), -1, 'the forecast never mentions one');
+    t.equal('BASTION_EVENT_EVERY' in C, false);
     t.same(C.ironbowNews(b, 13, 13), []);
     t.equal(JSON.stringify(b), before, 'the save isn\'t changed');
     var ahead = busy();
@@ -136,9 +290,6 @@
 
   test('the word the Explorer sends at Make Camp comes on the days the Bastion itself has news', function (t) {
     var b = busy();
-    b.wars = {};
-    b.tradeNetwork.routes = [];
-    b.pendingOrders = b.pendingOrders.filter(function (o) { return o.facId !== 'hall_of_emissaries' && o.facId !== 'war_council'; });
     var predicted = C.ironbowNews(b, 10, 30).map(function (w) { return w.day; });
     for (var d = 11; d <= 30; d++) {
       BR.startDay(b, bdata, 0);
@@ -147,10 +298,10 @@
         BR.completeSimpleOrder(b, bdata, o, dice([0.5])).forEach(function (l) { BR.addWord(b, l[1]); });
         BR.removeOrder(b, o.id);
       });
-      BR.finishDay(b, bdata, bdata.events, dice([0.5]), 0);
+      BR.finishDay(b);
     }
     t.same(b.word.map(function (w) { return w.day; }), predicted);
-    t.same(b.word.filter(function (w) { return w.day === 22; })[0].lines, ['The Arcane Laboratory is built.']);
+    t.same(b.word.filter(function (w) { return w.day === 22; })[0].lines, ['The Hall of Emissaries is built.']);
   });
 
   test('the party level is the Bastion\'s', function (t) {
@@ -176,6 +327,146 @@
     var s = sum(explorer('the_east_isle'), null);
     t.same(s.clan, { name: 'Rowthorn', chief: 'Doran Rowthorn', politicalCapital: null, honourRespect: null });
     t.same(s.god, { key: 'pelagos', name: 'Pelagos', favour: null });
+  });
+
+  test('Orders Pending lists up to five orders, the one completing next first; the count is all of them', function (t) {
+    var b = bastion();
+    b.day = 5; b.anchored = true;
+    [30, 12, 9, 21, 15, 18, 7].forEach(function (d, i) { b.pendingOrders.push({ id: 'o' + i, facId: 'dock', fnId: 'x', label: 'Order ' + d, issuedDay: 1, dueDay: d }); });
+    b.pendingOrders.push({ id: 'turns', completeTurn: 3, label: 'No day' });
+    var e = explorer();
+    e.travel.day = 6;
+    var o = sum(e, b).orders;
+    t.equal(o.count, 7, 'the order with no day is not counted');
+    t.same(o.list.map(function (x) { return x.day; }), [7, 9, 12, 15, 18], 'five, soonest first');
+    t.same(o.list[0], { day: 7, label: 'Order 7', inDays: 1 });
+    t.same(o.next, o.list[0], 'next is the first on the list');
+    b.pendingOrders = [{ id: 'z', facId: 'dock', fnId: 'x', label: '', issuedDay: 1, dueDay: 8 }];
+    t.same(sum(e, b).orders.list, [{ day: 8, label: 'An order', inDays: 2 }], 'an order with no name still shows');
+  });
+
+  test('each hero\'s effects are listed with that hero (by id); the party\'s own, and any that fit nobody, are the party\'s', function (t) {
+    var s = explorer();
+    s.travel.day = 3;
+    s.journey.effects.push({ id: 'e1', name: 'Wolf-Friend', text: 'Advantage on Perception.', who: null, whoName: 'The party', from: 'C6', day: 1, until: 'days', untilDay: 8 });
+    s.journey.effects.push({ id: 'e2', name: 'Warm', text: '', who: 'elara', whoName: 'Elara', from: 'T12', day: 1, until: 'camp', untilDay: 4 });
+    s.journey.effects.push({ id: 'e3', name: 'Frostbitten', text: 'Slower.', who: 'umbrys', whoName: 'Umbrys', from: 'T3', day: 2, until: 'dm', untilDay: null });
+    s.journey.effects.push({ id: 'e4', name: 'Frostbitten', text: 'Slower.', who: 'magnus', whoName: 'Magnus', from: 'T3', day: 2, until: 'dm', untilDay: null });
+    s.journey.effects.push({ id: 'e5', name: 'Cursed Boots', text: '', who: 'gone_hero', whoName: 'Old Bob', from: 'X1', day: 1, until: 'used', untilDay: null });
+    s.journey.effects.push({ id: 'e6', name: 'Second Wind', text: '', who: 'elara', whoName: 'Elara', from: 'X2', day: 1, until: 'used', untilDay: null });
+    var r = sum(s, null);
+    var byHero = {};
+    r.heroes.forEach(function (h) { byHero[h.id] = h.effects.map(function (x) { return x.name; }); });
+    t.same(byHero, { kaelen: [], umbrys: ['Frostbitten'], magnus: ['Frostbitten'], elara: ['Warm', 'Second Wind'], charles: [] }, 'the same effect on two heroes shows under each');
+    t.same(r.partyEffects.map(function (x) { return [x.name, x.who]; }), [['Wolf-Friend', 'The party'], ['Cursed Boots', 'Old Bob']], 'the party\'s own, and an orphan with the name it was saved under');
+    t.equal(r.effects.length, 6, 'effects still lists them all');
+    t.same(r.heroes[3].effects[0], { id: 'e2', name: 'Warm', who: 'Elara', text: '', until: 'until Make Camp', from: 'T12' }, 'the same line as the full list');
+    var renamed = JSON.parse(JSON.stringify(s));
+    renamed.tokens[3].name = 'Elara Vane';
+    t.same(sum(renamed, null).heroes[3].effects.map(function (x) { return x.name; }), ['Warm', 'Second Wind'], 'a renamed hero keeps their effects');
+    var noTokens = JSON.parse(JSON.stringify(s));
+    noTokens.tokens = [];
+    var nt = sum(noTokens, null);
+    t.same([nt.heroes.length, nt.partyEffects.length], [0, 6], 'with no heroes read, every effect is still shown');
+  });
+
+  test('the Great Rite the party holds shows as one line, ready or used', function (t) {
+    var s = explorer();
+    t.equal(sum(s, null).rite, null);
+    s.journey.blessing = { id: 'rite-ab12cd34', rite: 'earths_endurance', expedition: 1, used: false };
+    t.same(sum(s, null).rite, { name: 'Earth\'s Endurance', used: false });
+    s.journey.blessing.used = true;
+    t.same(sum(s, null).rite, { name: 'Earth\'s Endurance', used: true });
+    s.journey.blessing.rite = 'unknown_rite';
+    t.same(sum(s, null).rite, { name: 'A Great Rite', used: true }, 'a rite this copy doesn\'t know still shows');
+    s.journey.blessing = { id: 'x' };
+    t.equal(sum(s, null).rite, null, 'a damaged one is not shown');
+    t.equal(sum(s, null).effects.length, 0, 'it is never one of the Active Effects');
+  });
+
+  test('the expedition: none yet, under way with its days running, ended with the days it ran', function (t) {
+    var J = TSI.explorer.journey;
+    var s = explorer();
+    s.travel.day = 4;
+    t.same(sum(s, null).expedition, { n: 0, state: 'none', startedDay: null, endedDay: null, daysRunning: null });
+    J.startExpedition(s);
+    t.same(sum(s, null).expedition, { n: 1, state: 'active', startedDay: 4, endedDay: null, daysRunning: 0 }, 'began today');
+    s.travel.day = 7;
+    t.same(sum(s, null).expedition, { n: 1, state: 'active', startedDay: 4, endedDay: null, daysRunning: 3 }, 'began Day 4, now Day 7: running 3 days');
+    s.travel.day = 2;
+    t.equal(sum(s, null).expedition.daysRunning, 0, 'Reset Travel can put today before the start; never below 0');
+    s.travel.day = 9;
+    J.endExpedition(s);
+    t.same(sum(s, null).expedition, { n: 1, state: 'ended', startedDay: 4, endedDay: 9, daysRunning: null }, 'ended: Day 4 to Day 9');
+    s.travel.day = 30;
+    t.same([sum(s, null).expedition.startedDay, sum(s, null).expedition.endedDay], [4, 9], 'it stays until the next one starts, whatever the day');
+    J.startExpedition(s);
+    t.same(sum(s, null).expedition, { n: 2, state: 'active', startedDay: 30, endedDay: null, daysRunning: 0 }, 'the next one replaces it');
+  });
+
+  test('an expedition that ended in an older save: its end day comes from the log, or is left unknown', function (t) {
+    var J = TSI.explorer.journey;
+    var s = explorer();
+    s.travel.day = 4;
+    J.startExpedition(s);
+    s.travel.day = 9;
+    J.endExpedition(s);
+    delete s.journey.expedition.endedDay;                 /* as an older save has it: no v 2, no end day */
+    delete s.journey.expedition.v;
+    t.same(sum(s, null).expedition, { n: 1, state: 'ended', startedDay: 4, endedDay: 9, daysRunning: null }, 'read from "Expedition 1 ended on Day 9."');
+    s.journey.log = [];
+    t.same(sum(s, null).expedition, { n: 1, state: 'ended', startedDay: 4, endedDay: null, daysRunning: null }, 'no log line: unknown, never guessed');
+    s.journey.expedition = { n: 2, active: true, startedDay: 0 };
+    t.same(sum(s, null).expedition, { n: 2, state: 'active', startedDay: null, endedDay: null, daysRunning: null }, 'a start day of 0 in an older record was "not known"');
+    s.journey.expedition = { v: 2, n: 2, active: true, startedDay: 0 };
+    t.same(sum(s, null).expedition, { n: 2, state: 'active', startedDay: 0, endedDay: null, daysRunning: 9 }, 'but in a v 2 record 0 is a real day (Reset Travel can make it so)');
+    s.journey.expedition = 'junk';
+    t.equal(sum(s, null).expedition.state, 'none', 'a damaged record is no expedition');
+  });
+
+  test('after Reset Travel the expedition line still makes sense: the days moved, 0 and below allowed', function (t) {
+    var J = TSI.explorer.journey;
+    var s = explorer();
+    s.travel.day = 4;
+    J.startExpedition(s);
+    s.travel.day = 10;
+    t.same(sum(s, null).expedition, { n: 1, state: 'active', startedDay: 4, endedDay: null, daysRunning: 6 });
+    ER.resetTravel(s);
+    t.same(sum(s, null).expedition, { n: 1, state: 'active', startedDay: -5, endedDay: null, daysRunning: 6 }, 'Day 4 is now Day -5, and it has still been running 6 days');
+    s.travel.day = 3;
+    t.equal(sum(s, null).expedition.daysRunning, 8, 'and it goes on counting');
+    var e = explorer();
+    e.travel.day = 4;
+    J.startExpedition(e);
+    e.travel.day = 9;
+    J.endExpedition(e);
+    e.travel.day = 10;
+    ER.resetTravel(e);
+    t.same(sum(e, null).expedition, { n: 1, state: 'ended', startedDay: -5, endedDay: 0, daysRunning: null }, 'ended: -5 to 0, both real days');
+  });
+
+  test('a damaged save never stops the summary, whatever names it uses: constructor, __proto__, toString', function (t) {
+    var bad = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf'];
+    bad.forEach(function (name) {
+      var s = explorer();
+      s.travel.provinceId = name;
+      s.journey.effects.push({ id: 'e1', name: 'Odd', text: '', who: name, whoName: name, from: 'X', day: 1, until: 'dm', untilDay: null });
+      s.journey.blessing = { id: 'x', rite: name, expedition: 1, used: false };
+      s.journey.expedition = { n: 1, active: true, startedDay: 2, who: name };
+      var b = bastion();
+      b.diplomaticRecords = { next: 1, list: [{ id: 'd', title: 'Odd', status: 'confirmed', consequences: [{ id: 'c', kind: name, clan: '', text: 'x' }] }] };
+      var r;
+      try { r = sum(s, b); } catch (err) { t.ok(false, name + ' threw: ' + err.message); return; }
+      t.ok(r.effects.length === 1 && r.partyEffects.length === 1, name + ': the effect is shown, with the party\'s (it fits no hero)');
+      t.same(r.rite, { name: 'A Great Rite', used: false }, name + ': not one of the rites, so it is just "a Great Rite" (not the function of that name)');
+      t.equal(r.region, null, name + ': not a region');
+      t.same(r.trackedAnywhere, [], name + ': not an agreement kind');
+      t.same(r.heroes.map(function (h) { return h.effects.length; }), [0, 0, 0, 0, 0], name + ': no hero was given it');
+    });
+    var tok = explorer();
+    tok.tokens[0].id = '__proto__';
+    tok.journey.effects.push({ id: 'e2', name: 'Fine', text: '', who: '__proto__', whoName: 'Kaelen', from: 'X', day: 1, until: 'dm', untilDay: null });
+    t.equal(sum(tok, null).heroes[0].effects.length, 1, 'a hero whose id is a plain name like that still gets their own');
   });
 
   test('odd values are kept within the Bastion\'s own limits', function (t) {
@@ -261,7 +552,8 @@
 
   test('a damaged Explorer save doesn\'t stop the summary', function (t) {
     var s = sum({ tokens: 'x', travel: null, journey: { gold: 'lots', effects: [null, { text: 'no name' }], threads: [7, { note: 'no name' }, { name: 'Odd', follow: { from: 'x' }, resolve: 'y' }] } }, 'junk');
-    t.same([s.heroes, s.day, s.bastionSaved, s.effects, s.gold], [[], 1, false, [], 0]);
+    t.same([s.heroes, s.day, s.bastionSaved, s.effects, s.partyEffects, s.gold], [[], 1, false, [], [], 0]);
+    t.same([s.rite, s.expedition.state], [null, 'none']);
     t.same(s.threads.map(function (x) { return [x.name, x.due, x.reward]; }), [['Odd', '', []]]);
     t.equal(s.nextFollowUp, null);
     t.equal(s.region.id, 'northern_province', 'the Explorer\'s own first region');

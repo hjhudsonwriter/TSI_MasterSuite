@@ -40,6 +40,11 @@
          each open tab's heartbeat, { at, tool }, for the "Already open"
          warning; dmdocOpen: whether this window has the DM doc open, kept
          per window so it never pops up on the TV's window by itself)
+       - dmdocDraft: a copy of the DM doc's Quest text typed in the last
+         moments, kept in the small storage until the saved text has caught up
+         (a safety net for a window closed a moment after the last key)
+       - replaced: the time of the last Restore or Import, so another open
+         window (the DM doc's pop-out) can look again at what it shows
        - handoff, handback: a fight passed from the Explorer to the Combat
          Tracker, and its result passed back (TSI.handoff)
        - handoffCrest: a crest sent from the Clan Crest Creator to the
@@ -51,9 +56,9 @@
        - file: the start of backup file names */
     spaceNames: function (space) {
       if (space === 'test') {
-        return { space: 'test', db: 'tsi.test', local: 'tsi.test:', tabs: 'tsi.test:tabs', tabId: 'tsi.test:tab-id', flash: 'tsi.test:flash', dmdocOpen: 'tsi.test:dmdoc-open', lastBackup: 'tsi.test:last-backup', handoff: 'tsi.test:handoff', handback: 'tsi.test:handback', handoffCrest: 'tsi.test:handoff-crest', lock: 'tsi.test:lock.', file: 'tsi-test-' };
+        return { space: 'test', db: 'tsi.test', local: 'tsi.test:', tabs: 'tsi.test:tabs', tabId: 'tsi.test:tab-id', flash: 'tsi.test:flash', dmdocOpen: 'tsi.test:dmdoc-open', dmdocDraft: 'tsi.test:dmdoc-quest-draft', replaced: 'tsi.test:replaced', lastBackup: 'tsi.test:last-backup', handoff: 'tsi.test:handoff', handback: 'tsi.test:handback', handoffCrest: 'tsi.test:handoff-crest', lock: 'tsi.test:lock.', file: 'tsi-test-' };
       }
-      return { space: 'suite', db: 'tsi.suite', local: '', tabs: 'tsi.suite.tabs', tabId: 'tsi.suite.tab-id', flash: 'tsi.suite.flash', dmdocOpen: 'tsi.suite.dmdoc-open', lastBackup: 'tsi.suite.last-backup', handoff: 'tsi.suite.handoff', handback: 'tsi.suite.handback', handoffCrest: 'tsi.suite.handoff-crest', lock: 'tsi.suite.lock.', file: 'tsi-' };
+      return { space: 'suite', db: 'tsi.suite', local: '', tabs: 'tsi.suite.tabs', tabId: 'tsi.suite.tab-id', flash: 'tsi.suite.flash', dmdocOpen: 'tsi.suite.dmdoc-open', dmdocDraft: 'tsi.suite.dmdoc-quest-draft', replaced: 'tsi.suite.replaced', lastBackup: 'tsi.suite.last-backup', handoff: 'tsi.suite.handoff', handback: 'tsi.suite.handback', handoffCrest: 'tsi.suite.handoff-crest', lock: 'tsi.suite.lock.', file: 'tsi-' };
     },
 
     /* The fallback-storage key for a save, and back again (null if it isn't one of this space's). */
@@ -123,6 +128,29 @@
       var rest = rules.isValidKey(key) ? key.slice(4) : 'unreadable';
       if (rest.indexOf('quarantine.') === 0) rest = rest.slice('quarantine.'.length);
       return 'tsi.quarantine.' + rest + '.' + stamp;
+    },
+
+    /* A name nothing else has: base, or base-2, base-3... (two copies set
+       aside in the same second must never overwrite each other). taken(name)
+       says whether a name is already used. */
+    uniqueKey: function (base, taken) {
+      var key = base;
+      for (var n = 2; taken(key); n++) key = base + '-' + n;
+      return key;
+    },
+
+    /* Was a copy read back from the browser exactly as it was written? The
+       row read must be a real record under the copy's own name holding the same
+       value (TSI.store.keepCopy only says a copy is kept once this is true). */
+    copyIsIntact: function (row, key, value) {
+      return rules.isRecord(row) && row.key === key && JSON.stringify(row.value) === JSON.stringify(value);
+    },
+
+    /* The note kept with a copy made by TSI.store.keepCopy: where it came
+       from and why. copy: true tells it apart from a record that was moved. */
+    copyNote: function (key, reason, when) {
+      var d = when instanceof Date ? when : new Date(when || Date.now());
+      return { from: key, reason: reason || 'A copy kept in case it is needed.', at: d.toISOString(), copy: true };
     },
 
     /* ---------- Two open copies (the "Already open" warning) ----------

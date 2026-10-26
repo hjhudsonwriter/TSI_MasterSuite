@@ -1,6 +1,7 @@
-/* The Shrines in the Explorer (pull request 8b, part 2; Harry's Shrine
-   specification, 15 October 2026), from a double-clicked file, on the test
-   page with Harry's sample (tests/fixtures/bastion-pr8b-sample.json):
+/* The Temple's items and Great Rites in the Explorer (pull request 8b, part 2; Harry's Shrine
+   specification, 15 October 2026; the three Shrines became one Temple on 22 October 2026), from a
+   double-clicked file, on the test page with Harry's sample (tests/fixtures/bastion-pr8b-sample.json,
+   whose three Shrines the Bastion converts into the Temple when it opens):
    - Start and End expedition;
    - a finished Great Rite waits at the Ironbow, is given to the party in an
      expedition, goes to the Bastion once, and expires at End expedition;
@@ -203,13 +204,15 @@ const RITE = 'rite-ab12cd34';
 
   section('Harry\'s sample on the test page');
 
-  await check('the sample imports, and a finished Great Rite of Earth\'s Endurance waits at the Ironbow', async () => {
+  await check('the sample imports (its three Shrines become one Temple), and a finished Great Rite of Earth\'s Endurance waits at the Ironbow', async () => {
     ba = await ctx.newPage();
     await ba.goto(HARNESS + '?tool=bastion');
     await ba.waitForFunction(() => window.TSI && TSI.bastion && TSI.bastion.debug, null, { timeout: 8000 });
     await H.chooseFile(ba, '[data-test=import-save]', SAMPLE);
     await H.clickModal(ba, 'Import');
-    await ba.waitForFunction(() => window.TSI && TSI.bastion && TSI.bastion.debug && (TSI.bastion.debug.state().builtExtras || []).filter(Boolean).length === 3, null, { timeout: 8000 });
+    await ba.waitForFunction(() => window.TSI && TSI.bastion && TSI.bastion.debug && (TSI.bastion.debug.state().builtExtras || []).filter(Boolean).length === 1, null, { timeout: 8000 });
+    /* The box that says what changed holds the Bastion until it is read (the Strip Back Overhaul). */
+    await H.ackChanges(ba);
     ex = await openExplorer(ctx, HARNESS);
     await ba.waitForFunction(() => TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
     /* Changed after it has read the Explorer's day, so the saved copy is anchored. */
@@ -248,9 +251,10 @@ const RITE = 'rite-ab12cd34';
     assert(/Great Rite/.test(top.title), top.title);
   });
 
-  await check('the Bastion\'s Shrine panel says the rite is with the party', async () => {
-    await openTile(ba, 'shrine_telluria');
-    assert(/Earth's Endurance: with the party since Day/.test(await text(ba, 'shrine-telluria')), await text(ba, 'shrine-telluria'));
+  await check('the Bastion\'s Temple panel says the rite is with the party, in Telluria\'s third', async () => {
+    await openTile(ba, 'temple');
+    assert(/Earth's Endurance: with the party since Day/.test(await text(ba, 'temple-god-telluria')), await text(ba, 'temple-god-telluria'));
+    equal(await text(ba, 'great-rites-aurush').catch(() => null), null, 'no rite listed under the other gods');
     await closeAll(ba);
   });
 

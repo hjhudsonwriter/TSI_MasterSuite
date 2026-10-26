@@ -1,13 +1,16 @@
-/* Scarlett Isles: Beast Handler (BH-1b, Harry's approvals of 21 October 2026),
+/* Scarlett Isles: Beast Handler (BH-1b, Harry's approvals of 21 October 2026; read-only since 22 October 2026),
    from the test page with the internet off. The Bastion is built in one
-   window (a Roost with Elara's wyvern and a second wyvern, a Griffin Tower
-   with a griffin, no Dire Wolf Den) and the companion is opened in another.
+   window (a Beast Pen with Elara's wyvern and a second beast, a griffin, one
+   that has no handler and one that is not acclimatised yet) and the companion
+   is opened in another.
    It checks: the Home directory; "Viewing as"; other players' beasts as plain
-   lines; the main screen, Bond 0 to 5 and the harmless greeting; Profile,
-   Orders (only free training, the confirm screen with Send switched off, and
-   the whole-building lock) and the read-only Chronicle without DM-only
-   notes; a phone-sized screen, the laptop and the TV (no sideways scroll,
-   44 px targets); reduced motion; and that nothing in the Bastion changed.
+   lines, and a Bond 0 beast as a line that says "Not acclimatised yet" and
+   shows nothing else; the three tabs along the bottom (Profile, Bond,
+   Chronicle) with Bond as the page it opens on; the harmless greeting; a
+   Profile that only shows the Bastion's words; the read-only Chronicle
+   without DM-only notes; that there are no Orders and nothing to type; a
+   phone-sized screen, the laptop and the TV (no sideways scroll, 44 px
+   targets); reduced motion; and that nothing in the Bastion changed.
    Run with:  node tests/e2e/beasthandler.test.js */
 'use strict';
 
@@ -35,25 +38,28 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     const R = TSI.bastion.rules;
     s.partyLevel = 9;
     s.treasuryGP = 7654321;
-    s.builtExtras = [{ facId: 'wyvern_roost', status: 'built' }, { facId: 'griffin_tower', status: 'built' }];
-    s.facilityLevels.wyvern_roost = 3;
-    s.facilityLevels.griffin_tower = 2;
+    s.builtExtras = [{ facId: 'beast_pen', status: 'built' }];
+    s.facilityLevels.beast_pen = 1;
     const mk = (id, species, name, home, handler) => {
       const c = { id, species, owner: '', name, status: 'housed', home, grantedDay: 1, housedDay: 1, msgId: '' };
       if (id === 'elara_wyvern') { c.owner = 'elara'; c.development = R.newDevelopment(c, s.day); }
       else if (handler) { c.development = R.newDevelopment(c, s.day); c.development.handlerId = handler; }
-      /* Every beast here has already been introduced (its subspecies is set), so its page opens at once; meeting a beast for the first time is tested in beasthandler-meet.test.js. */
+      /* Every acclimatised beast here has already been introduced (its subspecies is set), so its page opens at once; meeting a beast for the first time is tested in beasthandler-meet.test.js. */
       if (c.development) c.development.regional = species === 'wyvern' ? 'Widowspine' : 'Embermantle';
       return c;
     };
     s.creatures = [
-      mk('elara_wyvern', 'wyvern', '', 'wyvern_roost'),
-      mk('cr-stormwing', 'wyvern', 'Stormwing', 'wyvern_roost', 'Mira'),
-      mk('cr-swiftwing', 'griffin', 'Swiftwing', 'griffin_tower', 'Mira'),
-      mk('cr-loose', 'griffin', 'Unhandled', 'griffin_tower', '')
+      mk('elara_wyvern', 'wyvern', '', 'beast_pen'),
+      mk('cr-stormwing', 'wyvern', 'Stormwing', 'beast_pen', 'Mira'),
+      mk('cr-swiftwing', 'griffin', 'Swiftwing', 'beast_pen', 'Mira'),
+      mk('cr-loose', 'griffin', 'Unhandled', 'beast_pen', ''),
+      mk('cr-newcomer', 'griffin', 'Newcomer', 'beast_pen', 'Mira')
     ];
+    s.creatures[1].development.bond.level = 2;
     s.creatures[2].development.bond.level = 3;
-    const data = { bastion: window.TSI_DATA.bastion, facilities: window.TSI_DATA.bastionFacilities, tools: window.TSI_DATA.bastionTools, events: window.TSI_DATA.bastionEvents, research: window.TSI_DATA.bastionResearch, goods: window.TSI_DATA.bastionGoods, commerce: window.TSI_DATA.bastionCommerce, courier: window.TSI_DATA.bastionCourier, creatures: window.TSI_DATA.bastionCreatures };
+    s.creatures[4].development.bond.level = 0;
+    s.creatures[4].development.temperament.dominant = 'SECRET-NEWCOMER-LINE';
+    const data = { bastion: window.TSI_DATA.bastion, facilities: window.TSI_DATA.bastionFacilities, tools: window.TSI_DATA.bastionTools, research: window.TSI_DATA.bastionResearch, goods: window.TSI_DATA.bastionGoods, commerce: window.TSI_DATA.bastionCommerce, courier: window.TSI_DATA.bastionCourier, creatures: window.TSI_DATA.bastionCreatures };
     R.setTemperament(s, data, 'elara_wyvern', { dominant: 'Proud', attachment: 'Lowers its head', trigger: 'Loud metallic ringing' });
     R.addChronicleNote(s, data, 'elara_wyvern', 'She came back to the tower at dusk.');
     R.addChronicleNote(s, data, 'elara_wyvern', 'SECRET-DM-NOTE who sent the storm', true);
@@ -72,17 +78,16 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   };
   const home = async () => { if (await bh.$('[data-test=bh-back]')) { await bh.click('[data-test=bh-back]'); await bh.waitForTimeout(120); } if (await bh.$('[data-test=bh-back]')) { await bh.click('[data-test=bh-back]'); await bh.waitForTimeout(120); } };
 
-  await check('Home: opens as the directory only (nobody\'s detail is open until the DM chooses), with the heading and the buildings that stand, and no Dire Wolf Den', async () => {
+  await check('Home: opens as the directory only (nobody\'s detail is open until the DM chooses), with the heading and the one Beast Pen, which lists every housed beast', async () => {
     equal(await bh.$eval('[data-test=bh-viewas]', n => n.value), '');
     equal(await bh.$$eval('.tsi-bh-beast--mine', n => n.length), 0);
     assert(/Choose a handler/.test(await bare(bh, '[data-test=bh-message]')));
     equal(await bare(bh, '.tsi-bh-title__main'), 'Scarlett Isles: Beast Handler');
     equal(await bare(bh, '.tsi-bh-title__sub'), 'The Companions of Ironbow');
-    equal(await texts(bh, '.tsi-bh-card__title'), ['Wyvern Roost', 'Griffin Tower']);
-    equal(await texts(bh, '.tsi-bh-card__head .tsi-pill'), ['Level 3', 'Level 2']);
-    equal(await bh.$('[data-test=bh-fac-dire_wolf_den]'), null, 'an unbuilt building is not listed');
-    equal(await texts(bh, '[data-test=bh-fac-wyvern_roost] .tsi-bh-beast__name'), ['Elara\'s wyvern', 'Stormwing']);
-    equal(await texts(bh, '[data-test=bh-fac-griffin_tower] .tsi-bh-beast__name'), ['Swiftwing', 'Unhandled']);
+    equal(await texts(bh, '.tsi-bh-card__title'), ['Beast Pen']);
+    equal(await texts(bh, '.tsi-bh-card__head .tsi-pill'), [], 'one level: no level chip');
+    equal(await bh.$('[data-test=bh-fac-wyvern_roost]'), null, 'the old buildings are not listed');
+    equal(await texts(bh, '[data-test=bh-fac-beast_pen] .tsi-bh-beast__name'), ['Elara\'s wyvern', 'Stormwing', 'Swiftwing', 'Unhandled', 'Newcomer']);
     assert(/Read from the Bastion saved on this device · Day \d+/.test(await bare(bh, '[data-test=bh-sync]')), await bare(bh, '[data-test=bh-sync]'));
   });
 
@@ -95,10 +100,14 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     assert(/Bond 1 · Acclimatised/.test(await bare(bh, '[data-test=bh-row-bond-elara_wyvern]')), 'Elara\'s bond is on her line');
     equal(await bh.$('[data-test=bh-row-bond-cr-swiftwing]') === null, false, 'a creature with a bond record shows it');
     equal(await bh.$('[data-test=bh-row-bond-cr-loose]'), null, 'a creature with no bond record shows none');
+    equal(await bare(bh, '[data-test=bh-row-wait-cr-loose]'), 'Not acclimatised yet', 'but a beast with no handler and no record yet says it is not acclimatised, just as one with a handler does');
+    assert(/No handler yet/.test(await bare(bh, '[data-test=bh-beast-cr-loose]')), 'and says it has no handler: ' + await bare(bh, '[data-test=bh-beast-cr-loose]'));
+    equal(await bh.$eval('[data-test=bh-beast-cr-loose]', n => n.tagName), 'LI', 'with nothing to open');
   });
 
-  await check('Elara\'s main screen: name, handler, Bond 1 of 0 to 5, a harmless greeting, three sections', async () => {
+  await check('Elara\'s Bond page (where a beast opens): name, handler, Bond 1 of 0 to 5, a harmless greeting, three tabs with Bond lit', async () => {
     await bh.click('[data-test=bh-beast-elara_wyvern]');
+    equal(await bh.$eval('[data-test=bh-root]', n => n.getAttribute('data-screen')), 'creature-bond');
     equal(await bare(bh, '[data-test=bh-name]'), 'Elara\'s wyvern');
     equal(await bare(bh, '[data-test=bh-handler]'), 'Handler: Elara');
     equal(await bare(bh, '[data-test=bh-bond-line]'), 'Bond 1 \u00b7 Acclimatised');
@@ -111,18 +120,26 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     await bh.waitForTimeout(1200);
     assert(!(await bh.$eval('[data-test=bh-portrait-large]', n => n.classList.contains('tsi-bh-hero2--greet'))), 'and settles');
     equal(await bare(bh, '[data-test=bh-bond-line]'), 'Bond 1 \u00b7 Acclimatised', 'a tap on the picture does not move the bond');
-    equal(await texts(bh, '.tsi-bh-nav__btn'), ['Profile', 'Orders', 'Chronicle']);
+    equal(await texts(bh, '.tsi-bh-nav__btn'), ['Profile', 'Bond', 'Chronicle'], 'the bottom bar, left to right');
+    equal(await bh.$eval('[data-test=bh-tab-bond]', n => n.getAttribute('aria-current')), 'page');
+    equal(await bh.$('[data-test=bh-training]'), null, 'no training line');
+    equal(await bh.$('[data-test=bh-waiting]'), null, 'no requests line');
+    equal(await bh.$('[data-test=bh-tab-orders]'), null, 'no Orders tab');
   });
 
-  await check('Profile shows the DM\'s own words, as read-only lines until Edit is pressed', async () => {
+  await check('Profile shows the Bastion\'s words as read-only lines: nothing to type, no Edit, nothing to roll', async () => {
     await bh.click('[data-test=bh-tab-profile]');
+    equal(await bh.$eval('[data-test=bh-root]', n => n.getAttribute('data-screen')), 'creature-profile');
     equal(await bare(bh, '[data-test=bh-p-beast]'), 'Wyvern');
     equal(await bare(bh, '[data-test=bh-p-dominant]'), 'Proud');
     equal(await bare(bh, '[data-test=bh-p-attachment]'), 'Lowers its head');
     equal(await bare(bh, '[data-test=bh-p-trigger]'), 'Loud metallic ringing');
     equal(await bare(bh, '[data-test=bh-p-regional]'), 'Widowspine');
-    equal(await bh.$$eval('.tsi-bh-profile input, .tsi-bh-profile textarea, .tsi-bh-profile select', n => n.length), 0, 'no fields to type in');
-    equal(await bh.$eval('[data-test=bh-edit]', b => b.disabled), false, 'Edit is there');
+    equal(await bh.$$eval('.tsi-bh input, .tsi-bh textarea, .tsi-bh select', n => n.length), 0, 'no fields to type in');
+    equal(await bh.$('[data-test=bh-edit]'), null, 'no Edit button');
+    equal(await bh.$('[data-test=bh-roll-all]'), null, 'no Roll');
+    assert(!/Edit or roll|Save profile|Send request|waiting/i.test(await bare(bh, '.tsi-bh')), 'no words about editing, saving or sending');
+    equal(await bh.$eval('[data-test=bh-tab-profile]', n => n.getAttribute('aria-current')), 'page');
   });
 
   await check('Chronicle: the Bastion\'s record in order, DM-only notes left out, no way to change it', async () => {
@@ -134,54 +151,32 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(await texts(bh, '.tsi-bh-chron__by'), ['Written by DM', 'Written by DM']);
   });
 
-  await check('Viewing as Mira: her two beasts open; Elara\'s wyvern is now a plain line', async () => {
+  await check('Viewing as Mira: her two acclimatised beasts open; the one that is not acclimatised is a line that says so, with nothing else; Elara\'s wyvern is now a plain line', async () => {
     await home();
     await view('Mira');
     equal(await bh.$eval('[data-test=bh-beast-cr-stormwing]', n => n.tagName), 'BUTTON');
     equal(await bh.$eval('[data-test=bh-beast-cr-swiftwing]', n => n.tagName), 'BUTTON');
     equal(await bh.$eval('[data-test=bh-beast-elara_wyvern]', n => n.tagName), 'LI');
+    equal(await bh.$eval('[data-test=bh-beast-cr-newcomer]', n => n.tagName), 'LI', 'no button: there is nothing to open');
+    equal(await bh.$eval('[data-test=bh-beast-cr-newcomer]', n => n.getAttribute('data-mine')), 'yes');
+    equal(await bare(bh, '[data-test=bh-row-wait-cr-newcomer]'), 'Not acclimatised yet');
+    equal(await bh.$('[data-test=bh-row-bond-cr-newcomer]'), null, 'no bond chip on it');
+    assert(/Handler: Mira/.test(await bare(bh, '[data-test=bh-beast-cr-newcomer]')), 'it still names its handler');
+    assert((await bh.content()).indexOf('SECRET-NEWCOMER-LINE') === -1, 'nothing of its profile is on the page (or in what the page was given)');
     assert(!(await bh.$('[data-test=bh-message]')), 'no "no beasts" message when you have some');
   });
 
-  await check('Orders: a Bond 0 wyvern is offered only Safe Acclimatisation, free, with its ready day; the confirm screen cannot send', async () => {
+  await check('there are no orders and nothing to ask for: Mira\'s beasts have Profile, Bond and Chronicle and nothing else, and the app leaves nothing for the Bastion to read', async () => {
     await bh.click('[data-test=bh-beast-cr-stormwing]');
-    equal(await bare(bh, '[data-test=bh-bond-line]'), 'Bond 0 \u00b7 Unfamiliar');
-    await bh.click('[data-test=bh-tab-orders]');
-    equal(await bare(bh, '[data-test=bh-orders-for]'), 'Wyvern Roost Level 3');
-    equal(await texts(bh, '.tsi-bh-order__label'), ['Safe Acclimatisation']);
-    assert(/5 days · Free · ready Day \d+/.test(await bare(bh, '.tsi-bh-order__meta')), await bare(bh, '.tsi-bh-order__meta'));
-    await bh.click('[data-test=bh-order-wyr_safe_acclimatisation]');
-    const confirm = await bare(bh, '[data-test=bh-confirm]');
-    ['Check before you send', 'Stormwing', 'Wyvern Roost, Level 3', 'Safe Acclimatisation', '5 days', 'Free', 'Bond 1 (Acclimatised) is ready for the DM to confirm'].forEach(w => assert(confirm.indexOf(w) !== -1, '"' + w + '" is on the confirm screen: ' + confirm));
-    equal(await bh.$eval('[data-test=bh-send]', b => b.disabled), false, 'Send is there');
-    assert(/only asks the Bastion/.test(confirm), 'it says it only asks: ' + confirm);
-    equal(await bas(ba).then(s => s.pendingOrders.length), 0, 'nothing is ordered by looking');
-    await bh.click('[data-test=bh-confirm-back]');
-    assert(await bh.$('[data-test=bh-orders]'), 'back to the list');
-  });
-
-  await check('Orders: once the DM starts a programme there, the whole building is locked and the pending order shows its day', async () => {
-    await ba.evaluate(() => TSI.bastion.debug.change(s => {
-      const T = window.TSI_DATA;
-      const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
-      const r = TSI.bastion.rules.issueOrder(s, data, 'wyvern_roost', 'wyr_safe_acclimatisation', 1, Math.random);
-      if (!r.ok) throw new Error(r.message);
-    }));
-    await ba.evaluate(() => TSI.store.flush());
-    await bh.waitForSelector('[data-test=bh-pending]', { timeout: 9000 });
-    assert(/^Safe Acclimatisation$/.test(await bare(bh, '.tsi-bh-pending__label')), await bare(bh, '.tsi-bh-pending__label'));
-    assert(/^Ready on Day \d+$/.test(await bare(bh, '[data-test=bh-pending-due]')), await bare(bh, '[data-test=bh-pending-due]'));
-    equal(await bh.$('[data-test=bh-orders]'), null, 'no new orders are offered');
-    await bh.click('[data-test=bh-back]');
-    assert(/In training: Safe Acclimatisation, ready on Day \d+\./.test(await bare(bh, '[data-test=bh-training]')), await bare(bh, '[data-test=bh-training]'));
-  });
-
-  await check('Orders: a pending order at another building does not block this one', async () => {
+    equal(await bare(bh, '[data-test=bh-bond-line]'), 'Bond 2 \u00b7 Trusting');
+    equal(await bh.$$eval('.tsi-bh-pill', n => n.map(x => x.className.replace(/.*--/, ''))), ['done', 'current', 'todo', 'todo', 'todo']);
+    equal(await texts(bh, '.tsi-bh-nav__btn'), ['Profile', 'Bond', 'Chronicle']);
+    equal(await bh.$$eval('.tsi-bh button', n => n.map(b => b.getAttribute('data-test')).filter(Boolean)), ['bh-back', 'bh-greet-large', 'bh-tab-profile', 'bh-tab-bond', 'bh-tab-chronicle'], 'every button on the page');
+    equal(await bh.evaluate(() => TSI.store.fresh('tsi.beasthandler.queue', null)), null, 'no queue of requests is kept');
     await bh.click('[data-test=bh-back]');
     await bh.click('[data-test=bh-beast-cr-swiftwing]');
-    await bh.click('[data-test=bh-tab-orders]');
-    equal(await bare(bh, '[data-test=bh-orders-for]'), 'Griffin Tower Level 2');
-    assert((await texts(bh, '.tsi-bh-order__label')).length > 0, 'the Tower still has orders to offer');
+    equal(await bare(bh, '[data-test=bh-bond-line]'), 'Bond 3 \u00b7 Bonded');
+    equal(await bare(bh, '[data-test=bh-subspecies]'), '\u2726Embermantle');
   });
 
   await check('No handler chosen: the directory only, with a friendly note; a handler with no beasts is told why', async () => {
@@ -189,15 +184,16 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     await view('');
     assert(/Choose a handler/.test(await bare(bh, '[data-test=bh-message]')), await bare(bh, '[data-test=bh-message]'));
     equal(await bh.$$eval('.tsi-bh-beast--mine', n => n.length), 0);
-    equal(await texts(bh, '.tsi-bh-card__title').then(a => a.length), 2);
+    equal(await texts(bh, '.tsi-bh-card__title').then(a => a.length), 1);
   });
 
   await check('the Bastion itself was not changed by looking or greeting', async () => {
     const s = await bas(ba);
-    equal(s.pendingOrders.length, 1, 'only the order the DM made');
-    assert(JSON.stringify(s.creatures.map(c => c.development && c.development.bond)) !== before, 'sanity: the DM\'s order is what changed');
-    equal(s.creatures[0].development.bond.level, 1);
-    equal(s.creatures[1].development.bond.level, 0);
+    equal(s.pendingOrders.length, 0, 'no order was made');
+    equal(s.creatures.map(c => c.development ? c.development.bond.level : -1), [1, 2, 3, -1, 0], 'every bond is as the DM set it');
+    equal(s.creatures[4].development.bond.level, 0);
+    equal(s.creatures[0].development.regional, 'Widowspine');
+    equal(s.log.filter(l => /Beast Handler/.test(l.title)).length, 0, 'the Day Log has nothing from the app');
   });
 
   for (const [label, size, opts] of [
@@ -218,9 +214,9 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
       await b2.evaluate(() => TSI.bastion.debug.change(s => {
         const R = TSI.bastion.rules;
         s.partyLevel = 9;
-        s.builtExtras = [{ facId: 'wyvern_roost', status: 'built' }, { facId: 'griffin_tower', status: 'built' }, { facId: 'dire_wolf_den', status: 'built' }];
-        s.facilityLevels.wyvern_roost = 3;
-        const c = { id: 'elara_wyvern', species: 'wyvern', owner: 'elara', name: '', status: 'housed', home: 'wyvern_roost', grantedDay: 1, housedDay: 1, msgId: '' };
+        s.builtExtras = [{ facId: 'beast_pen', status: 'built' }];
+        s.facilityLevels.beast_pen = 1;
+        const c = { id: 'elara_wyvern', species: 'wyvern', owner: 'elara', name: '', status: 'housed', home: 'beast_pen', grantedDay: 1, housedDay: 1, msgId: '' };
         c.development = R.newDevelopment(c, s.day);
         c.development.regional = 'Widowspine';
         for (let i = 0; i < 40; i++) c.development.chronicle.push({ id: 'ch-x' + i, day: 2 + i, cat: 'note', text: 'A long entry number ' + i + ' that keeps going to be sure that a long Chronicle wraps and scrolls and never pushes the page sideways.', by: 'DM', link: '' });
@@ -255,10 +251,10 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
       /* The test page's top bar is wider than a phone, which makes the emulated phone zoom out, so the buttons are pressed directly rather than aimed at with the mouse. */
       const tap = sel => p.$eval(sel, n => { n.scrollIntoView({ block: 'center' }); n.click(); });
       await inspect('home');
-      await tap('[data-test=bh-beast-elara_wyvern]'); await inspect('main');
+      await tap('[data-test=bh-beast-elara_wyvern]'); await inspect('bond');
       await tap('[data-test=bh-tab-profile]'); await inspect('profile');
-      await tap('[data-test=bh-tab-orders]'); await inspect('orders');
       await tap('[data-test=bh-tab-chronicle]'); await inspect('chronicle');
+      await tap('[data-test=bh-tab-bond]'); await inspect('bond-again');
       await c2.close();
     });
   }

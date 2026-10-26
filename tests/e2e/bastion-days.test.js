@@ -41,15 +41,19 @@ async function bastionReaches(ba, day) {
   }, day, { timeout: 8000 });
 }
 /* Since the new screen (Build 2), orders are given in a facility's panel,
-   opened from its tile, and the Orders and Day Log panels open from the
-   top bar and the bottom bar. */
+   opened from its tile, and the Orders panel opens from the
+   top bar. */
 async function recruit(ba) {
-  await ba.click('[data-test=tile-barracks]');
-  await ba.waitForSelector('[data-test="issue-barracks__recruit_defenders"]');
-  await ba.click('[data-test="issue-barracks__recruit_defenders"]');
+  /* The Dock's Charter Berth (7 days; the war game's Barracks was the example until 22 October 2026). It costs gold, so the treasury is topped up first. */
+  await ba.evaluate(() => TSI.bastion.debug.change(s => { if (s.treasuryGP < 500) s.treasuryGP = 500; }));
+  await ba.click('[data-test=tile-dock]');
+  await ba.click('[data-test=dock-tab-orders]'); /* the Dock opens on Cargo (step S08): its orders are under Orders */
+  await ba.waitForSelector('[data-test="issue-dock__charter_berth"]');
+  await ba.click('[data-test="issue-dock__charter_berth"]');
   await ba.waitForTimeout(300);
   await ba.keyboard.press('Escape');
 }
+const berths = s => s.warehouse.filter(w => w.notes === 'Dock').reduce((n, w) => n + w.qty, 0);
 async function panelText(ba, button, test) {
   await ba.click('[data-test=' + button + ']');
   await ba.waitForSelector('[data-test=' + test + ']');
@@ -105,14 +109,14 @@ async function closeWord(ba) {
   await check('an order issued at the Bastion says the day it\'s due', async () => {
     await ba.waitForTimeout(400);
     await recruit(ba);
-    const o = (await bas(ba)).pendingOrders.find(p => p.fnId === 'recruit_defenders');
-    equal([o.issuedDay, o.dueDay], [1, 6], 'Recruit Defenders takes 5 days');
+    const o = (await bas(ba)).pendingOrders.find(p => p.fnId === 'charter_berth');
+    equal([o.issuedDay, o.dueDay], [1, 8], 'Charter Berth takes 7 days');
     const pending = await panelText(ba, 'orders-count', 'pending');
-    assert(/Due Day 6 \(in 5 days\)/.test(pending), pending);
+    assert(/Due Day 8 \(in 7 days\)/.test(pending), pending);
   });
 
   await check('each Make Camp in the Explorer passes that day at the Bastion, in the other window', async () => {
-    for (let d = 2; d <= 5; d++) {
+    for (let d = 2; d <= 7; d++) {
       const w = await camp(ex);
       equal(await exDay(ex), d);
       await bastionReaches(ba, d);
@@ -124,27 +128,27 @@ async function closeWord(ba) {
 
   await check('the day the order is due, the Explorer shows "The Ironbow sends word…" at camp, and its Close closes it', async () => {
     const w = await camp(ex);
-    assert(w, 'no word at camp on Day 6');
+    assert(w, 'no word at camp on Day 8');
     assert(/^The Ironbow sends word…/.test(w), w);
-    assert(/Recruit Defenders/.test(w), w);
+    assert(/Charter Berth/.test(w), w);
     equal(await ex.$('.tsi-modal'), null);
   });
 
-  await check('the Bastion passes Day 6 by itself: the order completes once, and its own word pop-up says so', async () => {
+  await check('the Bastion passes Day 8 by itself: the order completes once, and its own word pop-up says so', async () => {
     const t = await closeWord(ba);
-    assert(/Recruit Defenders/.test(t), t);
-    await bastionReaches(ba, 6);
+    assert(/Charter Berth/.test(t), t);
+    await bastionReaches(ba, 8);
     const s = await bas(ba);
     equal(s.pendingOrders.length, 0);
-    equal(s.defenders.count, 4, 'one 1d4 of defenders (the dice roll 4), counted once');
-    assert(s.log.some(l => l.day === 6 && /Recruit Defenders/.test(l.title + ' ' + l.body)), 'the Day Log has it');
-    assert(/Day 6/.test(await panelText(ba, 'open-log', 'log')), 'the Day Log shows Day 6');
+    equal(berths(s), 1, 'one chartered vessel in the Warehouse, counted once');
+    assert(s.log.some(l => l.day === 8 && /Charter Berth/.test(l.title + ' ' + l.body)), 'the Day Log has it');
+    equal(await ba.$('[data-test=open-log]'), null, 'there is no Day Log panel to look in: the word pop-up above is where it was said');
   });
 
   await check('a day with nothing to report brings no word in either window', async () => {
     const w = await camp(ex);
     equal(w, null);
-    await bastionReaches(ba, 7);
+    await bastionReaches(ba, 9);
     await ba.waitForTimeout(600);
     equal(await ba.$('[data-test=ironbow-word]'), null);
   });
@@ -175,12 +179,12 @@ async function closeWord(ba) {
         day: TSI.bastion.debug.state().day
       };
     });
-    equal(r.during, 7, 'read while a Bastion save was being written: the Explorer\'s day as saved now');
+    equal(r.during, 9, 'read while a Bastion save was being written: the Explorer\'s day as saved now');
     equal(r.own, 2, 'a change of the same key made while reading it wins');
-    equal(r.day, 7, 'the clock read then left the Bastion on Day 7');
+    equal(r.day, 9, 'the clock read then left the Bastion on Day 9');
     await ba.waitForTimeout(2500);
     const s = await bas(ba);
-    equal(s.day, 7);
+    equal(s.day, 9);
     assert(!s.log.some(l => /went back/.test(l.body)), 'no false Reset Travel in the Day Log');
   });
 
@@ -188,30 +192,30 @@ async function closeWord(ba) {
   section('One campaign file, from the Explorer');
   let exported = null;
 
-  await check('Export Save downloads one campaign file holding the Explorer and the Bastion, each on Day 7', async () => {
+  await check('Export Save downloads one campaign file holding the Explorer and the Bastion, each on Day 9', async () => {
     const d = await H.download(ex, '[data-test=export-save]');
     exported = JSON.parse(d.text);
     assert(/^tsi-campaign-\d{4}-\d\d-\d\d-\d{4}\.json$/.test(d.name), d.name);
     equal([exported.kind, exported.tools], ['campaign', ['explorer', 'bastion']]);
     const rec = k => (exported.records.find(r => r.key === k) || {}).value;
-    equal(rec('tsi.explorer.save').travel.day, 7);
-    equal(rec('tsi.bastion.state').day, 7);
-    equal(rec('tsi.bastion.state').defenders.count, 4);
+    equal(rec('tsi.explorer.save').travel.day, 9);
+    equal(rec('tsi.bastion.state').day, 9);
+    equal(berths(rec('tsi.bastion.state')), 1);
   });
 
   await check('Import Save refuses while the Bastion is open in the other window, and nothing changes', async () => {
     const f = H.writeTemp('campaign-days.json', exported);
     await camp(ex);
-    await bastionReaches(ba, 8);
+    await bastionReaches(ba, 10);
     await H.chooseFile(ex, '[data-test=import-save]', f);
     const t = await H.modalText(ex);
     assert(/The Ironbow Bastion Manager is open in another window\. Close it first: a campaign file replaces the Explorer and the Bastion together\. Nothing was changed\./.test(t), t);
     await H.clickModal(ex, 'OK');
-    equal(await exDay(ex), 8);
-    equal((await bas(ba)).day, 8);
+    equal(await exDay(ex), 10);
+    equal((await bas(ba)).day, 10);
   });
 
-  await check('with the Bastion closed, Import asks first, then puts back both: the Explorer and the Bastion on Day 7', async () => {
+  await check('with the Bastion closed, Import asks first, then puts back both: the Explorer and the Bastion on Day 9', async () => {
     await ba.close();
     ba = null;
     await ex.waitForTimeout(500);
@@ -221,26 +225,26 @@ async function closeWord(ba) {
     assert(/replaces what the Explorer and the Bastion have saved now, together/.test(t), t);
     await H.clickModal(ex, 'Import');
     await ex.waitForSelector('[data-test=camp]');
-    await ex.waitForFunction(() => TSI.explorer && TSI.explorer.debug && TSI.explorer.debug.state().travel.day === 7);
-    equal(await ex.textContent('[data-test=day]'), 'Day 7');
+    await ex.waitForFunction(() => TSI.explorer && TSI.explorer.debug && TSI.explorer.debug.state().travel.day === 9);
+    equal(await ex.textContent('[data-test=day]'), 'Day 9');
     const b = await ex.evaluate(() => TSI.store.fresh('tsi.bastion.state', null));
-    equal([b.day, b.defenders.count], [7, 4]);
+    equal([b.day, berths(b)], [9, 1]);
   });
 
   /* ------------------------------------------------------------------ */
   section('Reset Travel moves the Bastion\'s days back too');
 
-  await check('reopened, the Bastion is on Day 7; an order issued now is due Day 12', async () => {
+  await check('reopened, the Bastion is on Day 9; an order issued now is due Day 16', async () => {
     ba = await context.newPage();
     await ba.goto(INDEX + '?tool=bastion');
     await ba.waitForSelector('[data-test=day-status]');
-    await bastionReaches(ba, 7);
+    await bastionReaches(ba, 9);
     await ba.waitForTimeout(400);
     await recruit(ba);
-    equal((await bas(ba)).pendingOrders.map(o => o.dueDay), [12]);
+    equal((await bas(ba)).pendingOrders.map(o => o.dueDay), [16]);
   });
 
-  await check('Reset Travel asks first; then the Explorer is on Day 1 and the Bastion moves back 6 days with it, the order still 5 days off', async () => {
+  await check('Reset Travel asks first; then the Explorer is on Day 1 and the Bastion moves back 8 days with it, the order still 7 days off', async () => {
     await ex.waitForTimeout(400);
     await ex.click('[data-test=reset-travel]');
     assert(/Reset travel back to Day 1/.test(await H.modalText(ex)));
@@ -249,10 +253,10 @@ async function closeWord(ba) {
     equal(await exDay(ex), 1);
     await bastionReaches(ba, 1);
     const s = await bas(ba);
-    equal(s.pendingOrders.map(o => [o.issuedDay, o.dueDay]), [[1, 6]]);
+    equal(s.pendingOrders.map(o => [o.issuedDay, o.dueDay]), [[1, 8]]);
     equal(await ba.textContent('[data-test=day-status]'), 'Day 1');
     const pending = await panelText(ba, 'orders-count', 'pending');
-    assert(/Due Day 6 \(in 5 days\)/.test(pending), pending);
+    assert(/Due Day 8 \(in 7 days\)/.test(pending), pending);
   });
 
   await check('camping on from there passes the days as before', async () => {

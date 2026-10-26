@@ -5,8 +5,14 @@
    player confirms it) and one cosmetic Regional Variety:
    - Dominant Temperament: one d12 table, the same for every kind of beast.
    - Attachment Cue and Instinctive Trigger: one d8 table each for the
-     Wyvern, the Griffin and the Dire Wolf.
-   - Regional Variety: five for each kind, picked or typed (nothing rolls it).
+     Wyvern, the Griffin, the Dire Wolf, the Buckbear and the Fellcat. The
+     Buckbear and Fellcat d8 tables are DRAFT (22 October 2026): Harry had
+     not written them yet, so they are marked `draft: true` for him to
+     approve or replace.
+   - Regional Variety: every variety Harry has written for each kind (26 October 2026
+     spec). Only those marked `rollable: true` can come up at a beast's first
+     meeting (two or three for each kind); the rest are on record but nothing
+     assigns them for now. The DM can no longer type a variety by hand.
    Rules Harry set: none of this changes a stat, an attack, a resistance,
    training speed or bond progress; a bond of 0 can have a temperament; a
    description never overrides something the DM has established.
@@ -75,11 +81,14 @@ window.TSI_DATA.beastProfile = {
         ]
       },
       regional: [
-        { id: 'widowspine', name: 'Widowspine', area: 'The Black Straits', where: 'Sea stacks, storm-lashed cliffs and narrow coastal passages', appearance: 'Near-black, wet-slate scales; long ivory-white spines; narrow, ragged silver-edged wings; and an elongated, backward-curving black tail barb. Older specimens develop salt-crusted horns.' },
-        { id: 'bleakhook', name: 'Bleakhook', area: 'North Isle', where: 'Bleakharbour and the exposed northern coastline of Clan Karr', appearance: 'Broad-chested, with steel-blue and frost-grey scales, a white throat and underbelly, forward-hooked horns, and dark blue wing membranes streaked with pale markings.' },
-        { id: 'ironcrown', name: 'Ironcrown', area: 'Midland Province', where: 'The Fangs, Middlemount and the surrounding rugged highlands', appearance: 'Muscular and heavily armoured, with iron-grey scales, a broad chest, thick uneven crown-horns, powerful hindquarters and wide wings. Older specimens develop copper and ochre markings.' },
-        { id: 'bloodcrest', name: 'Bloodcrest', area: 'East Isle', where: 'The red-cliff coastline, sea caves and approaches around Eastlake', appearance: 'Deep crimson to burnt-rust scales, a pale bone-coloured chest, black-tipped crown spines, translucent wine-red wing membranes, a recurved dark stinger and brilliant golden eyes.' },
-        { id: 'shadowmount', name: 'Shadowmount', area: 'Western Province', where: 'Shadow Mountains and the high, exposed approaches to the Aurushi lands', appearance: 'Charcoal-black scales, pale ash-grey wing membranes, long swept-back horns and muted bronze-gold markings around the head, chest and wings. Exceptionally long wings and an angular silhouette.' }
+        { id: 'widowspine', name: 'Widowspine', area: 'The Black Straits', where: 'Storm-lashed sea stacks, coastal cliffs and narrow sea passages', appearance: 'Dark slate-to-blue-black scales, pale stone-grey breast, serrated ivory-white neck spines, hooked salt-worn horns, broad ragged silver-grey wing membranes and a long tail ending in a black recurved venom barb.' },
+        { id: 'bleakhook', name: 'Bleakhook', area: 'North Isle', where: 'Bleakharbour and the exposed northern coastline of Clan Karr', appearance: 'Broad-chested with icy steel-blue and frost-grey scales, a white throat and underbelly, forward-hooked horns, dark blue-grey wings with pale streaking and powerful cliff-gripping hindlegs.' },
+        { id: 'ironcrown', name: 'Ironcrown', rollable: true, area: 'Midland Province', where: 'The Fangs, Middlemount and rugged highland ridges', appearance: 'Massive, heavily armoured wyvern with iron-grey and stone-grey scales, a thick uneven crown of horns, copper-ochre plates around the head and shoulders, broad pale-grey chest, powerful hindquarters and enormous earth-brown wings.' },
+        { id: 'bloodcrest', name: 'Bloodcrest', rollable: true, area: 'East Isle', where: 'Red-cliff coastline, sea caves and approaches around Eastlake', appearance: 'Rich crimson and burnt-rust scales, ivory-pale chest, black-tipped crown spines and horns, wide wine-red wing membranes, hooked dark tail stinger and luminous amber-gold eyes.' },
+        { id: 'shadowmount', name: 'Shadowmount', area: 'Western Province', where: 't and high approaches to Aurushi lands', appearance: 'Black-charcoal scales with subtle bronze-gold markings, pale ash-grey throat, broad weathered grey wing membranes, long swept-back dark horns and an angular, long-winged silhouette.' },
+        { id: 'flamescale', name: 'Flamescale', area: 'Western Province (North)', where: 'The Whip peninsula, hidden coastal dens and red sea cliffs', appearance: 'Intense scarlet-to-crimson scales, black crest and horn tips, broad ivory breast, wide wine-red wings warmed by orange sunlight, powerful hindlegs, black claws and a long thorn-edged tail with a dark hooked barb.' },
+        { id: 'leafwing', name: 'Leafwing', rollable: true, area: 'Northern Province (East)', where: 'The Stretch, rolling green hills, ridgelands and river-cut gullies', appearance: 'Olive and moss-green scales, pale cream throat and belly, slender horns, layered leaf-like neck spines, lichen-like markings, broad translucent yellow-green wing membranes with dark vein-like ribs and a long curved venomous tail.' },
+        { id: 'razortail', name: 'Razortail', area: 'North Isle', where: 'Icepoint, northern frozen headlands and wind-battered sea cliffs', appearance: 'Angular charcoal-to-slate-black scales, pale frost-grey throat and underside, long swept-back ivory-grey horns, broad silver-grey wing membranes, wiry hindlegs and an exceptionally long saw-edged tail ending in a recurved barb.' }
       ]
     },
 
@@ -111,11 +120,14 @@ window.TSI_DATA.beastProfile = {
         ]
       },
       regional: [
-        { id: 'dawnmantle', name: 'Dawnmantle', area: 'Western Province', where: 'Sunlit western highlands and the approaches to the House of the Sun', appearance: 'Ivory-white eagle head, brilliant golden neck and wing feathers, a tawny lion body, an impressive golden throat mantle, pale gold beak and dark copper-coloured talons.' },
-        { id: 'thunderwing', name: 'Thunderwing', area: 'Midland Province', where: 'The Fangs and their exposed ridgelines', appearance: 'Broad-winged, with dark steel-grey feathers, a silver-white eagle head, charcoal wing tips, ash-grey leonine hindquarters, black foretalons and thick protective breast plumage.' },
-        { id: 'silvershroud', name: 'Silvershroud', area: 'East Isle', where: 'The shores and mist-covered approaches of Eastlake, near Swyth', appearance: 'Slender and elegant, with pale silver plumage, a white eagle head, a lean cream-coloured lion body, dark slate-edged wing feathers and a distinctive black tail tuft.' },
-        { id: 'galeclaw', name: 'Galeclaw', area: 'Northern Province', where: 'Northwatch Beacon and the rugged northern coastline', appearance: 'Dark brown eagle head, silver-grey neck and shoulder feathers, chestnut lion hindquarters, extraordinarily long black-tipped wings, pale wing markings and sharp golden eyes.' },
-        { id: 'embermantle', name: 'Embermantle', area: 'Western Province', where: 'Redport and the western coastal cliffs', appearance: 'Dark copper-and-black eagle head, thick fiery-russet feather mantle, deep tawny lion body and bronze wings that darken to black at the edges.' }
+        { id: 'dawnmantle', name: 'Dawnmantle', rollable: true, area: 'Western Province', where: 'Sunlit western highlands and approaches to the House of the Sun', appearance: 'Ivory-white eagle head, brilliant amber-gold neck and wing feathers, magnificent golden throat mantle, tawny lion body, dark copper-coloured talons and bright amber eyes.' },
+        { id: 'thunderwing', name: 'Thunderwing', area: 'Midland Province', where: 'The Fangs and their exposed storm-beaten ridgelines', appearance: 'Massive steel-grey wings with black tips, silver-white eagle head, thick layered breast plumage, ash-grey lion hindquarters, powerful black foretalons and fierce golden eyes.' },
+        { id: 'silvershroud', name: 'Silvershroud', rollable: true, area: 'East Isle', where: 'Mist-covered shores and approaches of Eastlake near Swyth', appearance: 'Elegant pale-silver and white eagle head, ivory breast, lean cream lion body, long slate-grey to black outer wing feathers, dark-edged flight plumage and a black-tufted tail.' },
+        { id: 'galeclaw', name: 'Galeclaw', area: 'Northern Province', where: 'Northwatch Beacon and the rugged northern coastline', appearance: 'Dark chestnut eagle head, silver-grey and ivory throat feathers, extraordinarily long black-tipped wings with pale bands, chestnut lion body, curling dark-tipped tail and golden eyes.' },
+        { id: 'embermantle', name: 'Embermantle', area: 'Western Province', where: 'Redport and the western coastal cliffs', appearance: 'Copper-and-black eagle head, fiery orange-russet feather mantle, rich bronze wings darkening to black at the tips, deep tawny lion body and a thick copper-brown tail.' },
+        { id: 'gloamquill', name: 'Gloamquill', area: 'Northern Province', where: '(proposed) and ancient crags above Nightwood', appearance: 'Charcoal-black eagle head with green-bronze feather iridescence, broad black-brown wings streaked with muted olive and gold, rich mahogany lion body and brilliant amber eyes.', proposed: true },
+        { id: 'wrecktalon', name: 'Wrecktalon', area: 'Bolt Isle', where: 'Salt-scoured (proposed) coves and isolated cliff aeries', appearance: 'Salt-weathered white-and-smoke eagle head, dark hooked beak, slate-black wings with rusty-copper feather tips, sandy-umber lion body, weathered tawny shoulders and a ragged black tail tuft.', proposed: true },
+        { id: 'frostcrown', name: 'Frostcrown', area: 'North Isle', where: 'Icepoint\'s (proposed) northern pinnacles', appearance: 'Massive ivory-white eagle head with a stiff feather crown, dark slate-blue outer flight feathers, dense silver-grey shoulder plumage, heavy ash-fawn lion body, pale foretalons and yellow-gold eyes.', proposed: true }
       ]
     },
 
@@ -147,24 +159,91 @@ window.TSI_DATA.beastProfile = {
         ]
       },
       regional: [
-        { id: 'nightfang', name: 'Nightfang', area: 'Northern Province', where: 'Nightwood, its old forest roads and deeper woodland', appearance: 'Long, almost-black fur with silver guard hairs, pale golden eyes, a narrow muzzle, unusually tall ears and broad paws. Older animals develop a distinctive grey mantle.' },
-        { id: 'icepelt', name: 'Icepelt', area: 'North Isle', where: 'Bleaker\'s Bay, Bleakharbour and the northern coastal uplands', appearance: 'Huge and thickset, with dense white-grey fur, a dark slate ridge down the spine, black lower legs, exceptionally thick shoulder fur and pale blue or amber eyes.' },
-        { id: 'slatejaw', name: 'Slatejaw', area: 'Midland Province', where: 'Middlemount, rocky uplands and the foothills of the Fangs', appearance: 'Stocky, with dense granite-grey fur, a powerful neck, broad paws and a dark muzzle. Rust and earth-brown markings cover the shoulders and haunches.' },
-        { id: 'reedshadow', name: 'Reedshadow', area: 'Midland Province', where: 'The River Rook and its surrounding riverbanks and low-lying ground', appearance: 'Lean and long-legged, with rich umber fur, dark olive-brown guard hairs, a pale underside, shorter fur around the legs and distinctive dark markings around the eyes.' },
-        { id: 'hollowhowl', name: 'Hollowhowl', area: 'Western Province', where: 'The Shadow Mountains, secluded passes and rocky mountain valleys', appearance: 'Dark smoke-brown fur, a long black mane around the neck and shoulders, silver-grey markings along the muzzle and brows, and mottled stone-coloured patches.' }
+        { id: 'nightfang', name: 'Nightfang', area: 'Northern Province', where: 'Nightwood, ancient forest roads and deep woodland', appearance: 'Immense almost-black wolf with silver-grey mottling along its shoulders and muzzle, olive-green highlights in forest light, broad paws, tall ears and pale amber to moss-green eyes.' },
+        { id: 'icepelt', name: 'Icepelt', area: 'North Isle', where: 'Bleaker\'s Bay, Bleakharbour and northern coastal uplands', appearance: 'Huge, heavily furred wolf with a silver-white winter mane and chest, slate-grey to dark-grey back, dense protective shoulder fur, massive paws and piercing ice-blue eyes.' },
+        { id: 'slatejaw', name: 'Slatejaw', rollable: true, area: 'Midland Province', where: 'Middlemount, rocky uplands and foothills of the Fangs', appearance: 'Thickset mountain wolf with a granite-grey face, silver-grey throat and breast, broad paws, a powerful dark muzzle, richly rust-brown flanks and shoulder markings, and amber eyes.' },
+        { id: 'reedshadow', name: 'Reedshadow', area: 'Midland Province', where: 'The River Rook, wet riverbanks, reedbeds and low-lying ruins', appearance: 'Large dark riverland wolf with charcoal-to-umber fur, muted olive-green markings along a shaggy shoulder coat, pale grey muzzle, amber-gold eyes and broad paws that blend into wet, moss-covered terrain.' },
+        { id: 'hollowhowl', name: 'Hollowhowl', area: 'Western Province', where: 'Shadow Mountains, secluded passes and rocky valleys', appearance: 'Tall smoke-brown wolf with a ragged black neck mane, pale silver-grey muzzle and brows, mottled slate-grey markings across its chest and legs, powerful paws and golden eyes.' },
+        { id: 'sunmane', name: 'Sunmane', area: 'Southern and Western Provinces', where: 'Remote sunlit mountains, hidden valleys and rocky escarpments', appearance: 'Tall, regal golden wolf with a honey-amber coat, a long burnished copper-red neck and shoulder mantle, cream-white chest, upright ears, elegant muzzle, bright amber eyes, strong pale legs and a full russet tail.' },
+        { id: 'blacktide', name: 'Blacktide', rollable: true, area: 'The Black Straits (South) and Bolt Isle', where: 'Surf-cut rocks, wreck beaches, smugglers\' coves and pirate havens', appearance: 'Powerful wolf with tangled wet charcoal-black upper fur, pale grey-cream face, chest and legs, broad coastal paws, vivid sea-green eyes and a heavy dark tail.' }
+      ]
+    },
+
+    /* The Buckbear and the Fellcat joined the Beast Pen on 22 October 2026. The five
+       varieties of each are Harry's words. The two d8 tables of each are a DRAFT
+       written for him to approve or replace (draft: true). */
+    buckbear: {
+      draft: true,
+      attachment: {
+        dice: 8, draft: true,
+        entries: [
+          { roll: 1, label: 'Low, contented huff' },
+          { roll: 2, label: 'Lowers its antlers' },
+          { roll: 3, label: 'Leans its weight against handler' },
+          { roll: 4, label: 'Rubs its cheek on handler\'s arm' },
+          { roll: 5, label: 'Shields handler with its bulk' },
+          { roll: 6, label: 'Scrapes the ground softly' },
+          { roll: 7, label: 'Recognises handler\'s footsteps' },
+          { roll: 8, label: 'Settles down close beside handler' }
+        ]
+      },
+      trigger: {
+        dice: 8, draft: true,
+        entries: [
+          { roll: 1, label: 'Unexpected restraint' },
+          { roll: 2, label: 'Strangers near its food' },
+          { roll: 3, label: 'Sudden fire' },
+          { roll: 4, label: 'Blaring horns' },
+          { roll: 5, label: 'Hands on its antlers' },
+          { roll: 6, label: 'Crowded enclosure' },
+          { roll: 7, label: 'Rival buckbear scent' },
+          { roll: 8, label: 'Unsteady ground underfoot' }
+        ]
+      },
+      regional: [
+        { id: 'broadcrown', name: 'Broadcrown', rollable: true, area: 'Northern Province (Clan Blackstone)', where: 'The old-growth forests around Nightwood', appearance: 'The largest variety; a shaggy, dark-brown coat with tawny-gold tips, heaviest in a ruff around the neck and shoulders; tall, wide pale antlers with many upturned points, forming a crown; amber eyes and long, pale claws; usually found among moss, ferns and forest streams.' },
+        { id: 'shovelhorn', name: 'Shovelhorn', rollable: true, area: 'North Isle (Clan Karr)', where: 'The frozen country around Coldpass', appearance: 'Stocky and heavily built; a thick double coat from cream to smoke-grey; small, rounded ears; broad, flat antlers like a moose\'s, which it uses to scrape snow off food.' },
+        { id: 'cragbuck', name: 'Cragbuck', area: 'Midland Province (Clan Bacca)', where: 'The slopes of The Fangs', appearance: 'Lean and long-legged; a slate-grey coat with silver flecks; short antlers with few points, swept back close to the skull so they don\'t catch on rock; a sure-footed climber.' },
+        { id: 'fenwallow', name: 'Fenwallow', area: 'Eastern Province (Clan Slade)', where: 'The marshes and waterways', appearance: 'Low and heavy; an oily, dark-brown coat that sheds water and is usually caked in mud; wide, splayed paws for bog ground; short, forward-curving antlers often hung with reeds; a strong swimmer.' },
+        { id: 'saltcoat', name: 'Saltcoat', area: 'East Isle (Clan Rowthorn)', where: 'The coast and forest edges', appearance: 'The smallest variety; a russet-red coat bleached paler at the tips by salt and sun; narrow antlers with a slight forward hook; forages rock pools and the tideline for shellfish and fish.' }
+      ]
+    },
+
+    fellcat: {
+      draft: true,
+      attachment: {
+        dice: 8, draft: true,
+        entries: [
+          { roll: 1, label: 'Slow, trusting blink' },
+          { roll: 2, label: 'Low, rumbling purr' },
+          { roll: 3, label: 'Head-butts handler\'s hand' },
+          { roll: 4, label: 'Leaves a small catch nearby' },
+          { roll: 5, label: 'Grooms close to handler' },
+          { roll: 6, label: 'Curls its tail around handler' },
+          { roll: 7, label: 'Keeps watch from a high ledge' },
+          { roll: 8, label: 'Appears silently at handler\'s side' }
+        ]
+      },
+      trigger: {
+        dice: 8, draft: true,
+        entries: [
+          { roll: 1, label: 'Being grabbed from behind' },
+          { roll: 2, label: 'Sudden bright light' },
+          { roll: 3, label: 'Loud metallic clanging' },
+          { roll: 4, label: 'Rival fellcat scent' },
+          { roll: 5, label: 'Being cornered' },
+          { roll: 6, label: 'Soaking wet fur' },
+          { roll: 7, label: 'Strangers reaching for its ears' },
+          { roll: 8, label: 'Crowds and shouting' }
+        ]
+      },
+      regional: [
+        { id: 'mistveil', name: 'Mistveil', area: 'North Isle (Clan Karr)', where: 'The coast and fog banks of Bleaker\'s Bay', appearance: 'A thick silver coat with faint smoke-grey rosettes; tufted ears and oversized paws; pale grey-green eyes; fur that holds a damp sheen from the sea air.' },
+        { id: 'whiteout', name: 'Whiteout', area: 'Icepoint', where: 'Icepoint', appearance: 'The palest and heaviest variety; an almost pure white coat with barely visible markings; the deepest fur, with fur-covered paw pads; a long, thick tail it wraps over its face when resting; ice-blue eyes.' },
+        { id: 'lichenback', name: 'Lichenback', rollable: true, area: 'The northern highlands', where: 'The northern highlands', appearance: 'Leaner, built for rock rather than snow; a grey coat mottled grey-green like lichen, turning frost-white in winter; the longest ear tufts and a shorter tail; hard, scarred paw pads.' },
+        { id: 'tawnyfell', name: 'Tawnyfell', area: 'Midland Province (Clan Bacca)', where: 'The scree and lower slopes of The Fangs', appearance: 'A shorter coat, smoke-brown to tawny-grey; longer legs; hunts at dusk below the snowline.' },
+        { id: 'smokecoat', name: 'Smokecoat', rollable: true, area: 'Western Province (Clan Farmer)', where: 'The high gorges of the Shadow Mountains', appearance: 'The smallest and rarest variety; a charcoal-grey coat with near-black rosettes; hunts at night.' }
       ]
     }
   }
-};
-
-/* Which orders a player may ask for from the phone (Harry, 21 October 2026,
-   D5: free training only; the DM keeps anything that costs gold, and every
-   milestone). The rule: a training programme (trains) that costs no gold.
-   The riding harness (150 gp) is therefore the DM's; so are the House
-   orders, bond confirmation, handler changes and the first flight. Put an
-   order's id in denyIds to take it off the list. */
-window.TSI_DATA.beastPlayerOrders = {
-  version: 1,
-  rule: 'free_training',
-  denyIds: []
 };

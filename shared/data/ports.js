@@ -7,7 +7,7 @@
 
    A Port Charter lets the Bastion's ships sell cargo at that port. The DM
    grants one in the Explorer, the Explorer link carries it to the Bastion,
-   and the Hall of Emissaries registers it (shared/js/bridge-rules.js,
+   and the Dock registers it (shared/js/bridge-rules.js,
    tools/bastion/rules.js).
 
    Each port is keyed by its Explorer pin's id, and its label is spelt

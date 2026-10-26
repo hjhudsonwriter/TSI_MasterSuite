@@ -1,29 +1,33 @@
-/* Scarlett Isles: Beast Handler — the player's view of the Bastion (BH-1a).
+/* Scarlett Isles: Beast Handler — the player's view of the Bastion (BH-1a; read-only, version 2, 22 October 2026).
 
    Plain functions (no screen code), tested on tests/rules.html. They turn
    the Bastion's real save into a small, read-only SNAPSHOT for one handler:
    the creatures they look after, and a plain directory of the others. The
    Bastion stays the only place anything is decided; this file only reads
-   it, and never changes the save it is given.
+   it, and never changes the save it is given (it never rolls a first meeting
+   either: R.sweepInitiation does that, in the Bastion).
 
-   What a snapshot holds (version 1):
-   - the directory: each standing Wyvern Roost, Griffin Tower and Dire Wolf
-     Den, its level, and every creature housed there (name, kind, the
-     handler's name, and the bond where the creature has one). A creature
-     that belongs to someone else is a directory line and nothing more.
-   - the detail of the handler's OWN creatures only: profile, bond, current
-     training, Chronicle (without the DM's DM-only notes), and the orders
-     they may ask for.
+   What a snapshot holds (version 2):
+   - the directory: the Beast Pen (one entry, level 1) and every creature
+     housed there (name, kind, the handler's name, the bond, whether it has
+     been acclimatised and whether it is at the Pen or away from the Ironbow
+     with its handler). A creature that belongs to someone else is a
+     directory line and nothing more.
+   - the detail of the handler's OWN creatures only. A creature that has not
+     passed acclimatisation (Bond 0) is "not available": its name, kind,
+     handler and bond, and nothing else. From Bond 1 the detail is its place,
+     its Bonding Days and pills (how far it is to its next bond level), its
+     profile, its Chronicle (without the DM's DM-only notes), its picture key
+     and the first meeting the Bastion rolled for it (null until it has one).
    It never holds the treasury, the Day Log, the DM's notes, other
-   buildings, or any raw part of the save.
+   buildings, or any raw part of the save, and since version 2 it holds no
+   orders, training, receipts or request fingerprints: the app sends the
+   Bastion nothing, so there is nothing to answer.
 
-   Orders: the companion only previews what the Bastion would accept (the
-   Bastion's own rules, R.trainingBlocker, decide). When a command comes, the
-   Bastion checks it again against the live save. The player-facing rule
-   (Harry, 21 October 2026): while ANY order is pending at a creature's
-   building, the phone offers no new order from that building; it shows
-   the pending order and the day it is due. The DM's own training places
-   are not touched. A pending order at some other building never blocks. */
+   Why a player may see each field is written beside it, and every one has a
+   test (tests/rules/beasthandler-projection.test.js): a snapshot field is
+   never added without one. A snapshot of another version is refused by
+   P.check, which is how every older snapshot kept on a phone is retired. */
 (function () {
   'use strict';
 
@@ -32,7 +36,7 @@
   var P = ns.projection = {};
 
   P.KIND = 'tsi.beasthandler.snapshot';
-  P.VERSION = 1;
+  P.VERSION = 2;
 
   function R() { return TSI.bastion && TSI.bastion.rules; }
   function isObj(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
@@ -51,135 +55,32 @@
     return x !== '' && x === P.handlerKey(b);
   };
 
-  /* ---------- Which orders a player may ask for ---------- */
-  function orderRule() {
-    var r = window.TSI_DATA && window.TSI_DATA.beastPlayerOrders;
-    return isObj(r) ? r : { rule: 'free_training', denyIds: [] };
-  }
-  /* Free training only (D5): a programme (trains) that costs no gold, and is not taken off the list. */
-  P.isPlayerOrder = function (fn) {
-    if (!isObj(fn) || fn.trains !== true) return false;
-    var rule = orderRule();
-    if (rule.rule !== 'free_training') return false;
-    if (Number(fn.costGP || 0) !== 0) return false;
-    return arr(rule.denyIds).indexOf(fn.id) === -1;
-  };
-
-  /* ---------- The three buildings ---------- */
-  /* [{ speciesId, speciesName, facId }] in the creatures data's order. */
-  P.homes = function (data) {
+  /* ---------- The Beast Pen ---------- */
+  /* The creatures standing in the Beast Pen: housed, and the Pen built. Every kind lives there. */
+  function housedIn(s, data) {
     var r = R();
-    var sp = r.creaturesData(data).species;
-    var out = [];
-    Object.keys(isObj(sp) ? sp : {}).forEach(function (id) {
-      var home = r.speciesHome(data, id);
-      if (home && r.facility(data, home)) out.push({ speciesId: id, speciesName: r.speciesName(data, id), facId: home });
-    });
-    return out;
-  };
-
-  /* The pending TRAINING programme that is due first at a building, or null (Harry, 21 October 2026: training only).
-     A House order or an Upgrade pending there does not hold a handler back; the Bastion's own rules still decide whether
-     a programme can start. */
-  function pendingAt(s, facId) {
-    var list = R().trainingOrders(s).filter(function (o) { return o.facId === facId; });
-    list.sort(function (a, b) { return num(a.dueDay, 1e9) - num(b.dueDay, 1e9); });
-    return list[0] || null;
-  }
-
-  P.pendingAt = pendingAt;
-
-  /* The creatures standing in a built building: housed there, of its kind. */
-  function housedIn(s, data, home) {
-    var r = R();
-    if (r.builtFacilityIds(s, data).indexOf(home.facId) === -1) return [];
-    return r.housedAt(s, home.facId).filter(function (c) { return c.species === home.speciesId; });
+    if (r.builtFacilityIds(s, data).indexOf(r.PEN_ID) === -1) return [];
+    return r.penHoused(s);
   }
 
   P.housedIn = housedIn;
 
   function handlerOf(c) { return isObj(c.development) ? txt(c.development.handlerId, 40) : ''; }
 
-  /* The handlers who have a creature in a standing building: [{ id, name, count }], for the DM's own preview. */
+  /* The handlers who have a creature in the standing Pen: [{ id, name, count }], for the DM's own preview. */
   P.handlers = function (s, data) {
     var r = R();
     var seen = new Map();
     var out = [];
-    P.homes(data).forEach(function (home) {
-      housedIn(s, data, home).forEach(function (c) {
-        var h = handlerOf(c);
-        var k = P.handlerKey(h);
-        if (!k) return;
-        if (!seen.has(k)) { var entry = { id: h, name: r.handlerName(h), count: 0 }; seen.set(k, entry); out.push(entry); }
-        seen.get(k).count++;
-      });
+    housedIn(s, data).forEach(function (c) {
+      var h = handlerOf(c);
+      var k = P.handlerKey(h);
+      if (!k) return;
+      if (!seen.has(k)) { var entry = { id: h, name: r.handlerName(h), count: 0 }; seen.set(k, entry); out.push(entry); }
+      seen.get(k).count++;
     });
     return out;
   };
-
-  /* ---------- One creature's orders ---------- */
-  function consequenceOf(s, data, fn) {
-    var r = R();
-    var parts = [];
-    if (typeof fn.bondTarget === 'number') parts.push('When it finishes, Bond ' + fn.bondTarget + ' (' + r.bondName(fn.bondTarget) + ') is ready for the DM to confirm.');
-    var cd = r.creaturesData(data);
-    var bonus = isObj(cd.development) && isObj(cd.development.trainingBonus) ? cd.development.trainingBonus[fn.id] : null;
-    if (isObj(bonus) && bonus.label) parts.push('It adds ' + txt(bonus.label, 40) + ' when the Ironbow is attacked.');
-    return parts.join(' ');
-  }
-
-  /* What a player may be told about an order pending at a building: its own beast's programme by name, and
-     for another handler's programme only that a training programme is under way. The Bastion's own label can name creatures and choices, so it is never sent. */
-  P.busyLabel = function (s, data, order, creature) {
-    var r = R();
-    var fac = r.facility(data, order.facId);
-    if (creature) {
-      var fn = fac ? r.fn(fac, order.fnId) : null;
-      return fn && fn.label ? txt(fn.label, 80) : 'A training programme';
-    }
-    return 'A training programme is under way at the ' + (fac ? fac.name : 'building');
-  };
-
-  function ordersFor(s, data, c, fac) {
-    var r = R();
-    var out = { status: 'none', available: [], note: '', busy: null };
-    var repair = r.underRepair(s, fac.id);
-    if (repair) {
-      out.status = 'repair';
-      out.note = 'The ' + fac.name + ' is Under Repair until ' + r.dayLabel(repair) + '.';
-      return out;
-    }
-    var busy = pendingAt(s, fac.id);
-    if (busy) {
-      var mine = r.trainingOrderFor(s, c.id);
-      var forThis = !!mine && mine.id === busy.id;
-      out.status = 'busy';
-      out.busy = { label: P.busyLabel(s, data, busy, forThis ? c : null), dueDay: num(busy.dueDay, 0), dueLabel: r.dayLabel(num(busy.dueDay, 0)), forThisCreature: forThis };
-      out.note = out.busy.label + ', ready on ' + out.busy.dueLabel + '.';
-      return out;
-    }
-    var level = r.getFacilityLevel(s, fac.id);
-    out.available = arr(fac.functions).filter(function (fn) {
-      return P.isPlayerOrder(fn) && (num(fn.requiredFacilityLevel, 1)) <= level && r.trainingBlocker(s, data, fac, fn, c) === '';
-    }).map(function (fn) {
-      var days = r.orderDays(fn);
-      return {
-        fnId: txt(fn.id, 60),
-        label: txt(fn.label, 80),
-        days: days,
-        daysText: r.daysText(days),
-        readyDay: num(s.day, 1) + days,
-        readyLabel: r.dayLabel(num(s.day, 1) + days),
-        level: num(fn.requiredFacilityLevel, 1),
-        costGP: 0,
-        costText: 'Free',
-        consequence: consequenceOf(s, data, fn)
-      };
-    });
-    if (out.available.length) out.status = 'available';
-    else out.note = 'No training orders are available for ' + r.creatureName(data, c) + ' right now.';
-    return out;
-  }
 
   /* ---------- One creature ---------- */
   /* The Chronicle as a player sees it: in the order written, without the DM-only notes. The ids are numbered
@@ -192,47 +93,67 @@
     });
   }
 
-  function trainingOf(s, data, c, fac) {
-    var r = R();
-    var o = r.trainingOrderFor(s, c.id);
-    if (!o) return null;
-    var fn = r.fn(fac, o.fnId);
-    var rec = r.creatureRecovery(s, c.id);
-    return { label: txt(fn ? fn.label : o.label, 80), dueDay: num(o.dueDay, 0), dueLabel: r.dayLabel(num(o.dueDay, 0)), paused: !!rec };
+  /* The first meeting the Bastion rolled, or null (not yet). The variety's id and the number each die showed: the
+     reveal on the phone plays exactly these. The day it was made is the Bastion's business and is not sent. */
+  function initiationOf(d) {
+    var ini = isObj(d.initiation) ? d.initiation : null;
+    if (!ini || typeof ini.regional !== 'string' || !ini.regional) return null;
+    var rolls = isObj(ini.rolls) ? ini.rolls : {};
+    return {
+      regional: txt(ini.regional, 40),
+      rolls: { dominant: num(rolls.dominant, 0), attachment: num(rolls.attachment, 0), trigger: num(rolls.trigger, 0) }
+    };
   }
 
-  /* A short fingerprint of what a player is looking at for one beast: if it has changed by the time a
-     request arrives, the Bastion knows the player saw an older picture (it still checks everything afresh). */
-  function viewRev(d) {
-    if (!TSI.hmac) return '';
-    return TSI.hmac.sha256Hex(JSON.stringify([d.handler.name, d.bond.level, d.profile, d.training, d.orders.status, d.orders.available.map(function (a) { return a.fnId; }), d.orders.busy ? [d.orders.busy.label, d.orders.busy.dueDay] : null])).slice(0, 12);
+  /* Where a beast is: 'away' (out on the road with its handler: "Away from the Ironbow") or 'pen' ("At the Beast Pen"). */
+  function placeOf(c) { var r = R(); return r.isAway && r.isAway(c) ? 'away' : 'pen'; }
+
+  /* Its Bonding Days and how far the next pill has filled (a beast with a bond of 1 to 4: the pill filling; Bond 5: none).
+     Why a player may see it: it is their own beast's progress, which is what the Bond page is for. */
+  function bondingOf(s, data, c) {
+    var r = R();
+    var p = r.bondProgress(s, data, c);
+    var out = {
+      away: p.away === true,
+      awaySince: p.away && typeof p.since === 'number' ? p.since : null,
+      awaySinceLabel: p.away && typeof p.since === 'number' ? r.dayLabel(p.since) : '',
+      days: num(p.days, 0),
+      pill: null,
+      ready: typeof p.ready === 'number' ? p.ready : null
+    };
+    if (p.pill) out.pill = { n: p.pill.n, days: num(p.pill.days, 0), need: num(p.pill.need, 0), fraction: num(p.pill.fraction, 0), full: p.pill.full === true };
+    return out;
   }
 
-  function detailOf(s, data, c, home) {
+  function detailOf(s, data, c) {
     var r = R();
-    var fac = r.facility(data, home.facId);
     var d = r.devView(s, c);
     var t = d.temperament;
-    var level = r.getFacilityLevel(s, fac.id);
+    var level = d.bond.level;
     var detail = {
+      /* A name, a kind and a handler are on the directory line anyway. */
       id: c.id,
       name: txt(r.creatureName(data, c), 80),
-      species: { id: home.speciesId, name: home.speciesName },
-      facility: { id: fac.id, name: fac.name, level: level },
+      species: { id: c.species, name: r.speciesName(data, c.species) },
       handler: { name: txt(r.handlerName(d.handlerId), 40) },
-      bond: { level: d.bond.level, name: r.bondName(d.bond.level), max: 5 },
-      training: trainingOf(s, data, c, fac),
-      profile: {
-        regional: txt(d.regional, 60),
-        dominant: txt(t.dominant, 120),
-        attachment: txt(t.attachment, 120),
-        trigger: txt(t.trigger, 120)
-      },
-      chronicle: chronicleOf(d),
-      orders: ordersFor(s, data, c, fac),
-      artKey: home.speciesId
+      /* Whether the app opens this beast at all: only after the Pen's acclimatisation (Bond 1). */
+      available: level >= 1,
+      bond: { level: level, name: r.bondName(level), max: 5 }
     };
-    detail.rev = viewRev(detail);
+    /* Bond 0: nothing more is sent. */
+    if (!detail.available) return detail;
+    /* Its own handler's beast, so its own place, bonding and profile lines. */
+    detail.place = placeOf(c);
+    detail.bonding = bondingOf(s, data, c);
+    detail.initiation = initiationOf(d);
+    detail.profile = {
+      regional: txt(d.regional, 60),
+      dominant: txt(t.dominant, 120),
+      attachment: txt(t.attachment, 120),
+      trigger: txt(t.trigger, 120)
+    };
+    detail.chronicle = chronicleOf(d);
+    detail.artKey = c.species;
     return detail;
   }
 
@@ -244,41 +165,40 @@
     var key = P.handlerKey(handlerId);
     var facilities = [];
     var creatures = {};
-    P.homes(data).forEach(function (home) {
-      var fac = r.facility(data, home.facId);
-      if (r.builtFacilityIds(s, data).indexOf(home.facId) === -1) return;
-      var list = housedIn(s, data, home);
+    if (r.builtFacilityIds(s, data).indexOf(r.PEN_ID) !== -1) {
+      var fac = r.facility(data, r.PEN_ID);
       facilities.push({
         id: fac.id,
         name: fac.name,
         level: r.getFacilityLevel(s, fac.id),
-        species: { id: home.speciesId, name: home.speciesName },
-        creatures: list.filter(function (c) { return P.safeKey(c.id); }).map(function (c) {
+        creatures: housedIn(s, data).filter(function (c) { return P.safeKey(c.id); }).map(function (c) {
           var mine = !!key && P.sameHandler(handlerOf(c), key);
-          if (mine && P.safeKey(c.id)) creatures[c.id] = detailOf(s, data, c, home);
+          if (mine) creatures[c.id] = detailOf(s, data, c);
           var d = isObj(c.development) ? c.development : null;
           return {
             id: c.id,
             name: txt(r.creatureName(data, c), 80),
-            species: { id: home.speciesId, name: home.speciesName },
+            species: { id: c.species, name: r.speciesName(data, c.species) },
             handlerName: d && d.handlerId ? txt(r.handlerName(d.handlerId), 40) : '',
             bond: d ? { level: d.bond.level, name: r.bondName(d.bond.level) } : null,
+            /* Whether the beast has passed acclimatisation: the directory says "Not acclimatised yet" otherwise. */
+            available: !!d && d.bond.level >= 1,
+            /* At the Pen or away from the Ironbow: the table sees who is out on the road. */
+            place: placeOf(c),
             mine: mine
           };
         })
       });
-    });
+    }
     var anyMine = Object.keys(creatures).length > 0;
     return {
       kind: P.KIND,
       version: P.VERSION,
-      /* This Bastion save's own id: a request made for another save is refused (set once the Bastion has run since the Beast Handler arrived). */
+      /* This Bastion save's own id: a phone only takes a snapshot made for the Bastion it was paired with (set once the Bastion has run since the Beast Handler arrived). */
       campaign: r.beastCampaignId ? r.beastCampaignId(s) : '',
       asOfDay: num(s.day, 1),
       asOfLabel: r.dayLabel(num(s.day, 1)),
       handler: key ? { id: key, name: txt(r.handlerName(handlerId), 40), hasCreatures: anyMine } : null,
-      /* This handler's own requests and where they have got to (never anyone else's). */
-      receipts: key && r.beastReceiptsFor ? r.beastReceiptsFor(s, key) : [],
       facilities: facilities,
       creatures: creatures
     };

@@ -2,9 +2,10 @@
    overhaul, Harry's answers of 14 October 2026), clicked through from a
    double-clicked index.html with the internet off:
    - the DM grants a Port Charter in the Explorer; the Bastion holds it once
-     (a notice, Clan Influence, the Hall's Port Charters box) and the
+     (a notice, Management's Changes from the Explorer, the Dock's Port Charters tab) and the
      Explorer says Applied;
-   - the Hall's Register Port Charter order (Level 1, 3 days) registers it;
+   - the Dock's Register Port Charter order (3 days; the Hall's until the Strip Back Overhaul,
+     22 October 2026) registers it;
    - the Dock's Ship cargo… sends real Warehouse lots (Fresh Fish only
      ships on a voyage of 2 days or less, so not on today's 7-day ones); the ship sells on
      arrival, once, even after a reload, and is home a week later; trouble
@@ -105,13 +106,11 @@ async function closePanel(ba) {
   /* ------------------------------------------------------------------ */
   section('The DM grants a Port Charter; the Bastion holds it once');
 
-  await check('the Explorer and the Bastion open side by side; the Bastion has a Hall at Level 2 and goods', async () => {
+  await check('the Explorer and the Bastion open side by side; the Bastion has the Dock at Level 2 and goods', async () => {
     ex = await openExplorer(ctx);
     await ex.waitForTimeout(600);
     ba = await openBastion(ctx);
     await ba.evaluate(() => TSI.bastion.debug.change(s => {
-      s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }];
-      s.facilityLevels.hall_of_emissaries = 2;
       s.facilityLevels.dock = 2;
       s.treasuryGP = 100;
       s.warehouse = [
@@ -127,6 +126,9 @@ async function closePanel(ba) {
     await ex.click('[data-test=charter-open]');
     await ex.waitForSelector('[data-test=charter-dialog]');
     equal(await ex.$$eval('[data-test=charter-ports] li', l => l.map(x => x.textContent)), ['Timberport (Clan Blackstone): Not held.', 'Goldport (Clan Molten): Not held.', 'Port Brawdlyn (Clan Rowthorn): Not held.', 'Steelport (Clan Slade): Not held.', 'Moltenport (Clan Molten): Not held.', 'Leatherport (Clan Karr): Not held.', 'Bleakharbour (Clan Karr): Not held.', 'Alderbridge (Clan Blackstone): Not held.', 'Redport (Clan Farmer): Not held.', 'The River Rook (Clan Bacca): Not held.']);
+    const said = await bare(ex, '[data-test=charter-dialog]');
+    assert(/a Register Port Charter order at the Dock \(3 days\) registers it\./.test(said), said);
+    assert(!/Hall|Level 2/.test(said), 'the dialog no longer sends the DM to the Hall, or to a wrong level: ' + said);
     equal((await H.layoutCheck(ex, ['[data-test=charter-dialog]', '[data-test=charter-dialog] .tsi-modal__foot button'])).outOfView, [], 'the dialog fits the laptop');
     await ex.selectOption('[data-test=charter-port]', 'goldport');
     await ex.fill('[data-test=charter-why]', 'Cleared the wreckers');
@@ -137,14 +139,14 @@ async function closePanel(ba) {
     equal(out.map(m => [m.type, m.port, m.clan, m.text]), [['charter', 'goldport', 'molten', 'Port Charter for Goldport (Clan Molten): Cleared the wreckers']]);
   });
 
-  await check('within a few seconds the Bastion holds it: a Port Charter notice, the Hall\'s box and Clan Influence', async () => {
+  await check('within a few seconds the Bastion holds it: a Port Charter notice, the Dock\'s Port Charters tab and Management\'s Changes from the Explorer', async () => {
     await ba.waitForFunction(() => TSI.bastion.debug.state().tradeNetwork.portCharters.length === 1, null, { timeout: 8000 });
-    await H.waitForNotice(ba, /Port Charter for Goldport \(Clan Molten\) \(DM, Day 1\): the Bastion now holds it\. Register it at the Hall of Emissaries before the Dock ships cargo there/);
+    await H.waitForNotice(ba, /Port Charter for Goldport \(Clan Molten\) \(DM, Day 1\): the Bastion now holds it\. Register it at the Dock before the Dock ships cargo there/);
     const s = await bas(ba);
     equal([s.tradeNetwork.portCharters[0].status, s.tradeNetwork.portCharters[0].port], ['earned', 'goldport']);
-    await ba.click('[data-test=open-influence]');
-    await ba.waitForSelector('[data-test=bridge-row]');
-    assert(/Port Charter: Goldport \(Clan Molten\) · Day 1/.test(await bare(ba, '[data-test=bridge-row]')), await bare(ba, '[data-test=bridge-row]'));
+    await ba.click('[data-test=open-management]');
+    await ba.waitForSelector('[data-test=explorer-change]');
+    assert(/Port Charter: Goldport \(Clan Molten\) · Day 1/.test(await bare(ba, '[data-test=explorer-change]')), await bare(ba, '[data-test=explorer-change]'));
     await closePanel(ba);
   });
 
@@ -160,20 +162,25 @@ async function closePanel(ba) {
   });
 
   /* ------------------------------------------------------------------ */
-  section('The Hall registers it (Level 1, 3 days)');
+  section('The Dock registers it (3 days)');
 
-  await check('Register Port Charter lists Goldport; Issue Order makes a 3-day order costing nothing', async () => {
-    await ba.click('[data-test=tile-hall_of_emissaries]');
-    await ba.waitForSelector('[data-test="issue-hall_of_emissaries__register_port_charter"]');
-    assert(/Earned on Day 1: register it at the Hall of Emissaries/.test(await bare(ba, '[data-test=hall-charters]')));
-    equal(await ba.$$eval('[data-test="sel-hall_of_emissaries__register_port_charter"] option', o => o.map(x => x.textContent)), ['Port Charter: Goldport (Clan Molten)']);
-    await ba.click('[data-test="issue-hall_of_emissaries__register_port_charter"]');
+  await check('Register Port Charter (under Orders) lists Goldport; Issue Order makes a 3-day order costing nothing', async () => {
+    await ba.click('[data-test=tile-dock]');
+    await ba.waitForSelector('[data-test=dock-tabs]');
+    await ba.click('[data-test=dock-tab-charters]');
+    await ba.waitForSelector('[data-test=dock-charters]');
+    assert(/Earned on Day 1: register it at the Dock/.test(await bare(ba, '[data-test=dock-charters]')));
+    await ba.click('[data-test=dock-tab-orders]');
+    await ba.waitForSelector('[data-test="issue-dock__register_port_charter"]');
+    equal(await ba.$$eval('[data-test="sel-dock__register_port_charter"] option', o => o.map(x => x.textContent)), ['Port Charter: Goldport (Clan Molten)']);
+    await ba.click('[data-test="issue-dock__register_port_charter"]');
     await ba.waitForTimeout(400);
     const s = await bas(ba);
     const o = s.pendingOrders.filter(x => x.fnId === 'register_port_charter')[0];
-    equal([o.label, o.dueDay, o.costGP, s.treasuryGP], ['Hall of Emissaries: Register Port Charter (Goldport)', 4, 0, 100]);
-    equal(await bare(ba, '[data-test="issue-hall_of_emissaries__register_port_charter"]'), 'No Port Charter to register', 'not again while it\'s being registered');
-    assert(/Being registered at the Hall of Emissaries \(ready Day 4\)/.test(await bare(ba, '[data-test=hall-charters]')));
+    equal([o.facId, o.label, o.dueDay, o.costGP, s.treasuryGP], ['dock', 'Dock: Register Port Charter (Goldport)', 4, 0, 100]);
+    equal(await bare(ba, '[data-test="issue-dock__register_port_charter"]'), 'No Port Charter to register', 'not again while it\'s being registered');
+    await ba.click('[data-test=dock-tab-charters]');
+    assert(/Being registered at the Dock \(ready Day 4\)/.test(await bare(ba, '[data-test=dock-charters]')));
     await closePanel(ba);
   });
 
@@ -196,8 +203,10 @@ async function closePanel(ba) {
     assert(/Level 2: each ship carries up to 2 lots, 1 ship at sea at once/.test(t), t);
     assert(/Goldport \(Clan Molten\): Registered on Day 4/.test(t));
     equal(await ba.$eval('[data-test=ship-cargo]', b => b.disabled), false);
-    const box = await ba.$eval('[data-test=charter_berth], [data-test="issue-dock__charter_berth"]', b => !!b);
-    assert(box, 'the Charter Berth is still there');
+    await ba.click('[data-test=dock-tab-orders]');
+    const box = await ba.$eval('[data-test="issue-dock__charter_berth"]', b => !!b);
+    assert(box, 'the Charter Berth is still there, under Orders');
+    await ba.click('[data-test=dock-tab-cargo]');
   });
 
   await check('the dialog: Fresh Fish can\'t go on a 7-day voyage; 2 lots of Sawn Lumber quote 320 gp; it sails', async () => {
@@ -479,7 +488,7 @@ async function closePanel(ba) {
     equal(await ex.$eval('[data-test=charter-port]', s => s.value), 'timberport');
     await ex.click('[data-test=charter-dialog] .tsi-btn--primary');
     await ex.waitForFunction(() => /waiting for the Bastion/.test(document.querySelector('[data-test=harbour-line]').textContent), null, { timeout: 5000 });
-    await ex.waitForFunction(() => /Held: register it at the Hall/.test(document.querySelector('[data-test=harbour-line]').textContent), null, { timeout: 10000 });
+    await ex.waitForFunction(() => /Held: register it at the Dock/.test(document.querySelector('[data-test=harbour-line]').textContent), null, { timeout: 10000 });
     equal(await ex.$eval('[data-test=harbour-grant]', b => b.disabled), true);
     await H.shot(ex, 'commerce-harbour-laptop');
     await ex.click('.tsi-modal__foot button:text-is("Close")');
@@ -490,7 +499,7 @@ async function closePanel(ba) {
   /* ------------------------------------------------------------------ */
   section('Harry\'s sample file (tests/fixtures/bastion-pr5-sample.json), on the test page');
 
-  await check('on the test page (tests/harness.html), with only the Bastion open, the sample imports: the Hall and the Dock at Level 2, goods in the Warehouse; then the Explorer opens beside it, and a change it sent earlier (say, while testing pull request 4) is skipped, not applied', async () => {
+  await check('on the test page (tests/harness.html), with only the Bastion open, the sample imports: the Dock at Level 2, the Hall (Level 2 in the file) at its one level, goods in the Warehouse; then the Explorer opens beside it, and a change it sent earlier (say, while testing pull request 4) is skipped, not applied', async () => {
     const c2 = await context(browser, 'laptop');
     /* An Explorer that sent an Honour/Respect change before: T4 won. */
     const e0 = await openExplorer(c2, HARNESS);
@@ -510,13 +519,15 @@ async function closePanel(ba) {
     await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug, null, { timeout: 8000 });
     await H.chooseFile(b3, '[data-test=import-save]', require('path').join(__dirname, '..', 'fixtures', 'bastion-pr5-sample.json'));
     await H.clickModal(b3, 'Import');
-    await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().facilityLevels.hall_of_emissaries === 2, null, { timeout: 8000 });
+    await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().facilityLevels.hall_of_emissaries === 1, null, { timeout: 8000 });
+    /* The box that says what changed holds the Bastion until it is read (the Strip Back Overhaul). */
+    await H.ackChanges(b3);
     const e3 = await openExplorer(c2, HARNESS);
     await e3.waitForTimeout(500);
     await b3.waitForFunction(() => TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
     const s = await bas(b3);
     equal([s.day, s.treasuryGP, s.facilityLevels.dock, s.facilityLevels.hall_of_emissaries, qty(s, 'sawn_lumber'), qty(s, 'raw_stone'), qty(s, 'preserved_fish'), qty(s, 'fresh_fish'), s.bridge.fresh],
-      [1, 500, 2, 2, 4, 6, 2, 4, false]);
+      [1, 500, 2, 1, 4, 6, 2, 4, false]);
     equal([Object.values(s.bridge.done).map(r => r.r), s.honourRespectByClan.slade], [['skipped'], 0], 'the earlier change is skipped');
     await e3.click('[data-test=charter-open]');
     await e3.waitForSelector('[data-test=charter-dialog]');
