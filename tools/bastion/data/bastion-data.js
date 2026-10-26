@@ -19,9 +19,8 @@ window.TSI_DATA.bastion = {
     workshop: 'workshop.png',
     dock: 'docks.png',
     herbal_gardens: 'greenhouse.png',
-    /* The Beast Pen's card shows the Menagerie's painting (Harry, 22 October 2026); the Pen's own picture,
-       beast_pen.jpg, spans the top of its panel (panelImages below). The file stays where it is. */
-    beast_pen: 'menagerie.png',
+    /* The Beast Pen's card shows the same painting that spans the top of its panel (Harry, 26 October 2026). */
+    beast_pen: 'beast_pen.jpg',
     /* The Temple (S11, Harry, 22 October 2026) shows the three Shrines' paintings side by side: a list is drawn as
        strips, in this order (Telluria, Aurush, Pelagos). The files stay where they are. */
     temple: ['shrine_of_telluria.png', 'shrine_of_aurush.png', 'shrine_of_pelagos.png'],

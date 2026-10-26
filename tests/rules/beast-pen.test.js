@@ -115,7 +115,7 @@
 
   test('its pictures: the card shows the Menagerie\'s painting, the map its overlay and label, and Harry\'s picture spans the top of the panel', function (t) {
     var B = T.bastion;
-    t.equal(B.facilityImages[PEN], 'menagerie.png');
+    t.equal(B.facilityImages[PEN], 'beast_pen.jpg');
     t.equal(B.panelImages[PEN], 'beast_pen.jpg');
     t.same(B.map.overlays.filter(function (o) { return o.fac === PEN; }), [{ fac: PEN, pic: 'map/overlays/wyvern_roost.png' }], 'the Menagerie never had a map picture, so the map reuses the Wyvern Roost\'s building');
     t.same(B.mapLabels[PEN], { x: 2081, y: 326 });
