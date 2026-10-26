@@ -252,9 +252,9 @@
     }
     function drawPanel() {
       TSI.clear(panelHost);
-      var f = snap && focus && snap.facilities[focus];
-      if (!f) { panelHost.hidden = true; stage.classList.remove('has-panel'); artWrap = null; artFac = null; return; }
       var def = panelDef(focus);
+      var f = snap && focus && (snap.facilities[focus] || (def && def.bare ? { name: def.title, level: 1, single: true, repair: 0, orders: [] } : null));
+      if (!f) { panelHost.hidden = true; stage.classList.remove('has-panel'); artWrap = null; artFac = null; return; }
       var widgets = def ? def.widgets : ['level', 'orders'];
       var title = (def && def.title) || f.name;
       var info = [];
@@ -291,10 +291,10 @@
       var panel = el('div', { class: 'tsi-bpv-panel', 'data-test': 'pv-panel', 'data-fac': focus, role: 'dialog', 'aria-label': title }, [
         el('div', { class: 'tsi-bpv-panel__head' }, [
           el('h2', { class: 'tsi-bpv-panel__title', 'data-test': 'pv-panel-title', text: title }),
-          el('div', { class: 'tsi-bpv-panel__tagline', 'data-test': 'pv-panel-tagline', text: def ? def.tagline : '' })
+          def && def.tagline ? el('div', { class: 'tsi-bpv-panel__tagline', 'data-test': 'pv-panel-tagline', text: def.tagline }) : null
         ]),
         artArea(def, f, title, shrines),
-        el('div', { class: 'tsi-bpv-panel__info' }, info),
+        info.length ? el('div', { class: 'tsi-bpv-panel__info' }, info) : null,
         def && def.blurb ? el('p', { class: 'tsi-bpv-panel__blurb', 'data-test': 'pv-panel-blurb', text: def.blurb }) : null
       ]);
       panelHost.appendChild(panel);

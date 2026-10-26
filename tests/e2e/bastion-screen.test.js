@@ -193,8 +193,8 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   /* ------------------------------------------------------------------ */
   section('The facility grid');
 
-  await check('the two starting facilities first (Workshop, Dock; the Barracks, Watchtower and Armoury went on 22 October 2026), then the Party Quarters picture (not a button, no panel, tooltip "Party Quarters"), then the four slots; the six Development Plots in the row below', async () => {
-    equal(await page.$eval('[data-test=tile-party_quarters]', n => [n.tagName, n.getAttribute('aria-label')]), ['DIV', 'Party Quarters']);
+  await check('the two starting facilities first (Workshop, Dock; the Barracks, Watchtower and Armoury went on 22 October 2026), then the Party Quarters picture (a button that opens a small panel, tooltip "Party Quarters"), then the four slots; the six Development Plots in the row below', async () => {
+    equal(await page.$eval('[data-test=tile-party_quarters]', n => [n.tagName, n.getAttribute('aria-label')]), ['BUTTON', 'Party Quarters. Open its panel.']);
     await page.hover('[data-test=tile-party_quarters]');
     await page.waitForSelector('[data-test=tooltip]');
     equal(await page.$eval('[data-test=tooltip]', n => n.textContent.replace(/\s+/g, ' ').trim()), 'Party Quarters');

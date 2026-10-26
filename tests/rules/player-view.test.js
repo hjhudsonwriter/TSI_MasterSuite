@@ -100,7 +100,10 @@
   test('focus: only a built facility with a panel; the Hall\'s panel is "diplomacy"', function (t) {
     t.equal(snap(busy(), { focus: 'workshop' }).focus, 'workshop');
     t.equal(snap(busy(), { focus: 'hall_of_emissaries' }).focus, null, 'not built yet');
-    t.equal(snap(busy(), { focus: 'party_quarters' }).focus, null, 'the Party Quarters has no panel');
+    t.equal(snap(busy(), { focus: 'party_quarters' }).focus, 'party_quarters', 'the Party Quarters is the one id that is not a facility');
+    t.equal(snap(busy(), { focus: 'party_quarter' }).focus, null);
+    t.equal(R.playerFocusOf('party_quarters'), 'party_quarters');
+    t.equal(snap(busy(), { focus: 'party_quarters' }).facilities.party_quarters, undefined, 'and it adds nothing else to the snapshot');
     t.equal(snap(busy(), { focus: 'nonsense' }).focus, null);
     t.equal(snap(busy(), { focus: 42 }).focus, null);
     t.equal(snap(busy()).focus, null);
@@ -181,17 +184,20 @@
 
   group('Player View: the panels\' data file');
 
-  test('one entry for every facility, none for the Party Quarters, each with a title, tagline and blurb', function (t) {
+  test('one entry for every facility and a bare one for the Party Quarters, each with a title, tagline and blurb', function (t) {
     var panels = T.bastionPlayerPanels;
-    t.same(panels.map(function (p) { return p.id; }).sort(), data.facilities.map(function (f) { return f.id; }).sort());
+    t.same(panels.map(function (p) { return p.id; }).sort(), data.facilities.map(function (f) { return f.id; }).concat(['party_quarters']).sort());
     panels.forEach(function (p) {
+      if (p.bare) { t.equal(p.id, 'party_quarters'); t.same(p.widgets, []); t.equal(p.tagline + p.blurb, ''); t.equal(p.title, 'Party Quarters'); }
+      else {
       t.equal(R.facility(data, p.id).name, p.title, p.id + '\'s title is its name');
       t.ok(p.tagline && p.blurb, p.id + ' has a tagline and a blurb');
       t.ok(p.widgets.indexOf('level') !== -1 && p.widgets.indexOf('orders') !== -1, p.id + ' shows its level and orders');
+      }
       var files = p.art === null ? [] : typeof p.art === 'string' ? [p.art] : Object.keys(p.art.levels).map(function (k) { return p.art.levels[k]; });
       t.ok(files.every(function (f) { return /^[a-z0-9_\-]+\.(png|jpg|webp)$/.test(f); }), p.id + '\'s art is file names or null');
     });
-    t.equal(panels.filter(function (p) { return p.id === 'party_quarters'; }).length, 0);
+    t.equal(panels.filter(function (p) { return p.bare; }).length, 1, 'only the Party Quarters is bare');
   });
 
   test('the Workshop shows staff, the Temple shows shrines, nobody else does', function (t) {

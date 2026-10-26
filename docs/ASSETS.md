@@ -568,7 +568,7 @@ Harry's originals (`DW_Blacktide.mp4` and ten others, 7 to 19 MB each, 720 x 128
 
 ## The Bastion's Player View: Workshop pictures, 26 October 2026
 
-Harry's upload of 26 October 2026: five 2000 x 1116 JPEGs, already optimised, one per Workshop level (Level 1 the Handyman alone; each level adds a worker: Smith, Scholar, Alchemist, then an armoured Artisan). Named in `tools/bastion/data/player-panels-data.js` (`art.levels`). Harry's count of the people shows the files are Levels 1, 2, 4 and 5 (the staff visible equal the level): his `workshop-level-3.jpg` is kept as `workshop-level-4.jpg`, there is no Level 3 picture yet, and his other 4-person picture is a spare.
+Harry's upload of 26 October 2026: five 2000 x 1116 JPEGs, already optimised, one per Workshop level (Level 1 the Handyman alone; each level adds a worker: Smith, Scholar, Alchemist, then an armoured Artisan). Named in `tools/bastion/data/player-panels-data.js` (`art.levels`). Harry's count of the people shows the files are Levels 1, 2, 4 and 5 (the staff visible equal the level): his `workshop-level-3.jpg` is kept as `workshop-level-4.jpg`, his 3-person picture arrived later as `workshop-level-3.jpg`, and his other 4-person picture is a spare.
 
 | Old location | New location |
 |---|---|
@@ -580,3 +580,5 @@ Harry's upload of 26 October 2026: five 2000 x 1116 JPEGs, already optimised, on
 ## Player View pictures: Dock and Courier Exchange, 26 October 2026
 
 Harry's uploads (2000 x 1116, no level pictures yet) are `tools/bastion/assets/player-panels/dock.jpg` and `tools/bastion/assets/player-panels/courier_exchange.jpg`, named in `tools/bastion/data/player-panels-data.js`.
+| Harry's `workshop-level-3.jpg` (3 people, added 26 October 2026) | `tools/bastion/assets/player-panels/workshop-level-3.jpg` |
+| Harry's `party_quarters.jpg` (a hall with a fireplace, 26 October 2026) | `tools/bastion/assets/player-panels/party_quarters.jpg` |
