@@ -164,6 +164,8 @@ window.TSI_DATA.tools = [
            grant in the Explorer, and their names. */
         'tools/bastion/data/creatures-data.js',
         'tools/explorer/rules.js',
+        'tools/explorer/draw.js',
+        'tools/explorer/player-view-rules.js',
         'tools/explorer/journey.js',
         'tools/explorer/fights.js',
         /* The Bastion's rules, only to check its half of a campaign file
@@ -173,11 +175,11 @@ window.TSI_DATA.tools = [
         'tools/explorer/tool.js'
       ]
     },
-    /* The Player View (a stub until phase P4 of docs/PLAYER-VIEW-PLAN.md fills it): the map for the TV, view-only. */
+    /* The Player View (26 October 2026): the map for the TV, view-only, drawn by the Explorer's own drawing code. */
     playerViews: {
       explorer: {
         css: ['tools/explorer/player-view.css'],
-        js: ['tools/explorer/player-view.js']
+        js: ['tools/explorer/rules.js', 'tools/explorer/draw.js', 'tools/explorer/player-view.js']
       }
     }
   },

@@ -1,4 +1,97 @@
-/* The Explorer's Player View (a stub until phase P4). Every class starts tsi-xpv. */
+/* The Explorer's Player View (tools/explorer/player-view.js). Every class starts tsi-xpv.
+   A slim row along the top, then the map filling the rest of the window: the whole board, fitted and centred, on a dark
+   ground. The pieces on the map are drawn at the same size as on the DM's map (they scale with the board). */
 .tsi-player--explorer { background: #050304; }
-.tsi-xpv { position: absolute; inset: 0; display: grid; place-items: center; background: #050304; }
-.tsi-xpv__text { font: 600 clamp(20px, 3.4vh, 36px) var(--tsi-font-display); letter-spacing: .12em; color: var(--tsi-gold-text); }
+
+.tsi-xpv {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #050304;
+  color: var(--tsi-text);
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;           /* it only looks: clicks do nothing */
+}
+.tsi-xpv-full { pointer-events: auto; }
+
+.tsi-xpv-row {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(8px, 1.4vw, 28px);
+  min-height: clamp(34px, 5.2vh, 56px);
+  padding: 0 clamp(10px, 1.4vw, 26px);
+  background: linear-gradient(180deg, rgba(40, 10, 16, .96), rgba(10, 6, 7, .96));
+  border-bottom: 1px solid var(--tsi-line-control);
+}
+.tsi-xpv-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .55em;
+  white-space: nowrap;
+  font-size: clamp(14px, 2.3vh, 26px);
+}
+.tsi-xpv-pill__label { font: 400 .8em var(--tsi-font-display); letter-spacing: var(--tsi-track-label, .08em); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-xpv-pill__n { font: 700 1.1em var(--tsi-font-display); color: var(--tsi-text); }
+
+/* ---------- The map: as the DM's stage ---------- */
+.tsi-xpv-stage { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: #050304; }
+.tsi-xpv-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
+.tsi-xpv-world--map { z-index: 1; }
+.tsi-xpv-map { display: block; width: 100%; height: 100%; user-select: none; pointer-events: none; }
+.tsi-xpv-weather { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; object-fit: cover; opacity: .55; mix-blend-mode: screen; pointer-events: none; }
+.tsi-xpv-weather[hidden], .tsi-xpv-map[hidden] { display: none; }
+.tsi-xpv-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.tsi-xpv-canvas--grid { z-index: 3; }
+.tsi-xpv-pins { position: absolute; inset: 0; z-index: 14; pointer-events: none; }
+.tsi-xpv-canvas--fog { z-index: 16; }
+.tsi-xpv-world--tokens { z-index: 18; }
+
+.tsi-xpv-pin { position: absolute; transform: translate(-50%, -100%); }
+.tsi-xpv-pin img { display: block; width: 34px; height: 34px; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .45)); }
+.tsi-xpv-pin-star { font-size: 28px; color: var(--tsi-gold-text); }
+
+.tsi-xpv-token {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border-radius: 999px;
+  border: 2px solid rgba(201, 162, 39, .55);
+  background: rgba(122, 15, 26, .55);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, .35);
+  color: rgba(231, 231, 234, .95);
+  font: 900 16px/1 var(--tsi-font-body);
+}
+.tsi-xpv-token span { letter-spacing: .5px; }
+
+/* ---------- Full screen, and waiting ---------- */
+.tsi-xpv-full {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 7;
+  padding: 6px 14px;
+  border: 1px solid var(--tsi-line-control);
+  border-radius: var(--tsi-radius-pill);
+  background: rgba(8, 5, 6, .8);
+  color: var(--tsi-gold-text);
+  font: 400 13px var(--tsi-font-display);
+  letter-spacing: .06em;
+  cursor: pointer;
+  transition: opacity var(--tsi-dur-slow) var(--tsi-ease);
+}
+.tsi-xpv-full.is-faded { opacity: 0; pointer-events: none; }
+.tsi-xpv-waiting { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; background: #050304; }
+.tsi-xpv-waiting[hidden] { display: none; }
+.tsi-xpv-waiting__text { font: 600 clamp(20px, 3.4vh, 36px) var(--tsi-font-display); letter-spacing: .12em; color: var(--tsi-gold-text); animation: tsi-xpv-breathe 3.2s ease-in-out infinite; }
+@keyframes tsi-xpv-breathe { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .tsi-xpv-waiting__text { animation: none; }
+  .tsi-xpv-full { transition-duration: 0s !important; }
+}
+.tsi-player--explorer .tsi-player__status { bottom: auto; top: 60px; }

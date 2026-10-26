@@ -504,3 +504,7 @@
 .tsi-tool--explorer .tsi-exp-hdrbtns { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .tsi-tool--explorer .tsi-exp-hdrbtns { flex-wrap: nowrap; margin-left: auto; }
 .tsi-tool--explorer .tsi-exp-hdrbtns .tsi-btn.tsi-exp-mini { margin-left: 0; padding: 2px 6px; font-size: 12px; letter-spacing: 0; white-space: nowrap; }
+
+/* The Player View's status next to its button. */
+.tsi-tool--explorer .tsi-exp-pvstatus { font: 400 12px var(--tsi-font-display); letter-spacing: .04em; color: var(--tsi-text-faint); white-space: nowrap; align-self: center; }
+.tsi-tool--explorer .tsi-exp-pvstatus.is-connected { color: #9fd68a; }
