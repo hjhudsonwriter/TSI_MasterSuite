@@ -156,7 +156,7 @@
 
   test('only these keys exist, at every level', function (t) {
     var s = snap(busy(), { focus: 'temple' });
-    t.same(Object.keys(s).sort(), ['crest', 'day', 'facilities', 'facilityCount', 'focus', 'labels', 'orderCount', 'overlays', 'partyName', 'tiles', 'treasuryGP', 'v']);
+    t.same(Object.keys(s).sort(), ['crest', 'day', 'facilities', 'facilityCount', 'focus', 'labels', 'ledger', 'orderCount', 'overlays', 'partyName', 'tiles', 'treasuryGP', 'v']);
     t.same(Object.keys(s.crest).sort(), ['dataUrl', 'key']);
     s.overlays.forEach(function (o) { t.same(Object.keys(o).sort(), ['facs', 'pic', 'repair']); });
     s.labels.forEach(function (l) { t.ok(Object.keys(l).every(function (k) { return ['fac', 'name', 'level', 'single', 'x', 'y', 'repair', 'part'].indexOf(k) !== -1; }), 'a label has only its own fields'); });
@@ -182,6 +182,16 @@
     var text = JSON.stringify(snap(b, { focus: 'prison_tower' }));
     ['ZZPRISONER', 'ZZTHREAD', 'ZZCOND', 'ZZFOUND', 'lockedDay', 'endDay'].forEach(function (w) { t.equal(text.indexOf(w), -1, w); });
     t.equal(snap(busy()).facilities.workshop.cells, undefined);
+  });
+
+  test('the ledger flag: true only when the DM asks and a facility is open; nothing else comes with it', function (t) {
+    t.equal(snap(busy()).ledger, false);
+    t.equal(snap(busy(), { ledger: true }).ledger, false, 'no facility open');
+    t.equal(snap(busy(), { focus: 'workshop', ledger: true }).ledger, true);
+    t.equal(snap(busy(), { focus: 'workshop', ledger: 'yes' }).ledger, false, 'only a real true');
+    var text = JSON.stringify(snap(busy(), { focus: 'workshop', ledger: true }));
+    t.equal(text.indexOf('hotspot'), -1);
+    t.equal(text.indexOf('fishery'), -1, 'the ledger pictures are named in the players\' data, not sent');
   });
 
   test('the Beast Pen lists the housed beasts: name, kind and handler only, in the Pen\'s order', function (t) {
@@ -265,6 +275,18 @@
       t.ok(files.every(function (f) { return /^[a-z0-9_\-]+\.(png|jpg|webp)$/.test(f); }), p.id + '\'s art is file names or null');
     });
     t.equal(panels.filter(function (p) { return p.bare; }).length, 1, 'only the Party Quarters is bare');
+  });
+
+  test('the Fishery has a picture for Levels 1 to 4 (5 awaited), a ledger for Levels 1 to 5 and a hotspot for each room picture', function (t) {
+    var p = T.bastionPlayerPanels.filter(function (x) { return x.id === 'fishery_smokehouse'; })[0];
+    t.same(Object.keys(p.art.levels), ['1', '2', '3', '4']);
+    t.same(Object.keys(p.ledger.levels), ['1', '2', '3', '4', '5']);
+    t.same(Object.keys(p.ledger.hotspot), ['1', '2', '3', '4']);
+    Object.keys(p.ledger.hotspot).forEach(function (k) {
+      var h = p.ledger.hotspot[k];
+      t.ok(h.x >= 0 && h.y >= 0 && h.x + h.w <= 100 && h.y + h.h <= 100 && h.w > 5 && h.h > 5, 'hotspot ' + k + ' is inside the picture');
+    });
+    t.equal(T.bastionPlayerPanels.filter(function (x) { return x.ledger; }).length, 1, 'only the Fishery has a ledger so far');
   });
 
   test('the Workshop shows staff, the Temple shows shrines, the Beast Pen shows beasts, nobody else does', function (t) {

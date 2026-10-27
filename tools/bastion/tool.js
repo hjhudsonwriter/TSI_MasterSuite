@@ -643,7 +643,7 @@
         name: 'ScarlettBastionPlayers',
         keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
-        getState: function () { return R.playerSnapshot(state, data, { crest: crest, focus: pvFocus() }); },
+        getState: function () { return R.playerSnapshot(state, data, { crest: crest, focus: pvFocus(), ledger: pvLedgerOn() }); },
         onStatus: function (st) {
           pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvStatus.classList.toggle('is-connected', st === 'connected');
@@ -651,6 +651,21 @@
       });
       var pvQueued = false;
       var pvLastFocus = null;
+      /* The ledger the DM is showing the players (a facility whose panel data has ledger pictures): kept for that facility at
+         that level only, so another facility, or an upgrade, closes it. */
+      var pvLedger = false;
+      var pvLedgerFac = '';
+      var pvLedgerLevel = 0;
+      function hasLedger(id) {
+        var list = D.bastionPlayerPanels || [];
+        for (var i = 0; i < list.length; i++) if (list[i].id === id) return !!list[i].ledger;
+        return false;
+      }
+      function pvLedgerOn() {
+        var f = pvFocus();
+        if (pvLedger && (!f || f !== pvLedgerFac || R.getFacilityLevel(state, f) !== pvLedgerLevel)) pvLedger = false;
+        return pvLedger;
+      }
       function pvFocus() { return shown ? R.playerFocusOf(shown.id) : null; }
       /* Send the picture again, once at the next frame however many changes there were. */
       function queuePlayerSync() {
@@ -662,6 +677,7 @@
         var f = pvFocus();
         if (f === pvLastFocus) return;
         pvLastFocus = f;
+        pvLedger = false;
         pvLink.send('focus', { focus: f });
       }
       var bar = el('header', { class: 'tsi-bas-head' }, [
@@ -2304,6 +2320,17 @@
           penSection(id),
           /* A facility in a construction slot can be demolished (Harry, 13
              October 2026); the starting facilities can't. */
+          /* A facility with a ledger picture for the players (the Fishery & Smokehouse): show it, or hide it again. */
+          hasLedger(id) ? el('div', { class: 'tsi-bas-facpanel__ledger' }, [
+            btn(pvLedgerOn() ? 'Hide ledger from players' : 'Show ledger to players', function () {
+              pvLedger = !pvLedgerOn();
+              pvLedgerFac = id;
+              pvLedgerLevel = R.getFacilityLevel(state, id);
+              pvLink.send('ledger', { open: pvLedger });
+              queuePlayerSync();
+              renderPanel();
+            }, 'tsi-btn--ghost', 'ledger-toggle', { title: 'Opens the facility\'s ledger on the players\' window. It only looks.' })
+          ]) : null,
           B.startingBuilt.indexOf(id) === -1 ? el('div', { class: 'tsi-bas-facpanel__demolish' }, [
             btn('Demolish…', function () { onDemolish(id); }, 'tsi-btn--ghost tsi-bas-demolish', 'demolish-' + id)
           ]) : null

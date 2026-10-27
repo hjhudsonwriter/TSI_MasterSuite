@@ -44,6 +44,7 @@ Two ways of seeing the Explorer and the Bastion:
 - Facility panels are purely visual; every panel shows name, tagline, level and orders. The picture fills most of the screen (slim header, big framed 4:3 picture, a compact strip of facts beneath).
 
 ## Status
+The Fishery & Smokehouse has level pictures and a ledger the players can open (or the DM can show), 27 October 2026; Level 5's room picture is awaited.
 The Prison Tower's panel picture follows which cells are in use (empty, or occupied), 27 October 2026; more combinations can be added in the data file.
 The Explorer's and Bastion's windows stay open between tools and reconnect by themselves (26 October 2026); only a closed DM browser window, after about 30 seconds, closes them.
 The Beast Pen's panel shows only its painting and the housed beasts' name, kind and handler (26 October 2026).

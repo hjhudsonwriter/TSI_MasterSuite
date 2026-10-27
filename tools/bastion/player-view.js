@@ -52,9 +52,13 @@
       var key = 'cells-' + used.map(function (x) { return x ? '1' : '0'; }).join('');
       return a.states[key] || (any ? a.states.occupied : '') || a.states.empty || '';
     }
-    var lv = a.levels || {};
-    for (var n = level; n >= 1; n--) if (lv[n]) return lv[n];
-    for (n = level + 1; n <= 5; n++) if (lv[n]) return lv[n];
+    return pickLevel(a.levels, level);
+  }
+  /* The entry of a { level: value } map for a level: its own, else the nearest lower level's, else the nearest higher. */
+  function pickLevel(map, level) {
+    map = map || {};
+    for (var n = level; n >= 1; n--) if (map[n]) return map[n];
+    for (n = level + 1; n <= 5; n++) if (map[n]) return map[n];
     return '';
   }
   /* The picture on a facility's panel: Harry's own (player-panels data), else the panel painting, else the tile's.
@@ -88,6 +92,11 @@
     var focus = null;
     var trayOpen = false;
     var fadeTimer = null;
+    var ledgerOpen = false;
+    var ledgerKey = '';
+    var dmLedger = false;
+    var ledgerEl = null;
+    var hotBtn = null;
 
     /* ---- The map ---- */
     var overlayLayer = el('div', { class: 'tsi-bpv-map__overlays', 'data-test': 'pv-overlays' });
@@ -234,6 +243,65 @@
     var artWrap = null;
     var artFac = null;
     var artKey = null;
+    /* ---- The ledger: a book on the room picture (a hotspot over it) that opens full size over the panel ---- */
+    function ledgerFile(def, f) { return def && def.ledger ? pickLevel(def.ledger.levels, f.level) : ''; }
+    function ledgerApply() {
+      if (ledgerEl) ledgerEl.classList.toggle('is-open', ledgerOpen);
+      if (ledgerEl) ledgerEl.setAttribute('aria-hidden', String(!ledgerOpen));
+      if (hotBtn) hotBtn.tabIndex = ledgerOpen ? -1 : 0;
+    }
+    /* Where the hotspot sits: the picture is cropped to fill its area (object-fit: cover around the focus point), so the
+       data's percent of the picture is turned into pixels of the area. */
+    function layoutHotspot() {
+      if (!hotBtn || !artWrap) return;
+      var def = panelDef(focus);
+      var f = snap && focus && snap.facilities[focus];
+      var imgs = artWrap.querySelectorAll('.tsi-bpv-panel__art');
+      var img = imgs[imgs.length - 1];
+      var hs = def && def.ledger && f ? pickLevel(def.ledger.hotspot, f.level) : null;
+      if (!hs || !img || img.tagName !== 'IMG') { hotBtn.hidden = true; return; }
+      var W = artWrap.clientWidth, H = artWrap.clientHeight;
+      var iw = img.naturalWidth || 16, ih = img.naturalHeight || 9;
+      var s = Math.max(W / iw, H / ih), w = iw * s, h = ih * s;
+      var fx = def.focus && typeof def.focus.x === 'number' ? def.focus.x / 100 : 0.5;
+      var fy = def.focus && typeof def.focus.y === 'number' ? def.focus.y / 100 : 0.5;
+      var ox = (W - w) * fx, oy = (H - h) * fy;
+      hotBtn.hidden = false;
+      hotBtn.style.left = (ox + w * hs.x / 100) + 'px';
+      hotBtn.style.top = (oy + h * hs.y / 100) + 'px';
+      hotBtn.style.width = (w * hs.w / 100) + 'px';
+      hotBtn.style.height = (h * hs.h / 100) + 'px';
+    }
+    function ledgerSync(def, f) {
+      var key = focus + '|' + f.level;
+      if (key !== ledgerKey) { ledgerKey = key; ledgerOpen = false; }
+      var file = ledgerFile(def, f);
+      if (!file || !artWrap) {
+        if (ledgerEl && ledgerEl.parentNode) ledgerEl.parentNode.removeChild(ledgerEl);
+        if (hotBtn && hotBtn.parentNode) hotBtn.parentNode.removeChild(hotBtn);
+        ledgerEl = null; hotBtn = null; ledgerOpen = false;
+        return;
+      }
+      if (!ledgerEl || ledgerEl.parentNode !== artWrap) {
+        ledgerEl = el('div', { class: 'tsi-bpv-ledger', 'data-test': 'pv-ledger' }, el('img', { class: 'tsi-bpv-ledger__img', alt: 'The open ledger', draggable: 'false' }));
+        ledgerEl.addEventListener('click', function () { ledgerOpen = false; ledgerApply(); });
+        artWrap.appendChild(ledgerEl);
+        hotBtn = el('button', { type: 'button', class: 'tsi-bpv-hotspot', 'data-test': 'pv-ledger-hotspot', title: 'Open the ledger', 'aria-label': 'Open the ledger' });
+        hotBtn.addEventListener('click', function () { ledgerOpen = true; ledgerApply(); });
+        artWrap.appendChild(hotBtn);
+      }
+      var img = ledgerEl.firstChild;
+      if (img.getAttribute('data-file') !== file) { img.setAttribute('data-file', file); img.src = assetUrl('player-panels/' + file); }
+      ledgerEl.setAttribute('data-ledger', file);
+      ledgerApply();
+      layoutHotspot();
+      var arts = artWrap.querySelectorAll('.tsi-bpv-panel__art');
+      var art = arts[arts.length - 1];
+      if (art && art.tagName === 'IMG' && !art.complete) art.addEventListener('load', layoutHotspot, { once: true });
+    }
+    window.addEventListener('resize', layoutHotspot);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && ledgerOpen) { ledgerOpen = false; ledgerApply(); } });
+
     function artArea(def, f, title, shrines) {
       var key = artFile(def, f.level, f.cells) || 'existing';
       if (!artWrap || artFac !== focus) {
@@ -261,7 +329,7 @@
       TSI.clear(panelHost);
       var def = panelDef(focus);
       var f = snap && focus && (snap.facilities[focus] || (def && def.bare ? { name: def.title, level: 1, single: true, repair: 0, orders: [] } : null));
-      if (!f) { panelHost.hidden = true; stage.classList.remove('has-panel'); artWrap = null; artFac = null; return; }
+      if (!f) { panelHost.hidden = true; stage.classList.remove('has-panel'); artWrap = null; artFac = null; ledgerEl = null; hotBtn = null; ledgerKey = ''; ledgerOpen = false; return; }
       var widgets = def ? def.widgets : ['level', 'orders'];
       var title = (def && def.title) || f.name;
       var info = [];
@@ -318,6 +386,7 @@
       ]);
       panelHost.appendChild(panel);
       panelHost.hidden = false;
+      ledgerSync(def, f);
       stage.classList.add('has-panel');
     }
 
@@ -339,9 +408,11 @@
         if (!payload || payload.v !== 1 || !Array.isArray(payload.tiles)) return;
         snap = payload;
         focus = payload.focus || null;
+        if (payload.ledger !== dmLedger) { dmLedger = payload.ledger === true; ledgerOpen = dmLedger; }
         drawAll();
       },
       message: function (type, payload) {
+        if (type === 'ledger') { dmLedger = !!(payload && payload.open); ledgerOpen = dmLedger; ledgerApply(); return; }
         if (type === 'focus') {
           focus = payload && typeof payload.focus === 'string' ? payload.focus : null;
           drawPanel();

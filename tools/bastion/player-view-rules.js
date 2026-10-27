@@ -15,6 +15,7 @@
      tiles: [{ row, kind, fac, name, level, single, repair, orders, daysLeft }],
                                                     the tray: kind is 'built', 'building', 'empty', 'locked' or 'picture'
      facilities: { id: { name, level, single, repair, orders: [names], staff?, gods? } },   built facilities
+     ledger: true when the DM has chosen to show the open facility's ledger picture (false with no facility open)
      focus: a built facility's id, 'party_quarters', or null           the facility panel the DM has open
    }
    facilities.workshop.staff is [{ id, name, level, open }]; facilities.temple.gods is [{ id, name, pct }] (0 to 100).
@@ -57,7 +58,7 @@
     return null;
   }
 
-  /* extras: { crest: the Bastion's crest ({ key, dataUrl }) or null, focus: the open facility panel's id or null }. */
+  /* extras: { crest: the Bastion's crest ({ key, dataUrl }) or null, focus: the open facility panel's id or null, ledger: true to show its ledger }. */
   R.playerSnapshot = function (s, data, extras) {
     extras = isObj(extras) ? extras : {};
     var built = R.builtFacilityIds(s, data);
@@ -152,7 +153,9 @@
       }),
       tiles: tiles,
       facilities: facilities,
-      focus: focus
+      focus: focus,
+      /* The DM has chosen to show the focused facility's ledger to the players (only ever true with a focus). */
+      ledger: !!focus && extras.ledger === true
     };
   };
 }());
