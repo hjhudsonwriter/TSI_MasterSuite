@@ -666,9 +666,13 @@
         if (pvLedger && (!f || f !== pvLedgerFac || R.getFacilityLevel(state, f) !== pvLedgerLevel)) pvLedger = false;
         return pvLedger;
       }
-      /* The Temple card the DM is showing the players (null | 'telluria' | 'aurush' | 'pelagos' | 'altar'): closed by any change of focus. */
+      /* The card the DM is showing the players on the Temple's or the Hall's picture (null | 'telluria' | 'aurush' | 'pelagos' |
+         'altar' | 'table' | 'arms'): closed by any change of focus. */
       var pvCard = null;
-      function pvCardOn() { return pvFocus() === R.TEMPLE_ID ? pvCard : null; }
+      function pvCardOn() {
+        var f = pvFocus();
+        return pvCard && ((f === R.TEMPLE_ID && R.PLAYER_TEMPLE_CARDS.indexOf(pvCard) !== -1) || (f === 'hall_of_emissaries' && R.PLAYER_HALL_CARDS.indexOf(pvCard) !== -1)) ? pvCard : null;
+      }
       function pvFocus() { return shown ? R.playerFocusOf(shown.id) : null; }
       /* The Dock's Routes tab shows the players the trade routes map instead of the Dock's picture. */
       function pvView() { return shown && shown.id === 'fac-dock' && dockTab === 'routes' ? 'routes' : null; }
@@ -685,6 +689,7 @@
         pvLastFocus = f + '|' + v;
         pvLedger = false;
         pvCard = null;
+        if (hallShow) renderDiplomacy();   /* the Hall's Show to players: buttons let go */
         pvLink.send('focus', { focus: f, view: v });
         if (v) queuePlayerSync();   /* the routes come with the next snapshot */
       }
@@ -1159,14 +1164,18 @@
         ])
       });
       var hallCard = el('div', { class: 'tsi-bas-hall', 'data-test': 'hall' });
+      var hallShow = el('div', { class: 'tsi-bas-hall__show' });
       TSI.append(dipCard.body, [
         hallCard,
         el('div', { class: 'tsi-bas-dip-foot' }, [
+          hallShow,
           btn('Demolish…', function () { onDemolish('hall_of_emissaries'); }, 'tsi-btn--ghost tsi-bas-demolish', 'demolish-hall_of_emissaries')
         ])
       ]);
 
       function renderDiplomacy() {
+        TSI.clear(hallShow);
+        hallShow.appendChild(pvCardRow(true));
         var built = R.builtFacilityIds(state, data).indexOf('hall_of_emissaries') !== -1;
         var hallRepair = built ? R.underRepair(state, 'hall_of_emissaries') : 0;
         hallSub.textContent = !built ? 'Not built yet. Build it in Construction to see where the Clans stand.' : HALL_SUB_TEXT;
@@ -2879,19 +2888,21 @@
         ]);
       }
       /* "Show to players:" (the Temple's picture on the players' window): a shrine's Favour card, the altar's Blessings card, or none. */
-      function pvCardRow() {
+      function pvCardRow(ids) {
         var on = pvCardOn();
         function one(id, text) {
           var b = btn(text, function () {
             pvCard = id;
             pvLink.send('card', { card: pvCard });
             queuePlayerSync();
-            renderPanel();
+            if (ids) renderDiplomacy(); else renderPanel();
           }, 'tsi-btn--ghost' + (on === id ? ' is-on' : ''), 'show-card-' + (id || 'none'), { title: id ? 'Opens this card on the players\' window. It only looks.' : 'Closes the card on the players\' window.' });
           b.setAttribute('aria-pressed', String(on === id));
           return b;
         }
-        return el('div', { class: 'tsi-bas-temple__show', 'data-test': 'temple-show' }, [
+        return el('div', { class: 'tsi-bas-temple__show', 'data-test': ids ? 'hall-show' : 'temple-show' }, ids ? [
+          label('Show to players:'), one('table', 'Table'), one('arms', 'Coat of arms'), one(null, 'Hide')
+        ] : [
           label('Show to players:'), one('telluria', 'Telluria'), one('aurush', 'Aurush'), one('pelagos', 'Pelagos'), one('altar', 'Altar'), one(null, 'Hide')
         ]);
       }
