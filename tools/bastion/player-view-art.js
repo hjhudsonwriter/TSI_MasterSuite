@@ -5,7 +5,8 @@
 (function () {
   'use strict';
   var TSI = window.TSI = window.TSI || {};
-  var ns = TSI.bastion = TSI.bastion || {};
+  /* Its own name, not TSI.bastion: the Player View's page must hold no Bastion code or store. */
+  var ns = TSI.bastionPlayerArt = TSI.bastionPlayerArt || {};
 
   function bits(cells) {
     var c = Array.isArray(cells) ? cells : [];

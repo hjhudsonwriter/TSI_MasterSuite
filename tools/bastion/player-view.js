@@ -48,7 +48,7 @@
     if (typeof a === 'string') return a;
     if (a.states) {
       /* A state picture (the Prison Tower's cells): the exact one, else the best that never shows an empty cell's prisoner. */
-      var key = TSI.bastion.cellsPictureKey(a.states, cells);
+      var key = TSI.bastionPlayerArt.cellsPictureKey(a.states, cells);
       return key ? a.states[key] : '';
     }
     return pickLevel(a.levels, level);
