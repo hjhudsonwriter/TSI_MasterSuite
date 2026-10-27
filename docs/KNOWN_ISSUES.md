@@ -4239,3 +4239,8 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 
 - Before: opening the Dock showed the players only the Dock's painting, whichever tab the DM was on. After (Harry's request): with the Routes tab open, the players' window shows the map (full width, scrolls up and down: wheel, arrow keys, Page Up/Down, drag), the registered Charters' routes, the moving ship badges and a text strip ("Active Port Charters", "Journeys": the first four, then "and N more"). Any other Dock tab, or closing the panel, goes back. The snapshot adds only `focusView` and `routes` (ports, Charter labels, ship places and the journey lines), proved by `tests/rules/player-view.test.js` and `tests/e2e/player-view-routes.test.js`.
 - Left alone: the DM's own scroll place on the map is not mirrored (optional); the players' scroll is theirs and is kept while the view stays open.
+
+### BAS-SB-104 · The Scarlett Isles map panel on the Explorer's Player View (27 October 2026)
+
+- Before: the players' window showed only the live map. After: a small map icon in its top row opens a scrollable panel with the picture of the Scarlett Isles (`tools/explorer/assets/scarlett-isles-map.jpg`, 747 x 998, the same scrolling as the Bastion's Trade Routes view); the DM's **Show Scarlett Isles map to players** button opens and closes it too (snapshot flag `atlas`, nothing else new is sent). The picture is the players' window's own file, never sent.
+- Judgement calls: the DM's button is on the map's bottom-left corner beside the zoom buttons, not next to Open Player View (no room in the View box without making the side column scroll); the flag is not saved, so a fresh Explorer starts with it off; the panel closes itself if the window loses the suite for good.

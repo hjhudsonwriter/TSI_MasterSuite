@@ -517,3 +517,5 @@
 .tsi-tool--explorer .tsi-exp-stage--panning { cursor: grabbing; }
 .tsi-tool--explorer .tsi-exp-zoombox { position: absolute; left: 10px; bottom: 10px; z-index: 40; display: flex; gap: 4px; }
 .tsi-tool--explorer .tsi-exp-zoombox .tsi-btn { background: rgba(8, 5, 6, .78); }
+.tsi-tool--explorer .tsi-exp-zoombox .tsi-exp-atlasbtn { margin-left: 6px; font-size: 12px; white-space: nowrap; }
+.tsi-tool--explorer .tsi-exp-zoombox .tsi-exp-atlasbtn[aria-pressed="true"] { border-color: var(--tsi-gold); color: var(--tsi-gold-text); }

@@ -90,7 +90,7 @@
         name: 'ScarlettExplorerPlayers',
         keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
-        getState: function () { return R.playerSnapshot(state, DATA, { view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, dim: pvDim(), camp: pvCamp }); },
+        getState: function () { return R.playerSnapshot(state, DATA, { atlas: pvAtlas, view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, dim: pvDim(), camp: pvCamp }); },
         onStatus: function (st) {
           pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvStatus.classList.toggle('is-connected', st === 'connected');
@@ -105,6 +105,7 @@
       /* What the players also see: the pin card the DM has open (the pin's id), a count of nights (each Make Camp adds
          one, so their window fades to black once), and the campfire event being open (their map stays very dark). */
       var pvPin = null;
+      var pvAtlas = false;
       var pvCamp = 0;
       var pvNightUntil = 0;
       function pvEventOpen() {
@@ -159,6 +160,15 @@
       btnZoomIn.setAttribute('aria-label', 'Zoom in');
       btnZoomOut.setAttribute('aria-label', 'Zoom out');
       zoomBox.appendChild(btnZoomOut); zoomBox.appendChild(btnZoomIn); zoomBox.appendChild(btnFit);
+      var btnAtlas = btn('Show Scarlett Isles map to players', function () {
+        pvAtlas = !pvAtlas;
+        btnAtlas.textContent = pvAtlas ? 'Hide Scarlett Isles map from players' : 'Show Scarlett Isles map to players';
+        btnAtlas.setAttribute('aria-pressed', pvAtlas ? 'true' : 'false');
+        queuePlayerSync();
+      }, 'tsi-btn--ghost tsi-exp-zoom tsi-exp-atlasbtn', 'atlas-toggle');
+      btnAtlas.title = 'Open or close the picture of the Scarlett Isles on the players\' window. It does not change your map.';
+      btnAtlas.setAttribute('aria-pressed', 'false');
+      zoomBox.appendChild(btnAtlas);
       var btnHideUi = btn('Hide UI', function () { setUiHidden(!uiHidden); }, '', 'hide-ui');
       var btnGrid = btn('Hex Grid: On', function () { state.grid.enabled = !state.grid.enabled; saveNow(); renderAll(); }, '', 'grid');
       var btnFog = btn('Fog of War: Off', toggleFog, '', 'fog');

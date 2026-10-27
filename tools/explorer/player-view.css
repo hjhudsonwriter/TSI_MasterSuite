@@ -111,3 +111,36 @@
   .tsi-xpv-full { transition-duration: 0s !important; }
 }
 .tsi-player--explorer .tsi-player__status { bottom: auto; top: 60px; }
+
+/* ---------- The map of the Scarlett Isles: the icon in the row and its panel ---------- */
+.tsi-xpv-mapbtn {
+  pointer-events: auto; display: grid; place-items: center; position: absolute; right: clamp(10px, 1.4vw, 26px); top: 50%; transform: translateY(-50%); width: clamp(30px, 4.2vh, 46px); aspect-ratio: 1; padding: 0;
+  border: 1px solid var(--tsi-line-control); border-radius: var(--tsi-radius-pill); background: rgba(8, 5, 6, .7); color: var(--tsi-gold-text); cursor: pointer;
+}
+.tsi-xpv-mapbtn:hover, .tsi-xpv-mapbtn[aria-expanded="true"] { border-color: var(--tsi-gold); background: rgba(122, 15, 26, .55); }
+.tsi-xpv-mapbtn:focus-visible { outline: 2px solid var(--tsi-gold); outline-offset: 2px; }
+.tsi-xpv-mapicon { width: 62%; height: 62%; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
+.tsi-xpv-mapicon__sheet { fill: rgba(240, 226, 190, .14); }
+.tsi-xpv-row { position: relative; }
+.tsi-xpv-atlashost { position: absolute; inset: 0; z-index: 35; display: grid; place-items: stretch center; padding: 1.4vh 2vw; background: rgba(5, 3, 4, .72); pointer-events: auto; }
+.tsi-xpv-atlashost[hidden] { display: none; }
+.tsi-xpv-atlas {
+  display: flex; flex-direction: column; width: min(100%, 1100px); min-height: 0; box-sizing: border-box; padding: clamp(8px, 1.2vh, 14px);
+  border: 1px solid var(--tsi-line-control); border-radius: 14px; background: linear-gradient(180deg, rgba(58, 14, 22, .97), rgba(14, 8, 10, .97)); box-shadow: 0 20px 60px rgba(0, 0, 0, .7);
+}
+.tsi-xpv-atlas__head { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; position: relative; padding-bottom: clamp(6px, 1vh, 12px); }
+.tsi-xpv-atlas__title { margin: 0; font: 600 clamp(16px, 2.6vh, 28px) var(--tsi-font-display); letter-spacing: .08em; color: var(--tsi-gold-text); }
+.tsi-xpv-atlas__close {
+  position: absolute; right: 0; top: 0; width: clamp(28px, 4vh, 42px); aspect-ratio: 1; padding: 0; display: grid; place-items: center;
+  border: 1px solid var(--tsi-line-control); border-radius: var(--tsi-radius-pill); background: rgba(8, 5, 6, .8); color: var(--tsi-gold-text); font: 400 clamp(18px, 3vh, 30px)/1 var(--tsi-font-display); cursor: pointer;
+}
+.tsi-xpv-atlas__close:hover { border-color: var(--tsi-gold); }
+.tsi-xpv-atlas__scroll {
+  flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--tsi-line-feature); border-radius: var(--tsi-radius-sm);
+  background: #0a0607; box-shadow: 0 0 24px rgba(214, 178, 94, .2); cursor: grab; scrollbar-width: thin; scrollbar-color: var(--tsi-gold) rgba(255, 255, 255, .08); outline: none;
+}
+.tsi-xpv-atlas__scroll.is-dragging { cursor: grabbing; }
+.tsi-xpv-atlas__scroll::-webkit-scrollbar { width: 10px; }
+.tsi-xpv-atlas__scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, .06); }
+.tsi-xpv-atlas__scroll::-webkit-scrollbar-thumb { background: var(--tsi-gold); border-radius: 999px; border: 2px solid #0a0607; }
+.tsi-xpv-atlas__img { display: block; width: 100%; height: auto; pointer-events: none; user-select: none; }
