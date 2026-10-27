@@ -608,3 +608,4 @@ Harry's upload of nine 2752 x 1536 JPEGs (placed in the repository's top folder,
 |---|---|---|
 | Harry's picture of the Scarlett Isles (19.jpg, 747 x 998) | `tools/explorer/assets/scarlett-isles-map.jpg` | The Explorer's Player View map panel |
 | Harry's picture of the Temple hall (20.jpg, 1600 x 893; JPEG quality 86) | `tools/bastion/assets/player-panels/temple.jpg` | The Temple's Player View panel (the three shrines and the altar are clickable zones on it) |
+| Harry's picture of the Hall of Emissaries (26.jpg, 2000 x 1116; JPEG quality 86) | `tools/bastion/assets/player-panels/hall_of_emissaries.jpg` | The Hall's Player View panel (the negotiation table and the coat of arms are clickable zones on it) |

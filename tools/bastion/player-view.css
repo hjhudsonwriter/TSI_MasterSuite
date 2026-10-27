@@ -412,6 +412,19 @@ img.tsi-bpv-panel__art.is-entering { opacity: 0; }
 .tsi-bpv-card[hidden] { display: none; }
 .tsi-bpv-card--altar { min-width: 20em; }
 .tsi-bpv-card__title { margin: 0 0 .4em; font: 600 1.05em var(--tsi-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--tsi-gold); text-align: center; }
+.tsi-bpv-card--scroll { max-height: 70%; overflow-y: auto; overscroll-behavior: contain; }
+.tsi-bpv-events__effects { margin: .15em 0 0; padding-left: 1.2em; list-style: disc; color: var(--tsi-text-muted); font-size: .92em; }
+.tsi-bpv-events__more { margin: .5em 0 0; text-align: center; color: var(--tsi-text-muted); font-style: italic; }
+.tsi-bpv-clans { border-collapse: collapse; width: 100%; font-size: .95em; }
+.tsi-bpv-clans th { font: 600 .8em var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); text-align: left; padding: 0 .6em .3em 0; }
+.tsi-bpv-clans td { padding: .15em .6em .15em 0; white-space: nowrap; }
+.tsi-bpv-clans__name { color: var(--tsi-gold-text); }
+.tsi-bpv-clans__hr { display: inline-block; min-width: 1.6em; font-weight: 700; }
+.tsi-bpv-clans__hr.is-pos { color: #8fd07a; }
+.tsi-bpv-clans__hr.is-neg { color: #f0907e; }
+.tsi-bpv-clans__scale { display: inline-block; position: relative; width: 5em; height: .35em; margin-left: .5em; vertical-align: middle; border-radius: 999px; background: rgba(255, 255, 255, .18); }
+.tsi-bpv-clans__pip { position: absolute; top: -.2em; width: .75em; height: .75em; margin-left: -.375em; border-radius: 50%; background: var(--tsi-gold); }
+.tsi-bpv-clans__pc { font-weight: 700; text-align: right; }
 .tsi-bpv-bless__list { margin: 0; padding: 0; list-style: none; display: grid; gap: .45em; }
 .tsi-bpv-bless__name { color: var(--tsi-gold-text); }
 .tsi-bpv-bless__none { margin: 0; text-align: center; color: var(--tsi-text-muted); font-style: italic; }

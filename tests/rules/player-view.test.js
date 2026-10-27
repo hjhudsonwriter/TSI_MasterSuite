@@ -131,6 +131,72 @@
     t.equal(snap(busy(), { card: 'altar' }).card, null, 'not with none open');
   });
 
+  function hallRecords(b) {
+    b.builtExtras.push({ facId: 'hall_of_emissaries', status: 'built' });
+    b.day = 20;
+    function rec(id, status, day, title, extra) {
+      return Object.assign({ id: id, title: title, clans: ['blackstone', 'slade'], day: day, situation: 'ZZSITUATION', decision: 'ZZDECISION', outcome: 'ZZOUTCOME', notes: 'ZZHALLNOTE', status: status, createdDay: day, confirmedDay: status === 'confirmed' ? day : null, history: [{ day: day, text: 'ZZHISTORY' }], consequences: [] }, extra || {});
+    }
+    b.diplomaticRecords = { next: 20, list: [
+      rec('dr-0001', 'confirmed', 3, 'The Ford Accord', { consequences: [
+        { id: 'dr-0001:c1', kind: 'restriction', clan: 'slade', text: 'No iron to Slade', days: 10, status: 'active', until: 30, appliedDay: 3 },
+        { id: 'dr-0001:c2', kind: 'privilege', clan: 'blackstone', text: 'Free passage', days: 2, status: 'active', until: 5, appliedDay: 3 },
+        { id: 'dr-0001:c3', kind: 'favour', clan: '', text: 'A debt of grain', status: 'active', until: null, appliedDay: 3 },
+        { id: 'dr-0001:c4', kind: 'obligation', clan: 'slade', text: 'ZZOBLIGATION', status: 'active', until: null, appliedDay: 3 },
+        { id: 'dr-0001:c5', kind: 'hook', clan: '', text: 'ZZHOOK', status: 'active', until: null, appliedDay: 3 },
+        { id: 'dr-0001:c6', kind: 'hr', clan: 'slade', amount: 1, status: 'applied', appliedDay: 3 },
+        { id: 'dr-0001:c7', kind: 'restriction', clan: 'karr', text: 'ZZENDED', status: 'ended', until: null, appliedDay: 3 }
+      ] }),
+      rec('dr-0002', 'draft', 15, 'ZZDRAFTTITLE'),
+      rec('dr-0003', 'dismissed', 16, 'ZZDISMISSED'),
+      rec('dr-0004', 'confirmed', 12, 'The Salt Summit')
+    ] };
+    b.honourRespectByClan = { blackstone: 2, slade: -3, karr: 9 };
+    b.politicalCapital = { blackstone: 40, slade: -10 };
+    return b;
+  }
+
+  test('the Hall\'s table card: confirmed events only, newest first, with the lasting effects still in force', function (t) {
+    var s = snap(hallRecords(busy()), { focus: 'hall_of_emissaries' });
+    var h = s.facilities.hall_of_emissaries;
+    t.same(h.events.map(function (e) { return [e.day, e.title, e.clans]; }), [[12, 'The Salt Summit', ['Clan Blackstone', 'Clan Slade']], [3, 'The Ford Accord', ['Clan Blackstone', 'Clan Slade']]]);
+    t.same(h.events[0].effects, []);
+    t.same(h.events[1].effects, ['Restriction or embargo (Clan Slade): No iron to Slade (until Day 30)', 'Favour owed: A debt of grain']);
+    t.equal(h.more, 0);
+    var text = JSON.stringify(s);
+    ['ZZSITUATION', 'ZZDECISION', 'ZZOUTCOME', 'ZZHALLNOTE', 'ZZHISTORY', 'ZZDRAFTTITLE', 'ZZDISMISSED', 'ZZOBLIGATION', 'ZZHOOK', 'ZZENDED', 'dr-000', 'Free passage', 'createdDay', 'confirmedDay'].forEach(function (w) { t.equal(text.indexOf(w), -1, w + ' is not sent'); });
+  });
+
+  test('the Hall\'s table card: the latest six, then a count; none gives an empty list', function (t) {
+    var b = hallRecords(busy());
+    for (var i = 0; i < 8; i++) b.diplomaticRecords.list.push({ id: 'dr-01' + i, title: 'Event ' + i, clans: [], day: 5 + i, status: 'confirmed', consequences: [] });
+    var h = snap(b, { focus: 'hall_of_emissaries' }).facilities.hall_of_emissaries;
+    t.equal(h.events.length, 6);
+    t.equal(h.more, 4);
+    t.same(h.events.map(function (e) { return e.day; }), [12, 12, 11, 10, 9, 8]);
+    var c = busy(); hallRecords(c); c.diplomaticRecords.list = [];
+    var e = snap(c, { focus: 'hall_of_emissaries' }).facilities.hall_of_emissaries;
+    t.same([e.events, e.more], [[], 0]);
+  });
+
+  test('the Hall\'s coat of arms card: each of the seven Clans\' Honour/Respect (-5 to +5) and Political Capital, and nothing else', function (t) {
+    var h = snap(hallRecords(busy())).facilities.hall_of_emissaries;
+    t.equal(h.clans.length, 7);
+    t.same(h.clans[0], { name: 'Clan Blackstone', hr: 2, pc: 40 });
+    t.same(h.clans[3], { name: 'Clan Slade', hr: -3, pc: -10 });
+    t.same(h.clans[6], { name: 'Clan Karr', hr: 5, pc: 0 }, 'a score is held to its range');
+    h.clans.forEach(function (c) { t.same(Object.keys(c).sort(), ['hr', 'name', 'pc']); });
+  });
+
+  test('the Hall card the DM shows is table or arms, only with the Hall open', function (t) {
+    var b = hallRecords(busy());
+    t.equal(snap(b, { focus: 'hall_of_emissaries', card: 'table' }).card, 'table');
+    t.equal(snap(b, { focus: 'hall_of_emissaries', card: 'arms' }).card, 'arms');
+    t.equal(snap(b, { focus: 'hall_of_emissaries', card: 'altar' }).card, null, 'a Temple card is not a Hall card');
+    t.equal(snap(b, { focus: 'temple', card: 'table' }).card, null);
+    t.equal(snap(b, { card: 'table' }).card, null);
+  });
+
   test('focus: only a built facility with a panel; the Hall\'s panel is "diplomacy"', function (t) {
     t.equal(snap(busy(), { focus: 'workshop' }).focus, 'workshop');
     t.equal(snap(busy(), { focus: 'hall_of_emissaries' }).focus, null, 'not built yet');
@@ -186,7 +252,7 @@
     s.labels.forEach(function (l) { t.ok(Object.keys(l).every(function (k) { return ['fac', 'name', 'level', 'single', 'x', 'y', 'repair', 'part'].indexOf(k) !== -1; }), 'a label has only its own fields'); });
     s.tiles.forEach(function (x) { t.ok(Object.keys(x).every(function (k) { return ['row', 'kind', 'fac', 'name', 'level', 'single', 'repair', 'orders', 'daysLeft', 'plot'].indexOf(k) !== -1; }), 'a tile has only its own fields'); });
     Object.keys(s.facilities).forEach(function (id) {
-      t.ok(Object.keys(s.facilities[id]).every(function (k) { return ['name', 'level', 'single', 'repair', 'orders', 'staff', 'gods', 'blessings', 'held', 'beasts', 'more', 'cells'].indexOf(k) !== -1; }), id + ' has only its own fields');
+      t.ok(Object.keys(s.facilities[id]).every(function (k) { return ['name', 'level', 'single', 'repair', 'orders', 'staff', 'gods', 'blessings', 'held', 'events', 'clans', 'beasts', 'more', 'cells'].indexOf(k) !== -1; }), id + ' has only its own fields');
     });
   });
 
@@ -334,11 +400,18 @@
     t.equal(p.art, 'temple.jpg');
   });
 
+  test('the Hall\'s zones sit inside the picture: the table and the coat of arms', function (t) {
+    var p = T.bastionPlayerPanels.filter(function (x) { return x.id === 'hall_of_emissaries'; })[0];
+    t.same(p.hotspots.map(function (h) { return [h.id, h.label]; }), [['table', 'The negotiation table'], ['arms', 'The coat of arms']]);
+    p.hotspots.forEach(function (h) { t.ok(h.x >= 0 && h.y >= 0 && h.x + h.w <= 100 && h.y + h.h <= 100 && h.w > 5 && h.h > 5, h.id + ' is inside the picture'); });
+    t.equal(p.art, 'hall_of_emissaries.jpg');
+  });
+
   test('the Workshop shows staff, the Beast Pen shows beasts, nobody else does; the Temple has four zones and no always-on bars', function (t) {
     T.bastionPlayerPanels.forEach(function (p) {
       t.equal(p.widgets.indexOf('staff') !== -1, p.id === 'workshop', p.id + ' staff');
       t.equal(p.widgets.indexOf('shrines'), -1, p.id + ' has no favour bars on the picture');
-      t.equal(!!p.hotspots, p.id === 'temple', p.id + ' hotspots');
+      t.equal(!!p.hotspots, p.id === 'temple' || p.id === 'hall_of_emissaries', p.id + ' hotspots');
       t.equal(p.widgets.indexOf('beasts') !== -1, p.id === 'beast_pen', p.id + ' beasts');
     });
   });
