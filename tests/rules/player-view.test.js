@@ -172,6 +172,19 @@
     t.same(Object.keys(s.facilities.beast_pen).sort(), ['beasts', 'level', 'more', 'name', 'orders', 'repair', 'single']);
   });
 
+  test('the Prison Tower picture: the exact one, else the best that never shows a prisoner who is not there', function (t) {
+    var states = T.bastionPlayerPanels.filter(function (d) { return d.id === 'prison_tower'; })[0].art.states;
+    var pick = function (c) { return TSI.bastion.cellsPictureKey(states, c); };
+    t.same(Object.keys(states).sort(), ['cells-000', 'cells-001', 'cells-010', 'cells-100', 'cells-101', 'cells-110', 'cells-111']);
+    [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [1, 1, 1]].forEach(function (c) { t.equal(pick(c.map(Boolean)), 'cells-' + c.join(''), c.join('')); });
+    t.equal(pick([false, true, true]), 'cells-010', 'middle and right has no picture yet: the middle one');
+    t.equal(pick([]), 'cells-000'); t.equal(pick(null), 'cells-000');
+    var few = { 'cells-000': 'e.jpg', 'cells-100': 'l.jpg', 'cells-001': 'r.jpg' };
+    t.equal(TSI.bastion.cellsPictureKey(few, [true, false, true]), 'cells-100', 'ties go to the leftmost');
+    t.equal(TSI.bastion.cellsPictureKey(few, [false, true, false]), 'cells-000', 'never a prisoner who is not there');
+    t.equal(TSI.bastion.cellsPictureKey({}, [true, true, true]), '', 'no pictures at all');
+  });
+
   test('the Prison Tower carries only which cells are in use, as three true or false', function (t) {
     var s = snap(busy());
     t.same(s.facilities.prison_tower.cells, [true, false, false]);

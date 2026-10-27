@@ -380,6 +380,16 @@ const SECRETS = ['ZZWAREHOUSE', 'ZZDMNOTE', 'ZZPRISONER', 'ZZBEAST', 'ZZPAIRCODE
       await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === 'prison_tower-empty.jpg', null, { timeout: 6000 });
       await page.evaluate(() => TSI.bastion.debug.change(function (s) { TSI.bastion.rules.prisonLockUp(s, { bastion: TSI_DATA.bastion, facilities: TSI_DATA.bastionFacilities }, 0, { name: 'ZZPRISONER', thread: 'ZZTHREAD', days: 7, conditions: '' }); }));
       await pv.waitForFunction(() => document.querySelector('.tsi-bpv-panel__art').dataset.art === 'prison_tower-occupied-1.jpg', null, { timeout: 6000 });
+      /* Every combination of cells: the exact picture, and middle and right (not painted yet) shows the middle one. */
+      const want = { '000': 'prison_tower-empty.jpg', '100': 'prison_tower-occupied-1.jpg', '010': 'prison_tower-cells-010.jpg', '001': 'prison_tower-cells-001.jpg', '110': 'prison_tower-cells-110.jpg', '101': 'prison_tower-cells-101.jpg', '111': 'prison_tower-cells-111.jpg', '011': 'prison_tower-cells-010.jpg' };
+      for (const k of Object.keys(want)) {
+        await page.evaluate(bits => TSI.bastion.debug.change(function (s) {
+          for (let i = 0; i < 3; i++) s.prison.cells[i] = bits[i] === '1' ? { name: 'ZZPRISONER', thread: 'ZZTHREAD', days: 7, lockedDay: 1, endDay: 8, conditions: '', notes: [] } : null;
+        }), k);
+        await pv.waitForFunction(f => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === f, want[k], { timeout: 6000 });
+        const ok = await pv.$eval('.tsi-bpv-panel__art', n => n.complete && n.naturalWidth > 0);
+        assert(ok, 'the picture for ' + k + ' loads');
+      }
       await page.keyboard.press('Escape');
       await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
     });

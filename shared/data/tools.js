@@ -124,6 +124,7 @@ window.TSI_DATA.tools = [
            on Import (the Explorer and the Bastion save as one campaign). */
         'tools/explorer/rules.js',
         'tools/explorer/journey.js',
+        'tools/bastion/player-view-art.js',
         'tools/bastion/player-view-rules.js',
         'tools/bastion/tool.js'
       ]
@@ -135,6 +136,7 @@ window.TSI_DATA.tools = [
         js: [
           'tools/bastion/data/bastion-data.js',
           'tools/bastion/data/player-panels-data.js',
+          'tools/bastion/player-view-art.js',
           'tools/bastion/player-view.js'
         ]
       }

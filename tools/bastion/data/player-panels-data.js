@@ -10,7 +10,7 @@
             facilityImages, then the building cut from the map). Pictures fill the picture area (cropped to fit)
    ledger   { levels: { 1: 'file.jpg' }, hotspot: { 1: { x, y, w, h } } }: a book on the room picture that opens full size
    bare     true: only the title and the picture (the Party Quarters)
-   art.states  { empty, occupied, 'cells-101'... }: a picture for a state of the facility (the Prison Tower's cells)
+   art.states  { 'cells-000' ... 'cells-111' }: a picture for a state of the facility (the Prison Tower's cells)
    focus    where the crop keeps in view, { x: 50, y: 50 } by default: percent across and down the picture
    blurb    one or two lines under the picture
    widgets  the small things shown under the picture:
@@ -40,11 +40,14 @@ window.TSI_DATA.bastionPlayerPanels = [
   /* The Beast Pen shows no level, orders or blurb: only the beasts housed there (name, kind and handler). */
   { id: 'beast_pen', title: 'Beast Pen', tagline: 'Something stirs in the stalls...', art: 'beast_pen.jpg', focus: { x: 50, y: 50 },
     blurb: '', widgets: ['beasts'] },
-  /* The Prison Tower's picture follows which cells are in use: art.states has 'empty' (no prisoner), 'occupied' (any prisoner)
-     and, as Harry supplies them, 'cells-101' (cells 1 and 3 in use: 1 is in use, 0 is empty, left to right). The most
-     particular picture that exists is used, then 'occupied', then 'empty'. */
+  /* The Prison Tower's picture follows which cells are in use: art.states has a key 'cells-NNN' for each picture (one digit
+     a cell, left to right: 1 is in use, 0 is empty). The picture is chosen by tools/bastion/player-view-art.js: the exact
+     one, else the best that shows only cells really in use, else 'cells-000'. 'cells-011' is not painted yet. */
   { id: 'prison_tower', title: 'Prison Tower', tagline: 'Stone walls keep their secrets...',
-    art: { states: { empty: 'prison_tower-empty.jpg', occupied: 'prison_tower-occupied-1.jpg' } }, focus: { x: 50, y: 50 },
+    art: { states: {
+      'cells-000': 'prison_tower-empty.jpg', 'cells-100': 'prison_tower-occupied-1.jpg', 'cells-010': 'prison_tower-cells-010.jpg',
+      'cells-001': 'prison_tower-cells-001.jpg', 'cells-110': 'prison_tower-cells-110.jpg', 'cells-101': 'prison_tower-cells-101.jpg',
+      'cells-111': 'prison_tower-cells-111.jpg' } }, focus: { x: 50, y: 50 },
     blurb: 'Lock up captives here, and question them if you dare.', widgets: ['level', 'orders'] },
   { id: 'herbal_gardens', title: 'Herbal Gardens', tagline: 'Green things grow where care is given...', art: null,
     blurb: 'Gather herbs and brew remedies.', widgets: ['level', 'orders'] },
