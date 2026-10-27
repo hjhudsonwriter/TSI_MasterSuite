@@ -4,6 +4,11 @@
 
 **Strip Back Overhaul (steps S01 to S17, 22 to 25 October 2026) is built and merged; S19 (art) and S20 (guide and home-screen text) and S21 (these docs) are done. S18 (removing the internal Day Log data) is done (26 October 2026, BAS-SB-83).** The war game, Clan founding, the Hall's trade system, the three Shrines, the Library, Arcane Laboratory, Clan Influence and the Day Log screens are gone or folded into the Temple, Beast Pen, Dock and Workshop. Details: `docs/STRIP-BACK-PLAN.md`, `docs/strip-back/*-built.md`, and the new "Strip Back Overhaul" section at the end of `docs/KNOWN_ISSUES.md` (BAS-SB-01 onwards).
 
+### 27 October 2026: Tidal Sequence v2, phase 1 done (data and rules only)
+
+- **Done:** nine-rune pool, wall lines, readings, hint, timer, Anchor dilemma strings, finale cues, end buttons, Stage Mode settings and rewritten texts are in `tools/pelagosi/data/pelagosi-data.js`; pure rules (`cycleRune`, `setLineLevel`, `raiseLine`, `wallLineText`, `canAskChamber`, `askChamber`, `tideReturns`, `basinOutcome`, `misreadOutcome`, `finaleCues`, `finaleEndOptions`, `snapshotPuzzle`, `restorePuzzle`) in `rules.js`, tested in `tests/rules/pelagosi.test.js`. The new sounds are registered as `.mp3`, all `ready: false`; `ADD-THE-FIVE-SOUNDS-HERE.txt` lists them. The screen is unchanged apart from the nine runes and the new start, basin and success texts. See KNOWN_ISSUES PEL-19.
+- **Next: phase 2** (wall, rune ring, readings panel, Stage Mode). The Marker Remembers must not change.
+
 ### 27 October 2026: the Routes map shows each port's route, with a moving ship (BAS-SB-107)
 
 - The Dock's Routes tab lights a route for each registered Port Charter and sails a ship badge along it by the day. Tests: `tests/rules/hall-dock.test.js`, `tests/e2e/dock.test.js`. Open for Harry: the ship's path is traced from the pictures, so tell me if any route looks off.

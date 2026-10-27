@@ -11,7 +11,7 @@ Source: Harry's handover `tidal-sequence-handover.md`. Status: plan only; nothin
 - `elevenlabs-asset-pack.md` (mentioned in the handover) is not in the repository; Harry already has the audio, so only file names matter.
 
 ## Phases (each lands as its own pull request, tests green before the next)
-1. **Data and rules** (no screen change yet): the nine-rune pool, wall lines and three levels, readings, hint and timer settings, basin dilemma strings, finale cue list, rewritten texts; pure functions `cycleRune`, `setLineLevel`, `raiseLine`, `canAskChamber`, `askChamber`, `tideReturns`, `basinOutcome`, `finaleCues` with tests; the existing rules keep passing with nine runes.
+1. **[x] Data and rules, done 27 October 2026** (no screen change yet): the nine-rune pool, wall lines and three levels, readings, hint and timer settings, basin dilemma strings, finale cue list, rewritten texts; pure functions `cycleRune`, `setLineLevel`, `raiseLine`, `canAskChamber`, `askChamber`, `tideReturns`, `basinOutcome`, `finaleCues` with tests; the existing rules keep passing with nine runes.
 2. **Wall, rune ring, readings, stage mode:** the scarred wall (block glyphs generated from the whole line so lengths always match), the rune legend with real icons, the rune ring (click to open, direct pick, Escape closes, arrow keys still step, keyboard and screen-reader friendly), the DM Readings panel (Fragment / Read / Misread), collapsible, Stage Mode (key S) for the TV.
 3. **Pressure tools and the Anchor dilemma:** Ask the Chamber, optional Tide Returns timer (off by default, capped so it can never surge), Anchor + Attune (pressure), Current + Attune (confirm modal), solved state with the crimson RELEASE THE ABSENCE button and a "Read success text" button; no automatic pop-up.
 4. **The Absence finale and audio engine:** the data-driven cue runner (duck, silence, three uneven knocks with a small thump, reverse, end note), Skip/Esc, DM extras "Play the Absence anyway", the ambient bed (two audio elements crossfaded to avoid a gap, `life.group()` interval), `fadeTo`, per-sound volume multipliers, registry `{ file, ready, volume, loop }`, `ready` set only for files found in the folder.
@@ -32,3 +32,9 @@ Source: Harry's handover `tidal-sequence-handover.md`. Status: plan only; nothin
 2. "Misread costs pressure" is on by default; should Misread also work at pressure 3 or 4 (it can cause the surge)?
 3. Play the Absence anyway: after it ends, should Reset be the only way forward, or may the DM return to the puzzle where it was?
 4. Should Stage Mode also hide the pressure buttons, or only the Readings panel and console?
+
+## Harry's answers (27 October 2026)
+1. Sound files: use the handover's `.mp3` names. Registry entries are `{ file, ready, volume?, loop? }`, `ready` only for files found in the folder. The five old WAVs stay `.wav`. Reversed files are made offline; `water-flow.mp3` is only a source.
+2. A Misread never causes a surge: it raises pressure only below 3 (Reversing); otherwise it only shows "The chamber hears the wrong word."
+3. After "Play the Absence anyway" the DM may return to the puzzle where it was (snapshot and restore). After a normal solve only Replay and Reset are offered; after "anyway", Replay, Return to the puzzle and Reset. No automatic focus.
+4. Stage Mode hides the Readings panel, the console and the DM extras (so the pressure buttons go too) and keeps the wall, stage, pillars, basin, pips and pressure meter. Key S.

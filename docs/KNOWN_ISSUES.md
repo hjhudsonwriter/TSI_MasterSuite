@@ -3294,6 +3294,16 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Phase 3:** Kept.
 
 
+### PEL-19 · The Tidal Sequence v2, phase 1: data and rules only (27 October 2026)
+**Added, Harry's request** · other · numbered PEL-19 because PEL-12 is already taken by the laptop-fit entry
+
+- **Before:** six runes per pillar; the wall inscription and old ending texts in the data; five Tidal sounds named as `.wav`; no rules for readings, hints, the tide timer, the Anchor dilemma, the finale or returning to the puzzle.
+- **After:** nine runes (Life, Remains and Tide added after the first six); wall lines, readings, hint, timer, basin, finale cues, end buttons and Stage Mode settings are in the data file; the new rules are plain functions with tests. The Tidal screen itself is unchanged: its click-to-cycle covers all nine runes, and Shuffle can now use all nine.
+- **Live-screen differences:** the start clue and basin clue no longer print the inscription; the success pop-up now reads "The Anchor Lifts" (no door-opening wording about Middlemount's mechanism or the northern arch in the data). `tool.js` still prints its own old status line when the puzzle is solved; phase 3 replaces it. The only code change is that `play()` multiplies a sound's own `volume` into the main volume (a sound with none plays exactly as before, so Memory is unaffected).
+- **Harry's decisions (they override the handover):** (1) new sounds use the handover's `.mp3` names, all `ready: false` until the files are in `assets/audio/`; the five old WAVs stay `.wav`; the reversed files are made offline and `water-flow.mp3` is only a source. (2) A Misread never causes a surge: it raises pressure only below 3, otherwise it only shows "The chamber hears the wrong word." (3) "Play the Absence anyway" can return to the puzzle: `snapshotPuzzle` and `restorePuzzle` keep pillars, basin rune, pressure, wall lines, attempts, phase and solved; after a normal solve the end offers Replay and Reset, after "anyway" Replay, Return to the puzzle and Reset, with no automatic focus. (4) Stage Mode hides the Readings panel, the console and the DM extras, and keeps the wall, stage, pillars, basin, pips and pressure meter (key S).
+- **Tests:** `tests/rules/pelagosi.test.js`.
+
+
 ### SUI-37 · Session safety and clarity (18 October 2026)
 **Fixed, Harry's request** · usability
 
