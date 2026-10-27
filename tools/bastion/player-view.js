@@ -303,7 +303,7 @@
     window.addEventListener('resize', layoutHotspot);
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && ledgerOpen) { ledgerOpen = false; ledgerApply(); } });
 
-    /* ---- The Temple's picture: three shrines and the altar are zones on it; clicking one opens a small card over the picture ---- */
+    /* ---- A room picture with zones on it (the Temple's three shrines and altar, the Hall's table and coat of arms); clicking one opens a small card over the picture ---- */
     var temple = null;      /* { hots: { id: button }, card: the card element } while the Temple's panel is open */
     var templeCard = null;  /* the card open here: null, a god's id or 'altar' */
     var dmCard = null;      /* the card the DM last chose */
@@ -325,6 +325,34 @@
       });
       if (f.held > 0) rows.push(el('li', { class: 'tsi-bpv-bless__one', 'data-test': 'pv-blessing-held', text: f.held + (f.held === 1 ? ' Blessing' : ' Blessings') + ' of Pelagos held for the next ship' }));
       return rows.length ? el('ul', { class: 'tsi-bpv-bless__list' }, rows) : el('p', { class: 'tsi-bpv-bless__none', 'data-test': 'pv-blessing-none', text: 'No blessings are active.' });
+    }
+    /* The Hall's cards. The table: the latest confirmed Diplomatic Events and the lasting effects in force. The coat of arms:
+       each Clan's Honour & Respect (-5 to +5) and Political Capital. */
+    function eventsBody(f) {
+      var ev = f.events || [];
+      if (!ev.length) return el('p', { class: 'tsi-bpv-bless__none', 'data-test': 'pv-events-none', text: 'No diplomatic events yet.' });
+      var list = el('ul', { class: 'tsi-bpv-bless__list tsi-bpv-events' }, ev.map(function (e, i) {
+        return el('li', { class: 'tsi-bpv-bless__one', 'data-test': 'pv-event-' + i }, [
+          el('b', { class: 'tsi-bpv-bless__name', text: 'Day ' + e.day + ': ' + e.title }), e.clans.length ? ' (' + e.clans.join(', ') + ')' : '',
+          e.effects.length ? el('ul', { class: 'tsi-bpv-events__effects' }, e.effects.map(function (t, j) { return el('li', { 'data-test': 'pv-event-' + i + '-effect-' + j, text: t }); })) : null
+        ]);
+      }));
+      return el('div', null, [list, f.more ? el('p', { class: 'tsi-bpv-events__more', 'data-test': 'pv-events-more', text: 'and ' + f.more + ' more' }) : null]);
+    }
+    function signed(n) { return (n > 0 ? '+' : n < 0 ? '\u2212' : '') + Math.abs(n); }
+    function clansBody(f) {
+      return el('table', { class: 'tsi-bpv-clans', 'data-test': 'pv-clans' }, [
+        el('thead', null, el('tr', null, [el('th', { text: 'Clan' }), el('th', { text: 'Honour/Respect' }), el('th', { text: 'Political Capital' })])),
+        el('tbody', null, (f.clans || []).map(function (c, i) {
+          var pos = (c.hr + 5) / 10 * 100;
+          return el('tr', { 'data-test': 'pv-clan-' + i }, [
+            el('td', { class: 'tsi-bpv-clans__name', text: c.name }),
+            el('td', null, [el('span', { class: 'tsi-bpv-clans__hr' + (c.hr < 0 ? ' is-neg' : c.hr > 0 ? ' is-pos' : ''), text: signed(c.hr) }),
+              el('span', { class: 'tsi-bpv-clans__scale', 'aria-hidden': 'true' }, el('span', { class: 'tsi-bpv-clans__pip', style: 'left:' + pos + '%' }))]),
+            el('td', { class: 'tsi-bpv-clans__pc', text: String(c.pc) })
+          ]);
+        }))
+      ]);
     }
     function layoutTemple() {
       if (!temple || !artWrap) return;
@@ -351,15 +379,16 @@
       /* Near the zone: a god's card sits in the lower part of its shrine, the altar's above the table; always kept on the picture. */
       var cw = card.offsetWidth, ch = card.offsetHeight;
       var cx = box.x + box.w / 2 - cw / 2;
-      var cy = templeCard === 'altar' ? box.y - ch - 10 : box.y + box.h * 0.62;
+      var above = templeCard === 'altar' || templeCard === 'table' || templeCard === 'arms';
+      var cy = templeCard === 'table' ? box.y + box.h + 10 : above ? box.y - ch - 10 : box.y + box.h * 0.62;
       card.style.left = Math.max(10, Math.min(W - cw - 10, cx)) + 'px';
       card.style.top = Math.max(10, Math.min(H - ch - 10, cy)) + 'px';
     }
     function templeDraw() {
-      var f = snap && snap.facilities.temple;
+      var f = snap && focus && snap.facilities[focus];
       var def = panelDef(focus);
       if (!temple || !f) return;
-      var open = templeCard && (templeCard === 'altar' || (f.gods || []).some(function (g) { return g.id === templeCard; })) ? templeCard : null;
+      var open = templeCard && (def.hotspots || []).some(function (h) { return h.id === templeCard; }) && (focus !== 'temple' || templeCard === 'altar' || (f.gods || []).some(function (g) { return g.id === templeCard; })) ? templeCard : null;
       templeCard = open;
       (def.hotspots || []).forEach(function (hs) {
         temple.hots[hs.id].classList.toggle('is-open', hs.id === open);
@@ -369,8 +398,13 @@
       TSI.clear(card);
       card.hidden = !open;
       card.setAttribute('data-card', open || '');
-      card.classList.toggle('tsi-bpv-card--altar', open === 'altar');
-      if (open === 'altar') {
+      card.classList.toggle('tsi-bpv-card--altar', open === 'altar' || open === 'table' || open === 'arms');
+      card.classList.toggle('tsi-bpv-card--scroll', open === 'table');
+      if (open === 'table' || open === 'arms') {
+        card.appendChild(el('h3', { class: 'tsi-bpv-card__title', text: open === 'table' ? 'Diplomatic events' : 'Clans and factions' }));
+        card.appendChild(document.createTextNode(' '));
+        card.appendChild(open === 'table' ? eventsBody(f) : clansBody(f));
+      } else if (open === 'altar') {
         card.appendChild(el('h3', { class: 'tsi-bpv-card__title', text: 'Blessings' }));
         card.appendChild(document.createTextNode(' '));
         card.appendChild(blessingsBody(f));
@@ -380,7 +414,7 @@
       layoutTemple();
     }
     function templeSync(def, f) {
-      if (!def || !def.hotspots || !artWrap || focus !== 'temple') { templeReset(); return; }
+      if (!def || !def.hotspots || !artWrap || !snap.facilities[focus]) { templeReset(); return; }
       if (!temple || temple.card.parentNode !== artWrap) {
         templeReset();
         templeCard = dmCard = snap.card || null;

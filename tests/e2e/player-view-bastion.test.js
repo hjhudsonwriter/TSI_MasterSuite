@@ -467,6 +467,117 @@ const SECRETS = ['ZZWAREHOUSE', 'ZZDMNOTE', 'ZZPRISONER', 'ZZBEAST', 'ZZPAIRCODE
       await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
     });
 
+    section('The Hall of Emissaries: the table and the coat of arms at ' + name);
+    const hallText = () => pv.$eval('[data-test=pv-temple-card]', n => n.textContent.replace(/\s+/g, ' ').trim());
+    const dipRecord = (id, status, day, title, extra) => Object.assign({ id, title, clans: ['blackstone', 'slade'], day, situation: 'ZZSITUATION', decision: 'ZZDECISION', outcome: 'ZZOUTCOME', notes: 'ZZHALLNOTE', status, createdDay: day, confirmedDay: status === 'confirmed' ? day : null, history: [{ day, text: 'ZZHISTORY' }], consequences: [] }, extra || {});
+    await check('the Hall shows its hall picture with two glowing zones; the header, level line and blurb stay', async () => {
+      await change(page, s => { s.partyLevel = 13; s.builtExtras[3] = { facId: 'hall_of_emissaries', status: 'built' }; s.diplomaticRecords = { next: 1, list: [] }; s.honourRespectByClan = {}; s.politicalCapital = {}; });
+      await pause(page);
+      await page.click('[data-test=tile-hall_of_emissaries]');
+      await pv.waitForSelector('[data-test=pv-panel][data-fac=hall_of_emissaries]');
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-hot-arms]'));
+      equal(await pv.$$eval('.tsi-bpv-panel__art', n => n.map(x => x.dataset.art)), ['hall_of_emissaries.jpg']);
+      equal(await bare(pv, '[data-test=pv-panel-title]'), 'Hall of Emissaries');
+      equal(await bare(pv, '[data-test=pv-panel-tagline]'), 'Every Clan has an ear in this room...');
+      equal(await bare(pv, '[data-test=pv-panel-level]'), 'One level');
+      equal(await bare(pv, '[data-test=pv-panel-blurb]'), 'Meet envoys and learn where each Clan stands.');
+      equal(await pv.$$eval('.tsi-bpv-hotspot--zone', n => n.map(x => [x.tagName, x.title])), [['BUTTON', 'The negotiation table'], ['BUTTON', 'The coat of arms']]);
+      await pv.mouse.move(2, 2);
+      equal(await pv.$eval('[data-test=pv-hot-arms]', n => getComputedStyle(n).animationName), 'tsi-bpv-hint');
+      const wrap = await rect(pv, '.tsi-bpv-panel__art-wrap');
+      const img = await pv.$eval('.tsi-bpv-panel__art', n => ({ w: n.naturalWidth, h: n.naturalHeight, cw: n.clientWidth, ch: n.clientHeight }));
+      assert(1 - Math.min(1, (img.cw / img.ch) / (img.w / img.h)) < 0.3 && wrap.h > size.height * 0.7, 'the cover fill crops little');
+      await H.shot(pv, 'pv-panel-hall-' + name);
+    });
+
+    await check('the table card: "No diplomatic events yet." with none; only CONFIRMED events, newest first, with effects in force; the latest six, scrollable; follows the DM view', async () => {
+      await pv.click('[data-test=pv-hot-table]');
+      equal(await hallText(), 'Diplomatic events No diplomatic events yet.');
+      const recs = [
+        dipRecord('dr-0001', 'confirmed', 3, 'The Ford Accord', { consequences: [
+          { id: 'dr-0001:c1', kind: 'restriction', clan: 'slade', text: 'No iron to Slade', days: 10, status: 'active', until: 30, appliedDay: 3 },
+          { id: 'dr-0001:c2', kind: 'hook', clan: '', text: 'ZZHOOK', status: 'active', until: null, appliedDay: 3 }] }),
+        dipRecord('dr-0002', 'draft', 15, 'ZZDRAFTTITLE'), dipRecord('dr-0003', 'confirmed', 12, 'The Salt Summit')];
+      await page.evaluate(r => TSI.bastion.debug.change(function (s) { s.diplomaticRecords = { next: 9, list: r }; }), recs);
+      await pv.waitForFunction(() => document.querySelectorAll('[data-test^=pv-event-]').length >= 2);
+      equal(await pv.$$eval('.tsi-bpv-events > li > b', n => n.map(x => x.textContent)), ['Day 12: The Salt Summit', 'Day 3: The Ford Accord']);
+      equal(await pv.$eval('[data-test=pv-event-1-effect-0]', n => n.textContent), 'Restriction or embargo (Clan Slade): No iron to Slade (until Day 30)');
+      equal(await pv.$$eval('[data-test^=pv-event-1-effect-]', n => n.length), 1, 'quest hooks are the DM\'s');
+      const t = await hallText();
+      for (const w of ['ZZDRAFTTITLE', 'ZZSITUATION', 'ZZHALLNOTE', 'ZZHISTORY', 'ZZHOOK', 'dr-0']) assert(t.indexOf(w) === -1, w + ' is not shown');
+      await H.shot(pv, 'pv-panel-hall-table-' + name);
+      /* A draft confirmed in the DM view shows at once; more than six keeps six and counts the rest, and the card scrolls. */
+      await change(page, s => { for (let i = 0; i < 8; i++) s.diplomaticRecords.list.push({ id: 'dr-01' + i, title: 'Event ' + i, clans: [], day: 20 + i, status: 'confirmed', consequences: [] }); });
+      await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-events > li').length === 6);
+      equal(await bare(pv, '[data-test=pv-events-more]'), 'and 4 more');
+      const cr = await rect(pv, '[data-test=pv-temple-card]');
+      assert(cr.x >= 0 && cr.right <= size.width && cr.y >= 0 && cr.bottom <= size.height, 'the card is on screen');
+      equal(await pv.$eval('[data-test=pv-temple-card]', n => getComputedStyle(n).overflowY), 'auto');
+      await pv.keyboard.press('Escape');
+    });
+
+    await check('the coat of arms card: the seven Clans\' Honour/Respect and Political Capital, following the DM view; nothing else', async () => {
+      await change(page, s => { s.honourRespectByClan = { blackstone: 2, slade: -3 }; s.politicalCapital = { blackstone: 40, slade: -10 }; });
+      await pv.click('[data-test=pv-hot-arms]');
+      equal(await pv.$$eval('[data-test=pv-clans] tbody tr', n => n.map(r => [...r.children].map(c => c.textContent.trim()))),
+        [['Clan Blackstone', '+2', '40'], ['Clan Bacca', '0', '0'], ['Clan Farmer', '0', '0'], ['Clan Slade', '−3', '-10'], ['Clan Molten', '0', '0'], ['Clan Rowthorn', '0', '0'], ['Clan Karr', '0', '0']]);
+      equal(await pv.$eval('[data-test=pv-temple-card] h3', n => n.textContent), 'Clans and factions');
+      await H.shot(pv, 'pv-panel-hall-arms-' + name);
+      await change(page, s => { s.honourRespectByClan.bacca = 4; s.politicalCapital.bacca = 15; });
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-clan-1]').textContent.indexOf('+4') !== -1 && document.querySelector('[data-test=pv-clan-1]').textContent.indexOf('15') !== -1);
+      const cr = await rect(pv, '[data-test=pv-temple-card]');
+      assert(cr.x >= 0 && cr.right <= size.width && cr.y >= 0 && cr.bottom <= size.height, 'the card is on screen');
+      /* One at a time; the other zone swaps; elsewhere and Escape close. */
+      await pv.click('[data-test=pv-hot-table]');
+      assert((await hallText()).indexOf('Diplomatic events') === 0);
+      await pv.click('[data-test=pv-temple-card] h3');   /* a click on a tall card closes it, as a click on its zone would */
+      equal(await pv.$eval('[data-test=pv-temple-card]', n => n.hidden), true);
+      await pv.click('[data-test=pv-hot-arms]');
+      await pv.mouse.click(size.width / 2, 30);
+      equal(await pv.$eval('[data-test=pv-temple-card]', n => n.hidden), true);
+      await pv.click('[data-test=pv-hot-arms]');
+      await pv.keyboard.press('Escape');
+      equal(await pv.$eval('[data-test=pv-temple-card]', n => n.hidden), true);
+      equal(await pv.$('[data-test=pv-panel][data-fac=hall_of_emissaries]') !== null, true);
+      const html = await pv.content();
+      for (const w of ['ZZ', 'dr-0', 'politicalCapital', 'honourRespect']) assert(html.indexOf(w) === -1, w + ' is not in the page');
+    });
+
+    await check('the DM\'s Show to players: Table, Coat of arms and Hide mirror one card; the player\'s own click opens locally and the DM\'s next change overrides; closing the panel closes it', async () => {
+      const card = () => pv.$eval('[data-test=pv-temple-card]', n => n.hidden ? '' : n.textContent.replace(/\s+/g, ' ').trim().slice(0, 20));
+      equal(await page.$$eval('[data-test=hall-show] button', n => n.map(x => x.textContent)), ['Table', 'Coat of arms', 'Hide']);
+      equal(await page.textContent('[data-test=hall-show] .tsi-bas-label'), 'Show to players:');
+      await page.click('[data-test=show-card-table]');
+      await pv.waitForFunction(() => !document.querySelector('[data-test=pv-temple-card]').hidden);
+      equal(await card(), 'Diplomatic events Da');
+      equal(await page.getAttribute('[data-test=show-card-table]', 'aria-pressed'), 'true');
+      await page.click('[data-test=show-card-arms]');
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-temple-card]').textContent.indexOf('Clans and factions') === 0);
+      await pv.keyboard.press('Escape');
+      equal(await card(), '');
+      await pv.click('[data-test=pv-hot-table]');
+      equal((await card()).indexOf('Diplomatic events'), 0);
+      await page.click('[data-test=show-card-arms]');
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-temple-card]').textContent.indexOf('Clans and factions') === 0);
+      await page.click('[data-test=show-card-none]');
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-temple-card]').hidden);
+      await page.click('[data-test=show-card-table]');
+      await pv.waitForFunction(() => !document.querySelector('[data-test=pv-temple-card]').hidden);
+      const sent = await page.evaluate(() => { const s = TSI.bastion.rules.playerSnapshot(TSI.bastion.debug.state(), { bastion: TSI_DATA.bastion, facilities: TSI_DATA.bastionFacilities }, { focus: 'hall_of_emissaries', card: 'arms' }); return [s.card, Object.keys(s.facilities.hall_of_emissaries).sort().join(',')]; });
+      equal(sent, ['arms', 'clans,events,level,more,name,orders,repair,single']);
+      await page.keyboard.press('Escape');
+      await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
+      await pause(page);
+      await page.click('[data-test=tile-hall_of_emissaries]');
+      await pv.waitForSelector('[data-test=pv-panel][data-fac=hall_of_emissaries]');
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-temple-card]'));
+      await pause(page);
+      equal(await card(), '');
+      equal(await page.getAttribute('[data-test=show-card-table]', 'aria-pressed'), 'false');
+      await page.keyboard.press('Escape');
+      await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
+    });
+
     await check('the Prison Tower\'s panel: the empty-cells picture, then the one for the cells in use (all eight combinations) when a prisoner is locked up (fading, live), back when the last is released; only which cells are in use is sent', async () => {
       const art = () => pv.$$eval('.tsi-bpv-panel__art', n => n.map(x => x.dataset.art));
       await change(page, s => { s.builtExtras[2] = { facId: 'prison_tower', status: 'built' }; });

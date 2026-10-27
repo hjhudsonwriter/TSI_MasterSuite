@@ -12,9 +12,11 @@
    bare     true: only the title and the picture (the Party Quarters)
    art.states  { 'cells-000' ... 'cells-111' }: a picture for a state of the facility (the Prison Tower's cells)
    focus    where the crop keeps in view, { x: 50, y: 50 } by default: percent across and down the picture
-   hotspots [{ id, label, x, y, w, h }]: clickable zones on the room picture (the Temple's three shrines and its altar), in percent
+   hotspots [{ id, label, x, y, w, h }]: clickable zones on the room picture (the Temple's three shrines and its altar, the Hall's
+            negotiation table and coat of arms), in percent
             of the picture. A shrine ('telluria', 'aurush', 'pelagos') opens a small card with that god's Favour bar; 'altar' opens
-            the Blessings card (the Great Rites held and any Blessing of Pelagos kept for the Dock). The DM can show either too.
+            the Blessings card (the Great Rites held and any Blessing of Pelagos kept for the Dock). In the Hall, 'table' opens the
+            confirmed Diplomatic Events and 'arms' the Clans' standing. The DM can show any of them too.
    blurb    one or two lines under the picture
    widgets  the small things shown under the picture:
               'level'    "Level 3" (or "One level")
@@ -43,7 +45,11 @@ window.TSI_DATA.bastionPlayerPanels = [
     blurb: 'Say a prayer at a shrine and the gods may respond.', widgets: ['level', 'orders'] },
   { id: 'dock', title: 'Dock', tagline: 'Ships come and go with the tide...', art: 'dock.jpg', focus: { x: 50, y: 55 },
     blurb: 'Chart voyages and charter trade across the sea.', widgets: ['level', 'orders'] },
-  { id: 'hall_of_emissaries', title: 'Hall of Emissaries', tagline: 'Every Clan has an ear in this room...', art: null,
+  { id: 'hall_of_emissaries', title: 'Hall of Emissaries', tagline: 'Every Clan has an ear in this room...', art: 'hall_of_emissaries.jpg', focus: { x: 50, y: 50 },
+    hotspots: [
+      { id: 'table', label: 'The negotiation table', x: 35, y: 48, w: 30, h: 17 },
+      { id: 'arms', label: 'The coat of arms', x: 44, y: 32, w: 12, h: 17 }
+    ],
     blurb: 'Meet envoys and learn where each Clan stands.', widgets: ['level', 'orders'] },
   /* The Beast Pen shows no level, orders or blurb: only the beasts housed there (name, kind and handler). */
   { id: 'beast_pen', title: 'Beast Pen', tagline: 'Something stirs in the stalls...', art: 'beast_pen.jpg', focus: { x: 50, y: 50 },

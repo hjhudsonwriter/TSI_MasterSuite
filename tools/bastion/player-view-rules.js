@@ -17,7 +17,8 @@
      facilities: { id: { name, level, single, repair, orders: [names], staff?, gods? } },   built facilities
      ledger: true when the DM has chosen to show the open facility's ledger picture (false with no facility open)
      focus: a built facility's id, 'party_quarters', or null           the facility panel the DM has open
-     card: null, 'telluria', 'aurush', 'pelagos' or 'altar' (only with the Temple open): the card the DM is showing on the Temple's picture
+     card: null, or the card the DM is showing on the open facility's picture: 'telluria', 'aurush', 'pelagos' or 'altar'
+       (the Temple), 'table' or 'arms' (the Hall of Emissaries)
      focusView: 'routes' when the DM has the Dock's panel open on its Routes tab, else null
      routes: only with focusView 'routes' (R.playerRoutes): { charters: [{ port, label }], lanes: [{ port, sea }],
        boats: [{ key, port, phase, fraction, point: [x, y], label }], journeys: [{ port, line }], more }
@@ -26,6 +27,11 @@
    facilities.temple.blessings is [{ god, rite, where }] (the Great Rites held: where is 'waiting' at the Ironbow or 'party') and
    facilities.temple.held is how many Blessings of Pelagos wait for the Dock's next ship; nothing else of the Temple (no prayers,
    rolls or orders' insides).
+   facilities.hall_of_emissaries.events is the latest PLAYER_EVENT_MAX CONFIRMED Diplomatic Events, newest first:
+   [{ day, title, clans: [names], effects: [lines] }] (effects: only restrictions, privileges and favours still in force),
+   .more how many older ones there are, and .clans [{ name, hr, pc }] (the seven Clans' Honour & Respect and Political
+   Capital). Drafts, dismissed records, notes, situations, decisions, outcomes, ids, histories, obligations and quest
+   hooks are never sent.
    The Prison Tower shows only a level, its pending orders' names and facilities.prison_tower.cells: one true or false
    for each cell that is in use (nothing about who is held). The Beast Pen adds
    facilities.beast_pen.beasts: [{ name, species, handler }] and more (a count), and nothing else about the beasts. */
@@ -88,6 +94,36 @@
   /* extras: { crest: the Bastion's crest ({ key, dataUrl }) or null, focus: the open facility panel's id or null, ledger: true to show its ledger, card: the Temple card to show, view: 'routes' for the Dock's Routes tab }. */
   /* The Temple's cards (a shrine's favour, the altar's blessings): the values the DM may show. */
   R.PLAYER_TEMPLE_CARDS = ['telluria', 'aurush', 'pelagos', 'altar'];
+  /* The Hall's cards: the negotiation table (the events) and the coat of arms (the Clans). */
+  R.PLAYER_HALL_CARDS = ['table', 'arms'];
+  R.PLAYER_EVENT_MAX = 6;
+  /* The kinds of lasting effect the players may read (the others are the DM's: obligations and quest hooks). */
+  var PLAYER_EFFECT_KINDS = ['restriction', 'privilege', 'favour'];
+
+  /* The Hall's Diplomatic Events for the players: only CONFIRMED records, newest first, each with its day, title, the Clans
+     and the lasting effects still in force, in plain words. */
+  R.playerEvents = function (s, data) {
+    var list = isObj(s.diplomaticRecords) ? arr(s.diplomaticRecords.list).filter(function (r) { return isObj(r) && r.status === 'confirmed'; }) : [];
+    var rows = list.map(function (r, i) {
+      var effects = arr(r.consequences).filter(function (c) {
+        return isObj(c) && PLAYER_EFFECT_KINDS.indexOf(c.kind) !== -1 && R.dipConsequenceState(s, c) === 'active';
+      }).map(function (c) {
+        var k = R.dipKind(c.kind);
+        var text = str(c.text, 160) || (k ? k.label : '');
+        return str((k ? k.label : '') + (c.clan ? ' (' + R.dipClanName(data, c.clan) + ')' : '') + ': ' + text + (typeof c.until === 'number' ? ' (until Day ' + c.until + ')' : ''), 260);
+      });
+      return { i: i, day: R.dayNum(r.day, 1), title: str(r.title, 80), clans: arr(r.clans).filter(function (k) { return typeof k === 'string'; }).map(function (k) { return str(R.dipClanName(data, k), 40); }), effects: effects };
+    });
+    rows.sort(function (a, b) { return b.day - a.day || b.i - a.i; });
+    return {
+      events: rows.slice(0, R.PLAYER_EVENT_MAX).map(function (r) { return { day: r.day, title: r.title, clans: r.clans, effects: r.effects }; }),
+      more: Math.max(0, rows.length - R.PLAYER_EVENT_MAX)
+    };
+  };
+  /* The seven Clans' two numbers, as the Hall shows them. */
+  R.playerClans = function (s, data) {
+    return R.clanRelations(s, data).map(function (c) { return { name: str(c.name, 40), hr: c.hr, pc: c.pc }; });
+  };
 
   R.playerSnapshot = function (s, data, extras) {
     extras = isObj(extras) ? extras : {};
@@ -124,6 +160,10 @@
           return { god: str(god ? god.name : g.god, 40), rite: str(R.RITE_NAMES[g.rite] || g.rite, 60), where: g.status === 'assigned' ? 'party' : 'waiting' };
         });
         f.held = R.templeHeld(s, 'pelagos');
+      }
+      if (id === 'hall_of_emissaries') {
+        var ev = R.playerEvents(s, data);
+        f.events = ev.events; f.more = ev.more; f.clans = R.playerClans(s, data);
       }
       /* The Beast Pen lists the beasts housed there: a name, the kind (not the variety) and the handler's name, nothing else. */
       if (id === R.PEN_ID) {
@@ -194,8 +234,8 @@
       focus: focus,
       /* The DM has chosen to show the focused facility's ledger to the players (only ever true with a focus). */
       ledger: !!focus && extras.ledger === true,
-      /* The Temple's card the DM is showing (only with the Temple open). */
-      card: focus === R.TEMPLE_ID && R.PLAYER_TEMPLE_CARDS.indexOf(extras.card) !== -1 ? extras.card : null,
+      /* The Temple's or the Hall's card the DM is showing (only with that panel open). */
+      card: (focus === R.TEMPLE_ID && R.PLAYER_TEMPLE_CARDS.indexOf(extras.card) !== -1) || (focus === 'hall_of_emissaries' && R.PLAYER_HALL_CARDS.indexOf(extras.card) !== -1) ? extras.card : null,
       focusView: routesView ? 'routes' : null,
       routes: routesView ? R.playerRoutes(s, data) : null
     };
