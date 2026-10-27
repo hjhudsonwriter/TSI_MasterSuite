@@ -28,6 +28,7 @@
      view: { x0, y0, x1, y1 },              the part of the map the DM's window shows, as fractions of the map (0 to 1); the whole
                                           map (0, 0, 1, 1) when the DM has not zoomed. The players' window fits that region
                                           into its own shape, centred (R.regionView), so both show the same part of the map.
+     atlas: true/false,                    the DM has chosen to show the players the picture of the Scarlett Isles (their window opens its map panel)
      dim: 'none' | 'night' | 'event',     'event' while a campfire event is open in the DM's window: the map stays very dark
      camp: n                               how many times the DM has made camp; each new number fades the map out and in once
    } */
@@ -41,7 +42,7 @@
   function str(v, max) { return typeof v === 'string' ? v.slice(0, max || 200) : ''; }
   function num(v, fallback) { return typeof v === 'number' && isFinite(v) ? v : fallback; }
 
-  /* extras: { view: the DM's visible region ({ x0, y0, x1, y1 }) or none, pin: a marker's id or null, dim: 'none' | 'night' | 'event', camp: a whole number }. */
+  /* extras: { atlas: true to show the Scarlett Isles map panel, view: the DM's visible region ({ x0, y0, x1, y1 }) or none, pin: a marker's id or null, dim: 'none' | 'night' | 'event', camp: a whole number }. */
   R.playerSnapshot = function (s, data, extras) {
     extras = extras && typeof extras === 'object' ? extras : {};
     var limit = R.dayLimit(s);
@@ -105,6 +106,7 @@
       }),
       pin: pin,
       view: view,
+      atlas: extras.atlas === true,
       dim: dim,
       camp: camp
     };

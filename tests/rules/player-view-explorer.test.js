@@ -117,7 +117,7 @@
 
   test('the snapshot has only the listed top-level fields, and survives a structured clone shape (plain JSON)', function (t) {
     var s = snap(busy());
-    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'dim', 'camp', 'tokens', 'v', 'view', 'weather'].sort());
+    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'dim', 'camp', 'atlas', 'tokens', 'v', 'view', 'weather'].sort());
     t.same(JSON.parse(JSON.stringify(s)), s);
   });
 
@@ -150,6 +150,14 @@
     ['ZZ', { x0: 0.6, y0: 0, x1: 0.5, y1: 1 }, { x0: -1, y0: 0, x1: 1, y1: 1 }, { x0: 0, y0: 0, x1: 'a', y1: 1 }].forEach(function (bad) {
       t.same(R.playerSnapshot(b, D, { view: bad }).view, { x0: 0, y0: 0, x1: 1, y1: 1 });
     });
+  });
+
+  test('the Scarlett Isles map flag is only ever true or false (true only when the DM said true), and carries no picture', function (t) {
+    var b = busy();
+    t.equal(R.playerSnapshot(b, D).atlas, false);
+    t.equal(R.playerSnapshot(b, D, { atlas: true }).atlas, true);
+    ['yes', 1, {}, null].forEach(function (v) { t.equal(R.playerSnapshot(b, D, { atlas: v }).atlas, false); });
+    t.ok(JSON.stringify(R.playerSnapshot(b, D, { atlas: true })).indexOf('scarlett-isles-map') === -1, 'the picture is the window\'s own file');
   });
 
   test('building a snapshot changes nothing in the state', function (t) {

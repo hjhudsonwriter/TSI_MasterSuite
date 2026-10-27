@@ -596,3 +596,9 @@ Harry's upload of nine 2752 x 1536 JPEGs (placed in the repository's top folder,
 |---|---|
 | `Fishery_L1.jpeg` to `Fishery_L4.jpeg` | `tools/bastion/assets/player-panels/fishery-level-1.jpg` to `fishery-level-4.jpg` (no Level 5 yet) |
 | `Fishery_Ledger1.jpeg` to `Fishery_Ledger5.jpeg` | `tools/bastion/assets/player-panels/fishery-ledger-1.jpg` to `fishery-ledger-5.jpg` |
+
+## Added later
+
+| Source | New location | Used |
+|---|---|---|
+| Harry's picture of the Scarlett Isles (19.jpg, 747 x 998) | `tools/explorer/assets/scarlett-isles-map.jpg` | The Explorer's Player View map panel |

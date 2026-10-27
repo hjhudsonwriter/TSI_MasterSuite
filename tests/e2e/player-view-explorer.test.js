@@ -123,9 +123,9 @@ async function openPlayer(page, size) {
       await H.shot(pv, 'pv-explorer-' + name);
     });
 
-    await check('no side panels, top bar, inputs or buttons but Full screen; clicks do nothing', async () => {
+    await check('no side panels, top bar, inputs or buttons but the map icon, its Close and Full screen; clicks do nothing', async () => {
       equal(await pv.$$eval('input, select, textarea, a[href]', n => n.length), 0);
-      equal(await pv.$$eval('button', bs => bs.map(b => b.dataset.test)), ['pv-fullscreen']);
+      equal(await pv.$$eval('button', bs => bs.map(b => b.dataset.test)), ['pv-mapbtn', 'pv-map-close', 'pv-fullscreen']);
       equal(await pv.$('.tsi-topbar, .tsi-exp-panel, .tsi-exp-side, .tsi-modal, [data-test=journal], [data-test=bags-list], [data-test=effects-list]'), null);
       equal(await pv.$eval('[data-test=pv-stage]', n => getComputedStyle(n).pointerEvents), 'none');
       await pv.click('.tsi-xpv-token', { force: true });
@@ -135,6 +135,7 @@ async function openPlayer(page, size) {
 
     await check('the slim row: Day, Daily Travel (one figure out of the limit) and Gold', async () => {
       equal((await bare(pv, '[data-test=pv-row]')).toLowerCase(), 'day 1 daily travel 0 / 30 gold 0');
+      equal(await pv.getAttribute('[data-test=pv-mapbtn]', 'aria-label'), 'Open the map of the Scarlett Isles');
       const ys = await pv.$$eval('.tsi-xpv-pill', ps => ps.map(p => Math.round(p.getBoundingClientRect().top)));
       assert(new Set(ys).size === 1, 'one row');
     });
@@ -384,6 +385,80 @@ async function openPlayer(page, size) {
       await pv.emulateMedia({ reducedMotion: 'no-preference' });
       await page.click('[data-test=zoom-fit]');
       await settle();
+    });
+
+    await check('the map icon sits at the right of the slim row; clicking it opens the Scarlett Isles panel, which fills its width and scrolls', async () => {
+      const row = await rect(pv, '[data-test=pv-row]'), ic = await rect(pv, '[data-test=pv-mapbtn]');
+      assert(ic.right > size.width - 60 && ic.y >= row.y && ic.bottom <= row.bottom, 'in the row, at the right: ' + JSON.stringify(ic));
+      equal(await pv.isVisible('[data-test=pv-map-panel]'), false);
+      await pv.click('[data-test=pv-mapbtn]');
+      await pv.waitForSelector('[data-test=pv-map-panel]', { state: 'visible' });
+      await pv.waitForFunction(() => { const i = document.querySelector('[data-test=pv-map-picture]'); return i.complete && i.naturalWidth === 747 && i.naturalHeight === 998; });
+      const sc = await rect(pv, '[data-test=pv-map-scroll]'), img = await rect(pv, '[data-test=pv-map-picture]');
+      assert(sc.y >= row.bottom - 1 && sc.bottom <= size.height + 1, 'below the row, on screen');
+      assert(img.w > sc.w - 16 && img.h > sc.h, 'the picture fills the width and is taller than the panel: ' + JSON.stringify([sc, img]));
+      equal(await pv.$eval('[data-test=pv-map-scroll]', n => getComputedStyle(n).overflowY), 'auto');
+      equal(await bare(pv, '.tsi-xpv-atlas__title'), 'The Scarlett Isles');
+      await H.shot(pv, 'pv-explorer-atlas-' + name);
+      await pv.hover('[data-test=pv-map-scroll]');
+      await pv.mouse.wheel(0, 400);
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-map-scroll]').scrollTop > 100);
+      await pv.keyboard.press('End');
+      await pv.waitForFunction(() => { const n = document.querySelector('[data-test=pv-map-scroll]'); return n.scrollTop + n.clientHeight >= n.scrollHeight - 2; });
+      await pv.keyboard.press('Home');
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-map-scroll]').scrollTop === 0);
+      const box = await rect(pv, '[data-test=pv-map-scroll]');
+      await pv.mouse.move(box.x + box.w / 2, box.y + 100);
+      await pv.mouse.down();
+      await pv.mouse.move(box.x + box.w / 2, box.y + 20, { steps: 5 });
+      await pv.mouse.up();
+      assert((await pv.$eval('[data-test=pv-map-scroll]', n => n.scrollTop)) > 40, 'dragging scrolls');
+      await pv.keyboard.press('Home');
+    });
+
+    await check('while it is open the live map underneath still follows the DM (day, gold, heroes), and the night dim covers the panel', async () => {
+      await change(page, s => { s.travel.day = 7; s.journey.gold = 222; });
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-day] .tsi-xpv-pill__n').textContent === '7' && document.querySelector('[data-test=pv-gold] .tsi-xpv-pill__n').textContent === '222');
+      equal(await pv.isVisible('[data-test=pv-map-panel]'), true, 'the panel stays');
+      await dismissModals(page);
+      await page.evaluate(() => TSI.explorer.debug.startEvent('c1', 'camp'));
+      await page.waitForSelector('.tsi-modal.tsi-exp-journey');
+      await pv.waitForFunction(() => { const o = Number(getComputedStyle(document.querySelector('[data-test=pv-dim]')).opacity); return o > 0.9 && o < 0.95; }, null, { timeout: 4000 });
+      const top = await pv.evaluate(() => { const r = document.querySelector('[data-test=pv-map-scroll]').getBoundingClientRect(); const e = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return !!e.closest('[data-test=pv-map-panel]'); });
+      const z = await pv.evaluate(() => [Number(getComputedStyle(document.querySelector('[data-test=pv-dim]')).zIndex), Number(getComputedStyle(document.querySelector('[data-test=pv-map-panel]')).zIndex)]);
+      assert(z[0] > z[1], 'the dim is above the panel: ' + z + ' ' + top);
+      await page.click('[data-test=skip-event]');
+      await dismissModals(page);
+      await pv.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-test=pv-dim]')).opacity) < 0.05, null, { timeout: 5000 });
+    });
+
+    await check('closing: the X, Escape, and the icon again', async () => {
+      await pv.click('[data-test=pv-map-close]');
+      equal(await pv.isVisible('[data-test=pv-map-panel]'), false);
+      await pv.click('[data-test=pv-mapbtn]');
+      equal(await pv.isVisible('[data-test=pv-map-panel]'), true);
+      await pv.keyboard.press('Escape');
+      equal(await pv.isVisible('[data-test=pv-map-panel]'), false);
+      await pv.focus('[data-test=pv-mapbtn]');
+      await pv.keyboard.press('Enter');
+      equal(await pv.isVisible('[data-test=pv-map-panel]'), true, 'keyboard operable');
+      await pv.click('[data-test=pv-mapbtn]');
+      equal(await pv.isVisible('[data-test=pv-map-panel]'), false);
+    });
+
+    await check('the DM\'s button shows and hides the panel on the players\' window, and overrides a local click on its next change', async () => {
+      equal(await page.textContent('[data-test=atlas-toggle]'), 'Show Scarlett Isles map to players');
+      await page.click('[data-test=atlas-toggle]');
+      equal(await page.textContent('[data-test=atlas-toggle]'), 'Hide Scarlett Isles map from players');
+      await pv.waitForSelector('[data-test=pv-map-panel]', { state: 'visible' });
+      await pv.click('[data-test=pv-map-close]');
+      equal(await pv.isVisible('[data-test=pv-map-panel]'), false, 'a local close stands until the DM changes it');
+      await page.click('[data-test=atlas-toggle]');
+      await page.click('[data-test=atlas-toggle]');
+      await pv.waitForSelector('[data-test=pv-map-panel]', { state: 'visible' });
+      await page.click('[data-test=atlas-toggle]');
+      await pv.waitForSelector('[data-test=pv-map-panel]', { state: 'hidden' });
+      equal(await page.textContent('[data-test=atlas-toggle]'), 'Show Scarlett Isles map to players');
     });
 
     await check('the same region at any window shape: resizing either window keeps every hero at the same place on the picture', async () => {

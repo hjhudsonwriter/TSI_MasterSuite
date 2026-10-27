@@ -17,6 +17,10 @@
 - Five unused pictures moved to `tools/bastion/assets/extras/` (see `docs/ASSETS.md` and `docs/BASTION-MAP-ART.md`); nothing deleted. The Temple's three Shrine paintings and map overlays and the Beast Pen's tile, panel strip and map overlay are wired.
 - `guide.html` facilities paragraph brought up to date.
 
+### 27 October 2026: the Scarlett Isles map panel in the Explorer's Player View (BAS-SB-104)
+
+- A map icon in the players' top row opens the Scarlett Isles picture (scrolling panel); the DM can show or hide it from the Explorer. Tests: `tests/rules/player-view-explorer.test.js`, `tests/e2e/player-view-explorer.test.js`.
+
 ### 26 October 2026: zoom and pan, and Reset to Day 1 (BAS-SB-101 to 103)
 
 - Zoom and pan in the Explorer (wheel at the pointer, drag, +/-/0, + - Fit buttons), mirrored by the Player View as the region of the map the DM sees (`tools/explorer/rules.js` R.zoomView, R.visibleRegion, R.regionView; tests in `tests/rules/player-view-explorer.test.js` and `tests/e2e/player-view-explorer.test.js`).

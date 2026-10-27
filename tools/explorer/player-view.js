@@ -35,7 +35,23 @@
     var day = pill('Day', 'pv-day');
     var travel = pill('Daily Travel', 'pv-travel');
     var gold = pill('Gold', 'pv-gold');
-    var row = el('div', { class: 'tsi-xpv-row', 'data-test': 'pv-row' }, [day.node, travel.node, gold.node]);
+    /* The map of the Scarlett Isles: a small icon at the right of the row, and a panel (below) it opens. */
+    var mapBtn = el('button', { type: 'button', class: 'tsi-xpv-mapbtn', 'data-test': 'pv-mapbtn', 'aria-label': 'Open the map of the Scarlett Isles', title: 'Open the map of the Scarlett Isles', 'aria-expanded': 'false' }, mapIcon());
+    var row = el('div', { class: 'tsi-xpv-row', 'data-test': 'pv-row' }, [day.node, travel.node, gold.node, mapBtn]);
+    function mapIcon() {
+      var NS = 'http://www.w3.org/2000/svg';
+      var svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('class', 'tsi-xpv-mapicon');
+      svg.setAttribute('aria-hidden', 'true');
+      [['M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z', 'tsi-xpv-mapicon__sheet'], ['M9 4v14M15 6v14', 'tsi-xpv-mapicon__fold']].forEach(function (d) {
+        var path = document.createElementNS(NS, 'path');
+        path.setAttribute('d', d[0]);
+        path.setAttribute('class', d[1]);
+        svg.appendChild(path);
+      });
+      return svg;
+    }
 
     /* The map area, as the DM's stage: the picture and tokens sit on the board (scaled and centred), the rest on the area. */
     var mapImg = el('img', { class: 'tsi-xpv-map', alt: 'The map', draggable: 'false', 'data-test': 'pv-map-img' });
@@ -69,6 +85,49 @@
     /* The DM's open pin card, read only. */
     var pinHost = el('div', { class: 'tsi-xpv-pinhost', 'data-test': 'pv-pin-host', hidden: true });
     stage.appendChild(pinHost);
+    /* The Scarlett Isles panel: the picture fills the panel's width and scrolls up and down (the wheel, trackpad and keys by
+       themselves; dragging too), as the Bastion's Trade Routes view does. Read only; it only changes how this screen looks. */
+    var atlasClose = el('button', { type: 'button', class: 'tsi-xpv-atlas__close', 'data-test': 'pv-map-close', 'aria-label': 'Close the map', title: 'Close the map' }, '×');
+    var atlasScroll = el('div', { class: 'tsi-xpv-atlas__scroll', 'data-test': 'pv-map-scroll', tabindex: '0', role: 'region', 'aria-label': 'The Scarlett Isles map: scroll up and down' },
+      el('img', { class: 'tsi-xpv-atlas__img', src: TSI.path('tools/explorer/assets/scarlett-isles-map.jpg'), alt: 'The Scarlett Isles', draggable: 'false', 'data-test': 'pv-map-picture' }));
+    var atlasHost = el('div', { class: 'tsi-xpv-atlashost', 'data-test': 'pv-map-panel', hidden: true }, el('div', { class: 'tsi-xpv-atlas', role: 'dialog', 'aria-label': 'The Scarlett Isles' }, [
+      el('div', { class: 'tsi-xpv-atlas__head' }, [el('h2', { class: 'tsi-xpv-atlas__title', text: 'The Scarlett Isles' }), atlasClose]),
+      atlasScroll
+    ]));
+    stage.appendChild(atlasHost);
+    var atlasOpen = false;
+    var lastAtlas = null;
+    function setAtlas(on) {
+      atlasOpen = !!on;
+      atlasHost.hidden = !atlasOpen;
+      mapBtn.setAttribute('aria-expanded', atlasOpen ? 'true' : 'false');
+      if (atlasOpen) atlasScroll.focus({ preventScroll: true });
+    }
+    mapBtn.addEventListener('click', function () { setAtlas(!atlasOpen); });
+    atlasClose.addEventListener('click', function () { setAtlas(false); });
+    document.addEventListener('keydown', function (e) {
+      if (!atlasOpen) return;
+      var sc = atlasScroll, by = null;
+      if (e.key === 'Escape') { setAtlas(false); e.preventDefault(); return; }
+      if (e.key === 'ArrowDown') by = 70; else if (e.key === 'ArrowUp') by = -70;
+      else if (e.key === 'PageDown' || e.key === ' ') by = sc.clientHeight * 0.9; else if (e.key === 'PageUp') by = -sc.clientHeight * 0.9;
+      else if (e.key === 'Home') { sc.scrollTop = 0; e.preventDefault(); return; } else if (e.key === 'End') { sc.scrollTop = sc.scrollHeight; e.preventDefault(); return; }
+      if (by === null) return;
+      e.preventDefault();
+      sc.scrollTop += by;
+    });
+    var atlasDrag = null;
+    atlasScroll.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return;
+      atlasDrag = { y: e.clientY, top: atlasScroll.scrollTop };
+      atlasScroll.classList.add('is-dragging');
+      try { atlasScroll.setPointerCapture(e.pointerId); } catch (x) { /* fine */ }
+    });
+    atlasScroll.addEventListener('pointermove', function (e) { if (atlasDrag) atlasScroll.scrollTop = atlasDrag.top - (e.clientY - atlasDrag.y); });
+    function endAtlasDrag() { atlasDrag = null; atlasScroll.classList.remove('is-dragging'); }
+    atlasScroll.addEventListener('pointerup', endAtlasDrag);
+    atlasScroll.addEventListener('pointercancel', endAtlasDrag);
+
     var frame = el('div', { class: 'tsi-xpv', 'data-test': 'pv-frame' }, [row, stage, full, waiting]);
     root.appendChild(frame);
 
@@ -261,6 +320,7 @@
       var st = document.getElementById('tsi-player-status');
       var gone = !window.opener || window.opener.closed || (st && !st.hidden && st.textContent);
       if (gone && (mode !== 'none' || dim.style.opacity > 0)) release();
+      if (gone && atlasOpen) setAtlas(false);
     }, 500);
 
     return {
@@ -275,6 +335,8 @@
         drawAll();
         drawPin();
         drawDim();
+        /* The DM's button overrides a click here whenever it changes (and sets the panel when this window first hears). */
+        if (snap.atlas !== lastAtlas) { lastAtlas = snap.atlas; setAtlas(snap.atlas); }
       },
       message: function (type, payload) {
         if (type === 'map' && payload && typeof payload.dataUrl === 'string' && payload.key) {
