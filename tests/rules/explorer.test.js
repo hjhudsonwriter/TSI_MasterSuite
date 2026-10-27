@@ -64,7 +64,7 @@
     t.equal(waiting, 6);
   });
 
-  test('17 map-to-map entry points, all on the arriving map', function (t) {
+  test('18 map-to-map entry points, all on the arriving map', function (t) {
     var n = 0;
     Object.keys(D.spawns).forEach(function (from) {
       Object.keys(D.spawns[from]).forEach(function (to) {
@@ -74,7 +74,25 @@
         t.ok(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1, from + ' → ' + to + ' is on the map');
       });
     });
-    t.equal(n, 17);
+    t.equal(n, 18);
+  });
+
+  test('a jump between maps that are not neighbours still uses one of the destination map\'s own entry points (26 October 2026)', function (t) {
+    var s = fresh();
+    R.loadPreset(s, D, 'the_north_isle');
+    s.tokens.forEach(function (x, i) { x.x = 0.5 + i * 0.01; x.y = 0.5; });
+    var res = R.loadPreset(s, D, 'midland_province');
+    t.equal(res.spawned, true, 'there is no direct entry, so the first entry the map has is used');
+    var cx = 0, cy = 0;
+    s.tokens.forEach(function (x) { cx += x.x; cy += x.y; });
+    var entry = D.spawns.southern_province_east.midland_province;
+    t.ok(Math.abs(cx / 5 - entry.x) < 1e-9 && Math.abs(cy / 5 - entry.y) < 1e-9, 'party centred on that entry point');
+  });
+
+  test('the East Isle is reached from the south map, and the south map can be re-entered from the Southern Province (East)', function (t) {
+    t.ok(D.spawns.eastern_province_south.the_east_isle, 'south map to the isle');
+    t.ok(!D.spawns.eastern_province_north.the_east_isle, 'not from the north map');
+    t.ok(D.spawns.southern_province_east.eastern_province_south, 'Southern Province (East) back to the south map');
   });
 
   test('two main events with 11 pictures; four kinds of weather', function (t) {
@@ -326,7 +344,7 @@
     var before = s.tokens.map(function (x) { return [x.x, x.y]; });
     var res = R.loadPreset(s, D, 'the_east_isle');
     t.equal(res.spawned, true);
-    var entry = D.spawns.eastern_province_north.the_east_isle;
+    var entry = D.spawns.eastern_province_south.the_east_isle;
     var cx = 0, cy = 0;
     s.tokens.forEach(function (x) { cx += x.x; cy += x.y; });
     t.ok(Math.abs(cx / 5 - entry.x) < 1e-9 && Math.abs(cy / 5 - entry.y) < 1e-9, 'party centred on the entry point');
