@@ -643,7 +643,7 @@
         name: 'ScarlettBastionPlayers',
         keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
-        getState: function () { return R.playerSnapshot(state, data, { crest: crest, focus: pvFocus(), ledger: pvLedgerOn() }); },
+        getState: function () { return R.playerSnapshot(state, data, { crest: crest, focus: pvFocus(), ledger: pvLedgerOn(), view: pvView() }); },
         onStatus: function (st) {
           pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvStatus.classList.toggle('is-connected', st === 'connected');
@@ -667,6 +667,8 @@
         return pvLedger;
       }
       function pvFocus() { return shown ? R.playerFocusOf(shown.id) : null; }
+      /* The Dock's Routes tab shows the players the trade routes map instead of the Dock's picture. */
+      function pvView() { return shown && shown.id === 'fac-dock' && dockTab === 'routes' ? 'routes' : null; }
       /* Send the picture again, once at the next frame however many changes there were. */
       function queuePlayerSync() {
         if (pvQueued || !life.alive || !pvLink.isConnected()) return;
@@ -675,10 +677,12 @@
       }
       function sendPlayerFocus() {
         var f = pvFocus();
-        if (f === pvLastFocus) return;
-        pvLastFocus = f;
+        var v = pvView();
+        if (f + '|' + v === pvLastFocus) return;
+        pvLastFocus = f + '|' + v;
         pvLedger = false;
-        pvLink.send('focus', { focus: f });
+        pvLink.send('focus', { focus: f, view: v });
+        if (v) queuePlayerSync();   /* the routes come with the next snapshot */
       }
       var bar = el('header', { class: 'tsi-bas-head' }, [
         el('div', { class: 'tsi-bas-brand' }, [
@@ -2588,6 +2592,7 @@
         if (DOCK_TABS.every(function (t) { return t[0] !== id; })) return;
         dockTab = id;
         renderPanel();
+        sendPlayerFocus();
         if (focus) {
           var again = document.querySelector('[data-test="dock-tab-' + id + '"]');
           if (again) again.focus({ preventScroll: true });
@@ -4085,7 +4090,7 @@
           button.click();
           /* The Dock's panel is in tabs: show the one that holds what was asked for. */
           var want = opener === 'tile-dock' ? dockTabFor(test) : '';
-          if (want && want !== dockTab) { dockTab = want; renderPanel(); }
+          if (want && want !== dockTab) { dockTab = want; renderPanel(); sendPlayerFocus(); }
           return !!document.querySelector(sel);
         }
       };

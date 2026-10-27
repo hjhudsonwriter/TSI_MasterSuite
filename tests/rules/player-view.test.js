@@ -156,7 +156,7 @@
 
   test('only these keys exist, at every level', function (t) {
     var s = snap(busy(), { focus: 'temple' });
-    t.same(Object.keys(s).sort(), ['crest', 'day', 'facilities', 'facilityCount', 'focus', 'labels', 'ledger', 'orderCount', 'overlays', 'partyName', 'tiles', 'treasuryGP', 'v']);
+    t.same(Object.keys(s).sort(), ['crest', 'day', 'facilities', 'facilityCount', 'focus', 'focusView', 'labels', 'ledger', 'orderCount', 'overlays', 'partyName', 'routes', 'tiles', 'treasuryGP', 'v']);
     t.same(Object.keys(s.crest).sort(), ['dataUrl', 'key']);
     s.overlays.forEach(function (o) { t.same(Object.keys(o).sort(), ['facs', 'pic', 'repair']); });
     s.labels.forEach(function (l) { t.ok(Object.keys(l).every(function (k) { return ['fac', 'name', 'level', 'single', 'x', 'y', 'repair', 'part'].indexOf(k) !== -1; }), 'a label has only its own fields'); });
@@ -294,6 +294,65 @@
       t.equal(p.widgets.indexOf('staff') !== -1, p.id === 'workshop', p.id + ' staff');
       t.equal(p.widgets.indexOf('shrines') !== -1, p.id === 'temple', p.id + ' shrines');
       t.equal(p.widgets.indexOf('beasts') !== -1, p.id === 'beast_pen', p.id + ' beasts');
+    });
+  });
+
+  group('Player View: the Dock\'s Trade Routes');
+
+  function charter(id, port, clan, status) { return { id: id, port: port, clan: clan, mode: 'commodity_backed', status: status, earnedDay: 3, registeredDay: status === 'registered' ? 6 : null, terms: { priceMult: 1.37, feePerLot: 91, tariffPct: 17 }, from: { code: 'ZZFROM', title: 'ZZTITLE' }, text: 'ZZCHARTERTEXT' }; }
+  function ship(id, port, charterId, extra) {
+    return Object.assign({ id: id, port: port, clan: 'molten', charterId: charterId, mode: 'commodity_backed', cargo: [{ goodId: 'raw_timber', name: 'ZZCARGO', qty: 7 }], departDay: 12, arriveDay: 18, returnDay: 24, stage: 'outbound', risk: 'ZZRISK', basePct: 31, protections: [{ id: 'zz', label: 'ZZPROTECT', cut: 9 }], chance: 23, scheduleId: 'ZZSCHED', outcome: null, recalledDay: null, roll: 77, terms: { priceMult: 1.37 } }, extra || {});
+  }
+  function withRoutes() {
+    var b = busy();
+    b.facilityLevels.dock = 3;
+    b.tradeNetwork.portCharters = [charter('c1', 'goldport', 'molten', 'registered'), charter('c2', 'timberport', 'blackstone', 'earned'), charter('c3', 'steelport', 'slade', 'registered')];
+    b.tradeNetwork.voyages = [ship('ZZSHIPID1', 'goldport', 'c1'), ship('ZZSHIPID2', 'goldport', 'c1', { stage: 'returning', outcome: 'sold' })];
+    b.tradeNetwork.marketLedger = [{ day: 5, port: 'goldport', goodId: 'ZZGOOD', qty: 4, saleId: 'ZZSALE' }];
+    b.tradeNetwork.cargoSales = [{ id: 'ZZSALEREC', day: 5, port: 'goldport', net: 123456 }];
+    b.tradeNetwork.protections = { ZZPROT: { charges: 4 } };
+    return b;
+  }
+
+  test('only the Dock\'s Routes tab sends the routes: any other tab, or another panel, sends none', function (t) {
+    var b = withRoutes();
+    t.same([snap(b, { focus: 'dock', view: 'routes' }).focusView, snap(b, { focus: 'dock' }).focusView, snap(b, { focus: 'workshop', view: 'routes' }).focusView, snap(b, { view: 'routes' }).focusView], ['routes', null, null, null]);
+    t.equal(snap(b, { focus: 'dock' }).routes, null);
+    t.equal(snap(b, { focus: 'workshop', view: 'routes' }).routes, null);
+  });
+
+  test('the routes: the registered Port Charters by label, the lit routes, the ships\' places and a line for each journey', function (t) {
+    var b = withRoutes();
+    var r = snap(b, { focus: 'dock', view: 'routes' }).routes;
+    t.same(r.charters, [{ port: 'goldport', label: 'Goldport (Clan Molten)' }, { port: 'steelport', label: 'Steelport (Clan Slade)' }]);
+    t.same(r.lanes, [{ port: 'goldport', sea: true }, { port: 'steelport', sea: false }]);
+    t.equal(r.boats.length, 2);
+    t.same(r.boats.map(function (x) { return x.key; }), ['goldport#1', 'goldport#2']);
+    t.same(r.journeys.map(function (j) { return j.line; }), ['Sailing to Goldport: arrives Day 18, home Day 24', 'Sold at Goldport, sailing home: back Day 24']);
+    t.equal(r.more, 0);
+    r.boats.forEach(function (x) { t.same(Object.keys(x).sort(), ['fraction', 'key', 'label', 'phase', 'point', 'port']); });
+  });
+
+  test('no charter and no ship: empty lists', function (t) {
+    var b = busy();
+    b.facilityLevels.dock = 3;
+    var r = snap(b, { focus: 'dock', view: 'routes' }).routes;
+    t.same([r.charters, r.lanes, r.boats, r.journeys, r.more], [[], [], [], [], 0]);
+  });
+
+  test('many ships: at most 12 journeys are sent, the rest counted', function (t) {
+    var b = withRoutes();
+    b.tradeNetwork.voyages = [];
+    for (var i = 0; i < 15; i++) b.tradeNetwork.voyages.push(ship('v' + i, 'goldport', 'c1'));
+    var r = snap(b, { focus: 'dock', view: 'routes' }).routes;
+    t.same([r.journeys.length, r.more], [12, 3]);
+  });
+
+  test('no cargo, price, gold, protection, risk, sale, ledger or ship record leaks into the snapshot', function (t) {
+    var b = withRoutes();
+    var text = JSON.stringify(snap(b, { focus: 'dock', view: 'routes' }));
+    ['ZZCARGO', 'ZZRISK', 'ZZPROTECT', 'ZZSCHED', 'ZZSHIPID', 'ZZGOOD', 'ZZSALE', 'ZZPROT', 'ZZFROM', 'ZZTITLE', 'ZZCHARTERTEXT', '123456', '1.37', 'raw_timber', 'priceMult', 'feePerLot', 'tariffPct', 'roll', 'chance', 'protections', 'marketLedger', 'cargoSales', 'terms', 'timberport'].forEach(function (w) {
+      t.equal(text.indexOf(w), -1, w + ' must not be in the snapshot');
     });
   });
 }());

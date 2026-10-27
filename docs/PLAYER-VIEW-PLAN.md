@@ -50,3 +50,4 @@ The Explorer's and Bastion's windows stay open between tools and reconnect by th
 The Beast Pen's panel shows only its painting and the housed beasts' name, kind and handler (26 October 2026).
 The Party Quarters has a bare panel (name and picture only), opened from its DM tile (26 October 2026).
 P1 to P4 built (see docs/PROGRESS.md). P4 built (with pin cards and the night and campfire fades): the Explorer's Player View (the earlier note that the Explorer has no pan or zoom is replaced: the Explorer now zooms and pans, and the Player View copies it, BAS-SB-101).
+The Dock's Routes tab shows the players a Trade Routes view (a scrolling map with the lit routes and moving ship badges, and a strip listing the active Port Charters and the journeys), 27 October 2026; the snapshot carries `focusView` and `routes` only while that tab is open (`R.playerRoutes`).
