@@ -240,43 +240,34 @@
     return ['Order Completed', lab + ' → The Port Charter for ' + R.charterLabel(data, c) + ' is registered. The Dock can ship cargo there' + (need > 1 ? ' from Level ' + need : '') + '.'];
   };
 
-  /* ---------- The Routes map (the Dock; Harry, 22 October 2026, step S08) ----------
-     The map of the Scarlett Isles shows where the Ironbow trades. A Clan's lane
-     GLOWS when the Ironbow holds a REGISTERED Port Charter at one of that Clan's
-     ports, and glows brighter while a ship is at sea to one of its ports (a ship
-     outbound, or on its way home). The map has one lane for each Clan, not each
-     port (ten ports share seven lanes), so two ports of one Clan light the same
-     lane. A Charter that is only earned, or being registered, lights nothing: it
-     is listed, with where it stands.
-     Returns { lanes, rows, ships }:
-       lanes: the Clans to light, in the Clans' order: { key, name, glow:
-         'registered' | 'sea', art (the lane's picture, or ''), ports: [names],
-         ships: how many are at sea to it };
+  /* ---------- The Routes map (the Dock; Harry, 22 October 2026, step S08; one route for each PORT from 27 October 2026) ----------
+     The map of the Scarlett Isles shows where the Ironbow trades. A Port's route
+     GLOWS while the Ironbow holds a REGISTERED Port Charter for that port, and
+     glows brighter while a ship is at sea to it (a ship outbound, or on its way
+     home). A Charter that is only earned, or being registered, or gone, lights
+     nothing: it is listed, with where it stands. A ship at sea is drawn on its
+     port's route (R.shipProgress and R.pointOnPath), whatever its Charter now says.
+     Returns { lanes, rows, ships, boats }:
+       lanes: the routes to light, in the order of data.bastion.routeOverlays: { key (the port),
+         port, name (the port's), clan, clanName, glow: 'registered' | 'sea', art (the
+         route's picture, or ''), ships: how many are at sea to it };
        rows: every Charter held, by port: { id, port, portName, clan, clanName, label,
          status ('registered' | 'registering' | 'earned'), stateText, ships: [the
          ships' words], atSea };
-       ships: how many ships are at sea in all.
+       ships: how many ships are at sea in all;
+       boats: a ship badge for each ship at sea that has a road: { id, port, portName, phase,
+         fraction, day, of, point: [x, y] in map pixels, label }.
      Plain data, no screen and no dice; it changes nothing. */
   R.routesMap = function (s, data) {
-    var clans = (data && data.bastion && arr(data.bastion.clans)) || [];
-    var art = data && data.bastion && isObj(data.bastion.routeOverlays) ? data.bastion.routeOverlays : {};
+    var b = data && data.bastion ? data.bastion : {};
+    var art = isObj(b.routeOverlays) ? b.routeOverlays : {};
+    var roads = isObj(b.routePaths) ? b.routePaths : {};
     var charters = R.portCharters(s);
     var ships = R.voyages(s);
-    function clanKeyOf(x) {
-      var k = String(x || '').trim().toLowerCase().replace(/^clan\s+/, '');
-      for (var i = 0; i < clans.length; i++) if (clans[i].key === k || String(clans[i].name).toLowerCase() === k) return clans[i].key;
-      return k;
-    }
-    /* The Clan a ship sails to: its Charter's, else the ship's own record. */
-    function shipClan(v) {
-      var c = v.charterId ? R.charterById(s, v.charterId) : null;
-      return clanKeyOf(c ? c.clan : v.clan);
-    }
     var rows = charters.map(function (c) {
-      var key = clanKeyOf(c.clan);
       var mine = ships.filter(function (v) { return v.port === c.port; });
       return {
-        id: c.id, port: c.port, portName: R.portName(c.port), clan: key, clanName: R.clanName(data, key),
+        id: c.id, port: c.port, portName: R.portName(c.port), clan: String(c.clan || ''), clanName: R.clanName(data, c.clan),
         label: R.charterLabel(data, c),
         status: c.status === 'registered' ? 'registered' : R.registerOrderFor(s, c.id) ? 'registering' : 'earned',
         stateText: R.charterState(s, c),
@@ -284,17 +275,80 @@
       };
     });
     var lanes = [];
-    clans.forEach(function (cl) {
-      var registered = rows.filter(function (r) { return r.clan === cl.key && r.status === 'registered'; });
-      var seaCount = ships.filter(function (v) { return shipClan(v) === cl.key; }).length;
-      if (!registered.length && !seaCount) return;
-      lanes.push({
-        key: cl.key, name: cl.name, glow: seaCount ? 'sea' : 'registered',
-        art: typeof art[cl.key] === 'string' ? art[cl.key] : '',
-        ports: registered.map(function (r) { return r.portName; }), ships: seaCount
+    Object.keys(art).forEach(function (port) {
+      var reg = rows.filter(function (r) { return r.port === port && r.status === 'registered'; })[0];
+      if (!reg || typeof art[port] !== 'string') return;
+      var seaCount = ships.filter(function (v) { return v.port === port; }).length;
+      lanes.push({ key: port, port: port, name: R.portName(port), clan: reg.clan, clanName: reg.clanName, glow: seaCount ? 'sea' : 'registered', art: art[port], ships: seaCount });
+    });
+    var boats = [];
+    var seen = {};
+    ships.forEach(function (v) {
+      var road = roads[v.port];
+      if (!Array.isArray(road) || road.length < 2) return;
+      var pr = R.shipProgress(v, s.day);
+      if (pr.phase === 'home') return;
+      var n = seen[v.port] = (seen[v.port] || 0) + 1;
+      var at = R.pointOnPath(road, pr.fraction);
+      /* Ships on one road sit a little apart: each one sideways of the last. */
+      var off = n === 1 ? 0 : (n % 2 ? -1 : 1) * Math.floor(n / 2) * 26;
+      boats.push({
+        id: v.id, port: v.port, portName: R.portName(v.port), phase: pr.phase, fraction: pr.fraction, day: pr.day, of: pr.of,
+        point: [Math.round(at.x - at.ny * off), Math.round(at.y + at.nx * off)],
+        label: 'Ship to ' + R.portName(v.port) + ': day ' + pr.day + ' of ' + pr.of
       });
     });
-    return { lanes: lanes, rows: rows, ships: ships.length };
+    return { lanes: lanes, rows: rows, ships: ships.length, boats: boats };
+  };
+
+  /* ---------- Where a ship is on its road (display only) ----------
+     R.shipProgress(voyage, today) -> { phase, fraction, day, of }
+       phase: 'outbound' (sailing out), 'at-port' (it has reached the port: the day it sells or turns back it rests there),
+       'returning' (sailing home), or 'home' (back: nothing to draw);
+       fraction: 0 at the Ironbow to 1 at the port, along the road;
+       day: days since it sailed; of: days in the whole voyage (sail day to home day).
+     Out: from the sail day to the arrive day. Home: from the arrive day to the home day, from the port. A RECALLED ship
+     heads home from where it was on the day it was recalled, over its own way-home days. A ship that TURNED BACK is
+     put at the port's approaches on its arrive day (the record keeps no other day) and sails home from there with no rest. */
+  R.shipProgress = function (v, today) {
+    var d0 = num(v && v.departDay, -1e9, 1e9, 0);
+    var d1 = Math.max(d0, num(v && v.arriveDay, -1e9, 1e9, d0));
+    var d2 = Math.max(d0, num(v && v.returnDay, -1e9, 1e9, d1));
+    var t = num(today, -1e9, 1e9, d0);
+    var of = Math.max(1, d2 - d0);
+    var day = Math.max(0, Math.min(of, t - d0));
+    function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+    function out(phase, f) { return { phase: phase, fraction: clamp01(f), day: day, of: of }; }
+    var outFrac = function (x) { return d1 > d0 ? (x - d0) / (d1 - d0) : 1; };
+    if (t >= d2 && v && v.stage !== 'outbound') return out('home', 0);
+    if (v && v.stage === 'outbound') {
+      if (t >= d1) return out('at-port', 1);
+      return out('outbound', outFrac(t));
+    }
+    var from = d1, start = 1, rests = v && v.outcome === 'sold';
+    if (v && v.outcome === 'recalled' && isNum(v.recalledDay)) { from = Math.min(Math.max(v.recalledDay, d0), d1); start = outFrac(from); rests = false; }
+    else if (v && v.outcome === 'turned_back') rests = false;
+    if (t >= d2) return out('home', 0);
+    if (t <= from) return rests ? out('at-port', 1) : out('returning', start);
+    return out('returning', start * (1 - (t - from) / Math.max(1, d2 - from)));
+  };
+  /* The point a fraction (0..1) of the way along a line of [x, y] points: { x, y, nx, ny } (nx, ny: the unit
+     direction of the stretch it is on). */
+  R.pointOnPath = function (path, f) {
+    var pts = (path || []).filter(function (p) { return Array.isArray(p) && isNum(p[0]) && isNum(p[1]); });
+    if (!pts.length) return { x: 0, y: 0, nx: 1, ny: 0 };
+    if (pts.length === 1) return { x: pts[0][0], y: pts[0][1], nx: 1, ny: 0 };
+    var lens = [], total = 0, i;
+    for (i = 1; i < pts.length; i++) { var l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); lens.push(l); total += l; }
+    var want = Math.max(0, Math.min(1, num(f, 0, 1, 0))) * total;
+    for (i = 0; i < lens.length; i++) {
+      if (want <= lens[i] || i === lens.length - 1) {
+        var k = lens[i] > 0 ? Math.min(1, want / lens[i]) : 0;
+        var dx = pts[i + 1][0] - pts[i][0], dy = pts[i + 1][1] - pts[i][1], L = lens[i] || 1;
+        return { x: pts[i][0] + dx * k, y: pts[i][1] + dy * k, nx: dx / L, ny: dy / L };
+      }
+      want -= lens[i];
+    }
   };
 
   /* ---------- Voyage risk and its protections ---------- */

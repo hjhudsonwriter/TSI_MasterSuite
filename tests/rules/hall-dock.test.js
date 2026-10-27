@@ -179,7 +179,7 @@
   });
 
   /* ================================================================================================ */
-  group('The Dock takes the Routes map (S08): which Clans glow');
+  group('The Dock takes the Routes map (S08): which ports glow');
 
   function bastionWith(charters, voyages, orders) {
     var b = R.defaultState(data);
@@ -199,54 +199,109 @@
     t.same([m.lanes, m.rows, m.ships], [[], [], 0]);
   });
 
-  test('a REGISTERED Charter lights its Clan\'s lane, steadily; an earned one, or one being registered, lights nothing but is listed', function (t) {
+  test('a REGISTERED Charter lights its PORT\'s route, steadily; an earned one, or one being registered, lights nothing but is listed', function (t) {
     var b = bastionWith([charter('c-gold', 'goldport', 'molten', 'registered'), charter('c-timb', 'timberport', 'blackstone', 'earned'), charter('c-stee', 'steelport', 'slade', 'earned')],
       [], [registerOrder('o', 'c-stee', 'Steelport', { facId: 'dock' })]);
     var m = R.routesMap(b, data);
-    t.same(m.lanes.map(function (l) { return [l.key, l.name, l.glow, l.ships, l.ports]; }), [['molten', 'Molten', 'registered', 0, ['Goldport']]]);
-    t.equal(m.lanes[0].art, 'ui/molten_trade_route.png');
+    t.same(m.lanes.map(function (l) { return [l.key, l.name, l.glow, l.ships]; }), [['goldport', 'Goldport', 'registered', 0]]);
+    t.equal(m.lanes[0].art, 'ui/routes/goldport.png');
     t.same(m.rows.map(function (r) { return [r.port, r.clan, r.status]; }), [['goldport', 'molten', 'registered'], ['timberport', 'blackstone', 'earned'], ['steelport', 'slade', 'registering']]);
     t.equal(m.rows[2].stateText, 'Being registered at the Dock (ready Day 13)');
     t.equal(m.rows[1].stateText, 'Earned on Day 3: register it at the Dock');
   });
 
-  test('two ports of one Clan light the same lane once (ten ports, seven lanes)', function (t) {
+  test('two ports of one Clan light two routes, one each, in the order of the route pictures', function (t) {
     var b = bastionWith([charter('c-gold', 'goldport', 'molten', 'registered'), charter('c-mol', 'moltenport', 'molten', 'registered'), charter('c-ste', 'steelport', 'slade', 'registered')]);
-    var m = R.routesMap(b, data);
-    t.same(m.lanes.map(function (l) { return [l.name, l.ports.length]; }), [['Slade', 1], ['Molten', 2]], 'in the Clans\' own order');
+    t.same(R.routesMap(b, data).lanes.map(function (l) { return l.name; }), ['Goldport', 'Steelport', 'Moltenport']);
   });
 
-  test('a ship at sea makes its Clan\'s lane glow brighter, outbound or on its way home, and even if its Charter is not registered now', function (t) {
+  test('a ship at sea makes its port\'s route glow brighter, outbound or on its way home; a route whose Charter is not registered does not show, but the ship is still drawn', function (t) {
     var b = bastionWith([charter('c-gold', 'goldport', 'molten', 'registered'), charter('c-timb', 'timberport', 'blackstone', 'registered')],
-      [ship('v1', 'goldport', 'molten', 'c-gold', 'outbound'), ship('v2', 'steelport', 'slade', 'gone', 'returning')]);
+      [ship('v1', 'goldport', 'molten', 'c-gold', 'outbound'), ship('v2', 'steelport', 'slade', 'gone', 'returning', { arriveDay: 19, returnDay: 24 })]);
     var m = R.routesMap(b, data);
-    t.same(m.lanes.map(function (l) { return [l.name, l.glow, l.ships]; }), [['Blackstone', 'registered', 0], ['Slade', 'sea', 1], ['Molten', 'sea', 1]]);
+    t.same(m.lanes.map(function (l) { return [l.name, l.glow, l.ships]; }), [['Timberport', 'registered', 0], ['Goldport', 'sea', 1]]);
     t.equal(m.ships, 2);
+    t.same(m.boats.map(function (x) { return [x.port, x.phase, x.label]; }), [['goldport', 'outbound', 'Ship to Goldport: day 2 of 14'], ['steelport', 'returning', 'Ship to Steelport: day 2 of 6']]);
     var gold = m.rows.filter(function (r) { return r.port === 'goldport'; })[0];
     t.equal(gold.atSea, 1);
     t.ok(/^Sailing to Goldport: arrives Day 25, home Day 32$/.test(gold.ships[0]), gold.ships[0]);
   });
 
-  test('the Clan comes from the Charter first (a ship\'s own record can be a name, or old)', function (t) {
-    var b = bastionWith([charter('c-gold', 'goldport', 'molten', 'registered')], [ship('v1', 'goldport', 'Clan Karr', 'c-gold', 'outbound')]);
-    t.same(R.routesMap(b, data).lanes.map(function (l) { return [l.key, l.glow]; }), [['molten', 'sea']]);
-    var c = bastionWith([], [ship('v1', 'goldport', 'Clan Karr', '', 'outbound')]);
-    t.same(R.routesMap(c, data).lanes.map(function (l) { return [l.key, l.glow]; }), [['karr', 'sea']], 'no Charter on record: the ship\'s own record, "Clan Karr" read as karr');
+  test('registered, then removed or gone: the route is not shown', function (t) {
+    var b = bastionWith([charter('c-gold', 'goldport', 'molten', 'registered')]);
+    t.equal(R.routesMap(b, data).lanes.length, 1);
+    b.tradeNetwork.portCharters[0].status = 'earned';
+    t.equal(R.routesMap(b, data).lanes.length, 0, 'unregistered');
+    b.tradeNetwork.portCharters = [];
+    t.equal(R.routesMap(b, data).lanes.length, 0, 'gone');
   });
 
-  test('every Clan has a lane picture, and the map is only ever read (the Bastion is unchanged)', function (t) {
-    T.bastion.clans.forEach(function (c) { t.equal(T.bastion.routeOverlays[c.key], 'ui/' + c.key + '_trade_route.png', c.key); });
+  test('every port has a route picture and a road of points from the Ironbow, and the map is only ever read (the Bastion is unchanged)', function (t) {
+    Object.keys(T.ports).forEach(function (p) {
+      t.equal(T.bastion.routeOverlays[p], 'ui/routes/' + p + '.png', p);
+      var road = T.bastion.routePaths[p];
+      t.ok(Array.isArray(road) && road.length >= 5, p + ' road');
+      t.ok(road.every(function (q) { return q[0] >= 0 && q[0] <= 1494 && q[1] >= 0 && q[1] <= 1996; }), p + ' inside the map');
+      t.ok(Math.hypot(road[0][0] - 1056, road[0][1] - 1272) < 60, p + ' starts at the Ironbow');
+    });
     var b = bastionWith([charter('c-gold', 'goldport', 'molten', 'registered')], [ship('v1', 'goldport', 'molten', 'c-gold', 'outbound')]);
     var before = canon(b);
     R.routesMap(b, data);
     t.equal(canon(b), before);
   });
 
-  test('the heavy fixture: Goldport\'s registered Charter and its ship at sea light Slade\'s lane, as that Charter says', function (t) {
+  test('the heavy fixture: Goldport\'s registered Charter and its ship at sea light Goldport\'s route, as that Charter says', function (t) {
     var b = R.fromSave(clone(FIX['bastion-v3-heavy']), data);
     var m = R.routesMap(b, data);
-    t.same(m.lanes.map(function (l) { return [l.key, l.glow]; }), [['slade', 'sea']]);
+    t.same(m.lanes.map(function (l) { return [l.key, l.glow]; }), [['goldport', 'sea']]);
     t.same(m.rows.map(function (r) { return [r.port, r.status]; }), [['timberport', 'registering'], ['goldport', 'registered']]);
+  });
+
+  group('The moving ship (R.shipProgress, R.pointOnPath)');
+
+  function sp(v, day) { var r = R.shipProgress(v, day); return [r.phase, Math.round(r.fraction * 1000) / 1000, r.day, r.of]; }
+  var out = { departDay: 10, arriveDay: 14, returnDay: 20, stage: 'outbound', outcome: null, recalledDay: null };
+  test('outbound: from the Ironbow on the sail day, a fraction of the outward days each day, resting at the port on arrival', function (t) {
+    t.same(sp(out, 10), ['outbound', 0, 0, 10]);
+    t.same(sp(out, 12), ['outbound', 0.5, 2, 10]);
+    t.same(sp(out, 13), ['outbound', 0.75, 3, 10]);
+    t.same(sp(out, 14), ['at-port', 1, 4, 10], 'the arrive day, before it is settled');
+    t.same(sp(out, 5), ['outbound', 0, 0, 10], 'before it sailed');
+  });
+  var sold = { departDay: 10, arriveDay: 14, returnDay: 20, stage: 'returning', outcome: 'sold', recalledDay: null };
+  test('sold: rests at the port on the arrive day, then sails back by the return days, and is gone on the home day', function (t) {
+    t.same(sp(sold, 14), ['at-port', 1, 4, 10]);
+    t.same(sp(sold, 15), ['returning', 0.833, 5, 10]);
+    t.same(sp(sold, 17), ['returning', 0.5, 7, 10]);
+    t.same(sp(sold, 19), ['returning', 0.167, 9, 10]);
+    t.same(sp(sold, 20), ['home', 0, 10, 10]);
+    t.same(sp(sold, 25), ['home', 0, 10, 10]);
+  });
+  test('turned back: heads home from the port\'s approaches over the return days, with no rest', function (t) {
+    var v = Object.assign({}, sold, { outcome: 'turned_back' });
+    t.same(sp(v, 14), ['returning', 1, 4, 10]);
+    t.same(sp(v, 17), ['returning', 0.5, 7, 10]);
+    t.same(sp(v, 20), ['home', 0, 10, 10]);
+  });
+  test('recalled: heads home from wherever it was on the day it was recalled, over its own way-home days', function (t) {
+    var v = { departDay: 10, arriveDay: 18, returnDay: 14, stage: 'returning', outcome: 'recalled', recalledDay: 12 };
+    t.same(sp(v, 12), ['returning', 0.25, 2, 4], 'two of eight days out');
+    t.same(sp(v, 13), ['returning', 0.125, 3, 4]);
+    t.same(sp(v, 14), ['home', 0, 4, 4]);
+  });
+  test('the point along a road: by length, with its direction; an odd road is safe', function (t) {
+    var road = [[0, 0], [100, 0], [100, 100]];
+    var m = R.pointOnPath(road, 0.5);
+    t.same([m.x, m.y, m.nx, m.ny], [100, 0, 1, 0]);
+    t.same([R.pointOnPath(road, 0.75).x, R.pointOnPath(road, 0.75).y], [100, 50]);
+    t.same([R.pointOnPath(road, 0).x, R.pointOnPath(road, 1).y], [0, 100]);
+    t.same([R.pointOnPath([], 0.5).x, R.pointOnPath([[5, 6]], 0.5).y], [0, 6]);
+  });
+  test('several ships on one road sit a little apart', function (t) {
+    var b = bastionWith([charter('c-gold', 'goldport', 'molten', 'registered')], [ship('v1', 'goldport', 'molten', 'c-gold', 'outbound'), ship('v2', 'goldport', 'molten', 'c-gold', 'outbound')]);
+    var m = R.routesMap(b, data);
+    t.equal(m.boats.length, 2);
+    t.ok(m.boats[0].point[0] !== m.boats[1].point[0] || m.boats[0].point[1] !== m.boats[1].point[1]);
   });
 
   /* ================================================================================================ */

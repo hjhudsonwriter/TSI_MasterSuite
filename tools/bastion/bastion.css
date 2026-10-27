@@ -1119,13 +1119,16 @@
   filter: brightness(1.25) drop-shadow(0 0 10px rgba(255, 250, 225, 1)) drop-shadow(0 0 24px rgba(255, 228, 160, 1)) drop-shadow(0 0 48px rgba(230, 190, 100, .95)) drop-shadow(0 0 96px rgba(214, 178, 94, .7));
   animation: tsi-bas-route-pulse-sea calc(1.2s * var(--tsi-signature-slowdown)) ease-in-out infinite;
 }
-.tsi-page--bastion .tsi-bas-trademap__route[data-clan="Rowthorn"] {
-  mix-blend-mode: normal;
-  filter: brightness(1.35) contrast(1.25) drop-shadow(0 0 10px rgba(255, 245, 210, .95)) drop-shadow(0 0 26px rgba(214, 178, 94, .7)) drop-shadow(0 0 60px rgba(214, 178, 94, .4));
-  animation: none;
-}
-.tsi-page--bastion .tsi-bas-trademap__route--sea[data-clan="Rowthorn"] {
-  filter: brightness(1.6) contrast(1.25) drop-shadow(0 0 12px rgba(255, 250, 225, 1)) drop-shadow(0 0 32px rgba(230, 190, 100, .9)) drop-shadow(0 0 70px rgba(214, 178, 94, .55));
+/* The ship badge: 64 map pixels wide (the width is set in percent by the screen), centred on its point, above the routes. */
+.tsi-page--bastion .tsi-bas-trademap__ship {
+  position: absolute;
+  height: auto;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  pointer-events: auto;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .8));
+  transition: left .8s ease-in-out, top .8s ease-in-out;
 }
 @keyframes tsi-bas-route-pulse {
   0%, 100% {
@@ -1151,6 +1154,7 @@
 /* Reduced motion: no pulsing at all, a steady glow (the brighter one for a ship at sea). */
 @media (prefers-reduced-motion: reduce) {
   .tsi-page--bastion .tsi-bas-trademap__route { animation: none; opacity: 1; }
+  .tsi-page--bastion .tsi-bas-trademap__ship { transition: none; }
 }
 
 

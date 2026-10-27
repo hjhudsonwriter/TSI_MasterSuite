@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Badge: everything outside the circle is transparent -->
+  <circle cx="256" cy="256" r="244" fill="#1c0b0e" stroke="#c9a24b" stroke-width="12"/>
+  <circle cx="256" cy="256" r="222" fill="none" stroke="#c9a24b" stroke-width="3" opacity="0.55"/>
+
+  <!-- Mast, yard and pennant -->
+  <rect x="251" y="104" width="10" height="206" fill="#f1e6c8"/>
+  <path d="M261 104 L322 120 L261 136 Z" fill="#c9a24b"/>
+
+  <!-- Square sail -->
+  <path d="M166 146 Q256 176 346 146 L346 262 Q256 292 166 262 Z" fill="#c9a24b" stroke="#f1e6c8" stroke-width="7" stroke-linejoin="round"/>
+  <rect x="158" y="138" width="196" height="9" rx="3" fill="#f1e6c8"/>
+  <path d="M256 160 L256 276" stroke="#f1e6c8" stroke-width="7" opacity="0.9"/>
+
+  <!-- Hull with raised stern -->
+  <path d="M96 304 L420 304 L420 276 L370 276 L370 304 L408 304 Q392 374 328 388 L184 388 Q120 374 104 304 Z" fill="#c9a24b" stroke="#f1e6c8" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Bowsprit -->
+  <path d="M100 304 L70 286" stroke="#f1e6c8" stroke-width="8" stroke-linecap="round"/>
+  <!-- Hull band -->
+  <path d="M112 330 Q256 350 400 330" fill="none" stroke="#1c0b0e" stroke-width="6" opacity="0.55"/>
+
+  <!-- Waves -->
+  <path d="M120 408 q18 -16 36 0 t36 0 t36 0 t36 0 t36 0 t36 0 t36 0" fill="none" stroke="#f1e6c8" stroke-width="8" stroke-linecap="round"/>
+  <path d="M170 434 q16 -13 32 0 t32 0 t32 0 t32 0 t32 0" fill="none" stroke="#c9a24b" stroke-width="7" stroke-linecap="round"/>
+</svg>

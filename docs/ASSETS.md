@@ -335,14 +335,16 @@ All 139 media files from the old Bastion (131 PNGs and 8 SVGs). 121 distinct fil
 | `assets/military.png` | `tools/bastion/assets/extras/panels/military.png` | 1.84 MB, 1024 × 1024 | No longer: was faint behind the Military box, until the war game was removed (22 October 2026) |
 | `assets/treasury.png` | `tools/bastion/assets/panels/treasury.png` | 1.99 MB, 1024 × 1024 | Yes: faint behind the Treasury box |
 | `assets/warehouse.png` | `tools/bastion/assets/panels/warehouse.png` | 2.04 MB, 1024 × 1024 | Yes: faint behind the Warehouse panel |
-| `assets/ui/bacca_trade_route.png` | `tools/bastion/assets/ui/bacca_trade_route.png` | 27 KB, 1494 × 1996 | Yes: Bacca's glowing route on the Sea Trade Routes map |
-| `assets/ui/blackstone_trade_route.png` | `tools/bastion/assets/ui/blackstone_trade_route.png` | 52 KB, 1494 × 1996 | Yes: Blackstone's glowing route on the Sea Trade Routes map |
+| `assets/ui/bacca_trade_route.png` | `tools/bastion/assets/extras/ui/bacca_trade_route.png` | 27 KB, 1494 × 1996 | No: retired 27 October 2026; each port now has its own route picture (below) |
+| `assets/ui/blackstone_trade_route.png` | `tools/bastion/assets/extras/ui/blackstone_trade_route.png` | 52 KB, 1494 × 1996 | No: retired 27 October 2026; each port now has its own route picture (below) |
 | `assets/ui/clan_trading_locations.png` | `tools/bastion/assets/ui/clan_trading_locations.png` | 7.22 MB, 1494 × 1996 | Yes: the Sea Trade Routes map |
-| `assets/ui/farmer_trade_route.png` | `tools/bastion/assets/ui/farmer_trade_route.png` | 36 KB, 1494 × 1996 | Yes: Farmer's glowing route on the Sea Trade Routes map |
-| `assets/ui/karr_trade_route.png` | `tools/bastion/assets/ui/karr_trade_route.png` | 31 KB, 1494 × 1996 | Yes: Karr's glowing route on the Sea Trade Routes map |
-| `assets/ui/molten_trade_route.png` | `tools/bastion/assets/ui/molten_trade_route.png` | 38 KB, 1494 × 1996 | Yes: Molten's glowing route on the Sea Trade Routes map |
-| `assets/ui/rowthorn_trade_route.png` | `tools/bastion/assets/ui/rowthorn_trade_route.png` | 32 KB, 1494 × 1996 | Yes: Rowthorn's glowing route on the Sea Trade Routes map |
-| `assets/ui/slade_trade_route.png` | `tools/bastion/assets/ui/slade_trade_route.png` | 35 KB, 1494 × 1996 | Yes: Slade's glowing route on the Sea Trade Routes map |
+| `assets/ui/farmer_trade_route.png` | `tools/bastion/assets/extras/ui/farmer_trade_route.png` | 36 KB, 1494 × 1996 | No: retired 27 October 2026; each port now has its own route picture (below) |
+| `assets/ui/karr_trade_route.png` | `tools/bastion/assets/extras/ui/karr_trade_route.png` | 31 KB, 1494 × 1996 | No: retired 27 October 2026; each port now has its own route picture (below) |
+| `assets/ui/molten_trade_route.png` | `tools/bastion/assets/extras/ui/molten_trade_route.png` | 38 KB, 1494 × 1996 | No: retired 27 October 2026; each port now has its own route picture (below) |
+| `assets/ui/rowthorn_trade_route.png` | `tools/bastion/assets/extras/ui/rowthorn_trade_route.png` | 32 KB, 1494 × 1996 | No: retired 27 October 2026; each port now has its own route picture (below) |
+| `assets/ui/slade_trade_route.png` | `tools/bastion/assets/extras/ui/slade_trade_route.png` | 35 KB, 1494 × 1996 | No: retired 27 October 2026; each port now has its own route picture (below) |
+| (sent by Harry on the `uploads` branch, `<Port>_Trade_Route.png`) | `tools/bastion/assets/ui/routes/<port id>.png` | small, 747 × 998 (half the map's size, same shape) | Yes: each port's own glowing route on the Dock's Routes map. Ten files: timberport, goldport, port_brawdlyn, steelport, moltenport, leatherport, bleakharbour, alderbridge, redport, river_rook |
+| (Harry's ship badge, `trade-ship-icon.svg`) | `tools/bastion/assets/ui/trade-ship.svg` | 512 × 512 | Yes: the moving ship on the Routes map |
 | `assets/ui/trade_disputes.png` | `tools/bastion/assets/extras/ui/trade_disputes.png` | 2.57 MB, 1536 × 1024 | No longer: the Council Ledger went with the Hall's stripping (S09); moved to extras (S19) |
 | `assets/ui/trade_signing.png` | `tools/bastion/assets/extras/ui/trade_signing.png` | 4.39 MB, 2048 × 1365 | No longer: the trade network's result boxes went (S09); moved to extras (S19) |
 | `assets/ui/wax_stamp.png` | `tools/bastion/assets/extras/ui/wax_stamp.png` | 2.09 MB, 1536 × 1024 | No longer: the Council Verdict box went (S09); moved to extras (S19) |
