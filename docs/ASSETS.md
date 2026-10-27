@@ -607,3 +607,4 @@ Harry's upload of nine 2752 x 1536 JPEGs (placed in the repository's top folder,
 | Source | New location | Used |
 |---|---|---|
 | Harry's picture of the Scarlett Isles (19.jpg, 747 x 998) | `tools/explorer/assets/scarlett-isles-map.jpg` | The Explorer's Player View map panel |
+| Harry's picture of the Temple hall (20.jpg, 1600 x 893; JPEG quality 86) | `tools/bastion/assets/player-panels/temple.jpg` | The Temple's Player View panel (the three shrines and the altar are clickable zones on it) |

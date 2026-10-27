@@ -107,6 +107,30 @@
     t.same(snap(b).facilities.temple.gods.map(function (g) { return g.pct; }), [100, 0, 0]);
   });
 
+  test('the Temple\'s altar card: the Great Rites held (waiting or with the party) and the Blessings of Pelagos kept, nothing else', function (t) {
+    var b = busy();
+    t.same(snap(b).facilities.temple.blessings, []);
+    t.equal(snap(b).facilities.temple.held, 0);
+    b.greatRites = [{ id: 'gr-1', rite: 'earths_endurance', god: 'telluria', madeDay: 5, status: 'waiting', secret: 'ZZRITE' }, { id: 'gr-2', rite: 'tides_passage', god: 'pelagos', madeDay: 6, status: 'assigned', assignedDay: 9 }];
+    b.tradeNetwork = { protections: { pelagos_blessing: { charges: 2, note: 'ZZCHARGE' } } };
+    var s = snap(b, { focus: 'temple' });
+    t.same(s.facilities.temple.blessings, [{ god: 'Telluria', rite: 'Earth\'s Endurance', where: 'waiting' }, { god: 'Pelagos', rite: 'Tide\'s Passage', where: 'party' }]);
+    t.equal(s.facilities.temple.held, 2);
+    var text = JSON.stringify(s);
+    ['ZZRITE', 'ZZCHARGE', 'gr-1', 'madeDay', 'assignedDay'].forEach(function (w) { t.equal(text.indexOf(w), -1, w + ' is not sent'); });
+    b.greatRites = []; b.tradeNetwork.protections.pelagos_blessing.charges = 1;
+    t.same([snap(b).facilities.temple.blessings, snap(b).facilities.temple.held], [[], 1]);
+  });
+
+  test('the Temple card the DM shows is one of four values, and only with the Temple open', function (t) {
+    ['telluria', 'aurush', 'pelagos', 'altar'].forEach(function (c) { t.equal(snap(busy(), { focus: 'temple', card: c }).card, c); });
+    t.equal(snap(busy(), { focus: 'temple', card: 'dock' }).card, null);
+    t.equal(snap(busy(), { focus: 'temple', card: { x: 1 } }).card, null);
+    t.equal(snap(busy(), { focus: 'temple' }).card, null);
+    t.equal(snap(busy(), { focus: 'workshop', card: 'altar' }).card, null, 'not with another panel open');
+    t.equal(snap(busy(), { card: 'altar' }).card, null, 'not with none open');
+  });
+
   test('focus: only a built facility with a panel; the Hall\'s panel is "diplomacy"', function (t) {
     t.equal(snap(busy(), { focus: 'workshop' }).focus, 'workshop');
     t.equal(snap(busy(), { focus: 'hall_of_emissaries' }).focus, null, 'not built yet');
@@ -156,13 +180,13 @@
 
   test('only these keys exist, at every level', function (t) {
     var s = snap(busy(), { focus: 'temple' });
-    t.same(Object.keys(s).sort(), ['crest', 'day', 'facilities', 'facilityCount', 'focus', 'focusView', 'labels', 'ledger', 'orderCount', 'overlays', 'partyName', 'routes', 'tiles', 'treasuryGP', 'v']);
+    t.same(Object.keys(s).sort(), ['card', 'crest', 'day', 'facilities', 'facilityCount', 'focus', 'focusView', 'labels', 'ledger', 'orderCount', 'overlays', 'partyName', 'routes', 'tiles', 'treasuryGP', 'v']);
     t.same(Object.keys(s.crest).sort(), ['dataUrl', 'key']);
     s.overlays.forEach(function (o) { t.same(Object.keys(o).sort(), ['facs', 'pic', 'repair']); });
     s.labels.forEach(function (l) { t.ok(Object.keys(l).every(function (k) { return ['fac', 'name', 'level', 'single', 'x', 'y', 'repair', 'part'].indexOf(k) !== -1; }), 'a label has only its own fields'); });
     s.tiles.forEach(function (x) { t.ok(Object.keys(x).every(function (k) { return ['row', 'kind', 'fac', 'name', 'level', 'single', 'repair', 'orders', 'daysLeft', 'plot'].indexOf(k) !== -1; }), 'a tile has only its own fields'); });
     Object.keys(s.facilities).forEach(function (id) {
-      t.ok(Object.keys(s.facilities[id]).every(function (k) { return ['name', 'level', 'single', 'repair', 'orders', 'staff', 'gods', 'beasts', 'more', 'cells'].indexOf(k) !== -1; }), id + ' has only its own fields');
+      t.ok(Object.keys(s.facilities[id]).every(function (k) { return ['name', 'level', 'single', 'repair', 'orders', 'staff', 'gods', 'blessings', 'held', 'beasts', 'more', 'cells'].indexOf(k) !== -1; }), id + ' has only its own fields');
     });
   });
 
@@ -302,10 +326,19 @@
     t.equal(T.bastionPlayerPanels.filter(function (x) { return x.ledger; }).length, 1, 'only the Fishery has a ledger so far');
   });
 
-  test('the Workshop shows staff, the Temple shows shrines, the Beast Pen shows beasts, nobody else does', function (t) {
+  test('the Temple\'s zones sit inside the picture, and name the three gods and the altar', function (t) {
+    var p = T.bastionPlayerPanels.filter(function (x) { return x.id === 'temple'; })[0];
+    t.same(p.hotspots.map(function (h) { return h.id; }), ['telluria', 'aurush', 'pelagos', 'altar']);
+    t.same(p.hotspots.map(function (h) { return h.label; }), ['Telluria', 'Aurush', 'Pelagos', 'The altar']);
+    p.hotspots.forEach(function (h) { t.ok(h.x >= 0 && h.y >= 0 && h.x + h.w <= 100 && h.y + h.h <= 100 && h.w > 5 && h.h > 5, h.id + ' is inside the picture'); });
+    t.equal(p.art, 'temple.jpg');
+  });
+
+  test('the Workshop shows staff, the Beast Pen shows beasts, nobody else does; the Temple has four zones and no always-on bars', function (t) {
     T.bastionPlayerPanels.forEach(function (p) {
       t.equal(p.widgets.indexOf('staff') !== -1, p.id === 'workshop', p.id + ' staff');
-      t.equal(p.widgets.indexOf('shrines') !== -1, p.id === 'temple', p.id + ' shrines');
+      t.equal(p.widgets.indexOf('shrines'), -1, p.id + ' has no favour bars on the picture');
+      t.equal(!!p.hotspots, p.id === 'temple', p.id + ' hotspots');
       t.equal(p.widgets.indexOf('beasts') !== -1, p.id === 'beast_pen', p.id + ' beasts');
     });
   });

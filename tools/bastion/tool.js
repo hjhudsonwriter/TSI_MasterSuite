@@ -643,7 +643,7 @@
         name: 'ScarlettBastionPlayers',
         keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
-        getState: function () { return R.playerSnapshot(state, data, { crest: crest, focus: pvFocus(), ledger: pvLedgerOn(), view: pvView() }); },
+        getState: function () { return R.playerSnapshot(state, data, { crest: crest, focus: pvFocus(), ledger: pvLedgerOn(), card: pvCardOn(), view: pvView() }); },
         onStatus: function (st) {
           pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvStatus.classList.toggle('is-connected', st === 'connected');
@@ -666,6 +666,9 @@
         if (pvLedger && (!f || f !== pvLedgerFac || R.getFacilityLevel(state, f) !== pvLedgerLevel)) pvLedger = false;
         return pvLedger;
       }
+      /* The Temple card the DM is showing the players (null | 'telluria' | 'aurush' | 'pelagos' | 'altar'): closed by any change of focus. */
+      var pvCard = null;
+      function pvCardOn() { return pvFocus() === R.TEMPLE_ID ? pvCard : null; }
       function pvFocus() { return shown ? R.playerFocusOf(shown.id) : null; }
       /* The Dock's Routes tab shows the players the trade routes map instead of the Dock's picture. */
       function pvView() { return shown && shown.id === 'fac-dock' && dockTab === 'routes' ? 'routes' : null; }
@@ -681,6 +684,7 @@
         if (f + '|' + v === pvLastFocus) return;
         pvLastFocus = f + '|' + v;
         pvLedger = false;
+        pvCard = null;
         pvLink.send('focus', { focus: f, view: v });
         if (v) queuePlayerSync();   /* the routes come with the next snapshot */
       }
@@ -2874,9 +2878,26 @@
           rites
         ]);
       }
+      /* "Show to players:" (the Temple's picture on the players' window): a shrine's Favour card, the altar's Blessings card, or none. */
+      function pvCardRow() {
+        var on = pvCardOn();
+        function one(id, text) {
+          var b = btn(text, function () {
+            pvCard = id;
+            pvLink.send('card', { card: pvCard });
+            queuePlayerSync();
+            renderPanel();
+          }, 'tsi-btn--ghost' + (on === id ? ' is-on' : ''), 'show-card-' + (id || 'none'), { title: id ? 'Opens this card on the players\' window. It only looks.' : 'Closes the card on the players\' window.' });
+          b.setAttribute('aria-pressed', String(on === id));
+          return b;
+        }
+        return el('div', { class: 'tsi-bas-temple__show', 'data-test': 'temple-show' }, [
+          label('Show to players:'), one('telluria', 'Telluria'), one('aurush', 'Aurush'), one('pelagos', 'Pelagos'), one('altar', 'Altar'), one(null, 'Hide')
+        ]);
+      }
       function templeSection() {
         var view = R.templeView(state, data);
-        return el('div', { class: 'tsi-bas-temple', 'data-test': 'temple' }, view.gods.map(function (g) { return godThird(g, view); }));
+        return el('div', { class: 'tsi-bas-temple', 'data-test': 'temple' }, view.gods.map(function (g) { return godThird(g, view); }).concat([pvCardRow()]));
       }
 
       /* ---------- The Prison Tower (Harry, 26 October 2026) ----------

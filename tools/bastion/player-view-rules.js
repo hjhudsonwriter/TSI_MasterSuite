@@ -17,11 +17,15 @@
      facilities: { id: { name, level, single, repair, orders: [names], staff?, gods? } },   built facilities
      ledger: true when the DM has chosen to show the open facility's ledger picture (false with no facility open)
      focus: a built facility's id, 'party_quarters', or null           the facility panel the DM has open
+     card: null, 'telluria', 'aurush', 'pelagos' or 'altar' (only with the Temple open): the card the DM is showing on the Temple's picture
      focusView: 'routes' when the DM has the Dock's panel open on its Routes tab, else null
      routes: only with focusView 'routes' (R.playerRoutes): { charters: [{ port, label }], lanes: [{ port, sea }],
        boats: [{ key, port, phase, fraction, point: [x, y], label }], journeys: [{ port, line }], more }
    }
-   facilities.workshop.staff is [{ id, name, level, open }]; facilities.temple.gods is [{ id, name, pct }] (0 to 100).
+   facilities.workshop.staff is [{ id, name, level, open }]; facilities.temple.gods is [{ id, name, pct }] (0 to 100),
+   facilities.temple.blessings is [{ god, rite, where }] (the Great Rites held: where is 'waiting' at the Ironbow or 'party') and
+   facilities.temple.held is how many Blessings of Pelagos wait for the Dock's next ship; nothing else of the Temple (no prayers,
+   rolls or orders' insides).
    The Prison Tower shows only a level, its pending orders' names and facilities.prison_tower.cells: one true or false
    for each cell that is in use (nothing about who is held). The Beast Pen adds
    facilities.beast_pen.beasts: [{ name, species, handler }] and more (a count), and nothing else about the beasts. */
@@ -81,7 +85,10 @@
     };
   };
 
-  /* extras: { crest: the Bastion's crest ({ key, dataUrl }) or null, focus: the open facility panel's id or null, ledger: true to show its ledger, view: 'routes' for the Dock's Routes tab }. */
+  /* extras: { crest: the Bastion's crest ({ key, dataUrl }) or null, focus: the open facility panel's id or null, ledger: true to show its ledger, card: the Temple card to show, view: 'routes' for the Dock's Routes tab }. */
+  /* The Temple's cards (a shrine's favour, the altar's blessings): the values the DM may show. */
+  R.PLAYER_TEMPLE_CARDS = ['telluria', 'aurush', 'pelagos', 'altar'];
+
   R.playerSnapshot = function (s, data, extras) {
     extras = isObj(extras) ? extras : {};
     var built = R.builtFacilityIds(s, data);
@@ -110,6 +117,13 @@
         f.gods = R.templeGods(data).map(function (g) {
           return { id: str(g.id, 20), name: str(g.name, 40), pct: R.templeBar(s, g.id) };
         });
+        /* The altar's card: each Great Rite held (its god, its name, and whether it waits at the Ironbow or is with the party)
+           and the Blessings of Pelagos kept for the Dock's next ship. Goods blessings happen at once, so none is "active". */
+        f.blessings = arr(s.greatRites).filter(isObj).map(function (g) {
+          var god = R.templeGod(data, g.god);
+          return { god: str(god ? god.name : g.god, 40), rite: str(R.RITE_NAMES[g.rite] || g.rite, 60), where: g.status === 'assigned' ? 'party' : 'waiting' };
+        });
+        f.held = R.templeHeld(s, 'pelagos');
       }
       /* The Beast Pen lists the beasts housed there: a name, the kind (not the variety) and the handler's name, nothing else. */
       if (id === R.PEN_ID) {
@@ -180,6 +194,8 @@
       focus: focus,
       /* The DM has chosen to show the focused facility's ledger to the players (only ever true with a focus). */
       ledger: !!focus && extras.ledger === true,
+      /* The Temple's card the DM is showing (only with the Temple open). */
+      card: focus === R.TEMPLE_ID && R.PLAYER_TEMPLE_CARDS.indexOf(extras.card) !== -1 ? extras.card : null,
       focusView: routesView ? 'routes' : null,
       routes: routesView ? R.playerRoutes(s, data) : null
     };

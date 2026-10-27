@@ -12,13 +12,15 @@
    bare     true: only the title and the picture (the Party Quarters)
    art.states  { 'cells-000' ... 'cells-111' }: a picture for a state of the facility (the Prison Tower's cells)
    focus    where the crop keeps in view, { x: 50, y: 50 } by default: percent across and down the picture
+   hotspots [{ id, label, x, y, w, h }]: clickable zones on the room picture (the Temple's three shrines and its altar), in percent
+            of the picture. A shrine ('telluria', 'aurush', 'pelagos') opens a small card with that god's Favour bar; 'altar' opens
+            the Blessings card (the Great Rites held and any Blessing of Pelagos kept for the Dock). The DM can show either too.
    blurb    one or two lines under the picture
    widgets  the small things shown under the picture:
               'level'    "Level 3" (or "One level")
               'orders'   "Orders pending" with the names of the pending orders, or "None"
               'staff'    the Workshop's five staff, those not yet open greyed
               'beasts'   the Beast Pen's housed beasts: name, kind and handler
-              'shrines'  the Temple's three gods with their favour bars (Telluria green, Aurush orange, Pelagos blue)
    These texts are Harry's to edit. */
 window.TSI_DATA = window.TSI_DATA || {};
 
@@ -31,8 +33,14 @@ window.TSI_DATA.bastionPlayerPanels = [
      draws no tagline, no info strip and no blurb. */
   { id: 'party_quarters', title: 'Party Quarters', tagline: '', art: 'party_quarters.jpg', focus: { x: 50, y: 50 },
     blurb: '', widgets: [], bare: true },
-  { id: 'temple', title: 'Temple', tagline: 'The Triarchy is always listening...', art: null,
-    blurb: 'Say a prayer at a shrine and the gods may respond.', widgets: ['level', 'orders', 'shrines'] },
+  { id: 'temple', title: 'Temple', tagline: 'The Triarchy is always listening...', art: 'temple.jpg', focus: { x: 50, y: 50 },
+    hotspots: [
+      { id: 'telluria', label: 'Telluria', x: 12, y: 18, w: 28, h: 60 },
+      { id: 'aurush', label: 'Aurush', x: 45, y: 28, w: 19, h: 42 },
+      { id: 'pelagos', label: 'Pelagos', x: 71, y: 20, w: 24, h: 58 },
+      { id: 'altar', label: 'The altar', x: 40, y: 74, w: 20, h: 16 }
+    ],
+    blurb: 'Say a prayer at a shrine and the gods may respond.', widgets: ['level', 'orders'] },
   { id: 'dock', title: 'Dock', tagline: 'Ships come and go with the tide...', art: 'dock.jpg', focus: { x: 50, y: 55 },
     blurb: 'Chart voyages and charter trade across the sea.', widgets: ['level', 'orders'] },
   { id: 'hall_of_emissaries', title: 'Hall of Emissaries', tagline: 'Every Clan has an ear in this room...', art: null,

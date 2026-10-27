@@ -36,6 +36,7 @@
 ### 26 October 2026: the Bastion's Player View (P1 to P3)
 
 - The Fishery & Smokehouse's Player View pictures (per level) and its clickable ledger, which the DM can also show or hide.
+- The Temple's Player View: a picture of the hall whose three shrines show that god's Favour bar when clicked, and whose altar shows the active blessings (Great Rites held, Blessings of Pelagos kept); the DM's **Show to players:** row opens them too (BAS-SB-110).
 - The Prison Tower's Player View picture changes with its cells: seven of the eight combinations have a picture (BAS-SB-109), middle and right together awaits Harry's picture and shows the middle-only one meanwhile; only which cells are in use is sent.
 - The Explorer's and Bastion's Player View windows stay open when the DM switches tool, goes Home or reloads, and reconnect by themselves (`keepOpen`, `tests/e2e/player-view-keep-open.test.js`).
 - The Beast Pen's Player View panel: its painting and a list of the housed beasts (name, kind, handler).
