@@ -16,7 +16,7 @@ const INDEX = H.fileUrl('index.html');
 const PEL = INDEX + '?tool=pelagosi';
 const LEGACY = H.fileUrl('_legacy/pelagosi_marker_rune_puzzle/index.html');
 const HAS_LEGACY = fs.existsSync(path.join(H.ROOT, '_legacy/pelagosi_marker_rune_puzzle/app.js'));
-const MISSING_SOUNDS = ['water-stir.wav', 'pressure-rise.wav', 'current-reverse.wav', 'tidal-surge.wav', 'basin-wake.wav'];
+const MISSING_SOUNDS = ['water-stir.mp3', 'pressure-rise.mp3', 'current-reverse.mp3', 'tidal-surge.mp3', 'basin-wake.mp3'];
 
 /* Record every sound the page starts, with the time. Works for the old tool too. */
 function recordSounds() {
@@ -98,11 +98,15 @@ async function solveOuter(page) {
       const want = D.solution[id];
       const r = (D.runes.indexOf(want.rune) - s.pillars[id].runeIndex + D.runes.length) % D.runes.length;
       const d = (D.directions.indexOf(want.direction) - s.pillars[id].directionIndex + D.directions.length) % D.directions.length;
-      return [id, r, d];
+      return [id, r, d, want.rune];
     });
   });
-  for (const [id, r, d] of clicks) {
-    for (let i = 0; i < r; i++) await page.click('[data-test=pillar-rune-' + id + ']');
+  for (const [id, r, d, rune] of clicks) {
+    /* Since Tidal v2 a click opens the rune ring: pick the rune directly. */
+    if (r > 0) {
+      await page.click('[data-test=pillar-rune-' + id + ']');
+      await page.click('[data-test=ring-rune-' + rune + ']');
+    }
     for (let i = 0; i < d; i++) await page.click('[data-test=pillar-arrow-' + id + ']');
   }
 }
