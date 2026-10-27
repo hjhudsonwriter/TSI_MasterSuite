@@ -587,6 +587,11 @@ Harry's uploads (2000 x 1116, no level pictures yet) are `tools/bastion/assets/p
 | `tools/bastion/assets/facilities/beast_pen.jpg` (kept where it is) | copied to `tools/bastion/assets/player-panels/beast_pen.jpg` (the Beast Pen's Player View panel, 26 October 2026) |
 | Harry's upload, three empty cells (`571f7c32-image.jpg`, 26 October 2026) | `tools/bastion/assets/player-panels/prison_tower-empty.jpg` (2576 x 1438, JPEG quality 86) |
 | Harry's upload, a prisoner in the left cell (`179ec958-image.jpg`) | `tools/bastion/assets/player-panels/prison_tower-occupied-1.jpg` (2576 x 1438, JPEG quality 86) |
+| Harry's upload `21.jpg`, a prisoner in the right cell only (27 October 2026) | `tools/bastion/assets/player-panels/prison_tower-cells-001.jpg` (2576 x 1438, JPEG quality 86) |
+| Harry's upload `22.jpg`, a prisoner in the middle cell only (27 October 2026) | `tools/bastion/assets/player-panels/prison_tower-cells-010.jpg` (2576 x 1438, JPEG quality 86) |
+| Harry's upload `23.jpg`, a prisoner in the left and right cells (27 October 2026) | `tools/bastion/assets/player-panels/prison_tower-cells-101.jpg` (2576 x 1438, JPEG quality 86) |
+| Harry's upload `24.jpg`, a prisoner in the left and middle cells (27 October 2026) | `tools/bastion/assets/player-panels/prison_tower-cells-110.jpg` (2576 x 1438, JPEG quality 86) |
+| Harry's upload `25.jpg`, a prisoner in the all three cells (27 October 2026) | `tools/bastion/assets/player-panels/prison_tower-cells-111.jpg` (2576 x 1438, JPEG quality 86) |
 
 ## The Fishery & Smokehouse's Player View pictures, 27 October 2026
 

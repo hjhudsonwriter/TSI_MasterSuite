@@ -47,11 +47,9 @@
     if (!a) return '';
     if (typeof a === 'string') return a;
     if (a.states) {
-      /* A state picture: the most particular that exists ('cells-101'), then 'occupied', then 'empty'. */
-      var used = Array.isArray(cells) ? cells : [];
-      var any = used.some(function (x) { return !!x; });
-      var key = 'cells-' + used.map(function (x) { return x ? '1' : '0'; }).join('');
-      return a.states[key] || (any ? a.states.occupied : '') || a.states.empty || '';
+      /* A state picture (the Prison Tower's cells): the exact one, else the best that never shows an empty cell's prisoner. */
+      var key = TSI.bastionPlayerArt.cellsPictureKey(a.states, cells);
+      return key ? a.states[key] : '';
     }
     return pickLevel(a.levels, level);
   }

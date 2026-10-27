@@ -355,7 +355,7 @@ const SECRETS = ['ZZWAREHOUSE', 'ZZDMNOTE', 'ZZPRISONER', 'ZZBEAST', 'ZZPAIRCODE
       await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
     });
 
-    await check('the Prison Tower\'s panel: the empty-cells picture, then the occupied one when a prisoner is locked up (fading, live), back when the last is released; only which cells are in use is sent', async () => {
+    await check('the Prison Tower\'s panel: the empty-cells picture, then the one for the cells in use (all eight combinations) when a prisoner is locked up (fading, live), back when the last is released; only which cells are in use is sent', async () => {
       const art = () => pv.$$eval('.tsi-bpv-panel__art', n => n.map(x => x.dataset.art));
       await change(page, s => { s.builtExtras[2] = { facId: 'prison_tower', status: 'built' }; });
       await pause(page);
@@ -368,7 +368,7 @@ const SECRETS = ['ZZWAREHOUSE', 'ZZDMNOTE', 'ZZPRISONER', 'ZZBEAST', 'ZZPAIRCODE
       assert(wrap.h > size.height * 0.7 && wrap.w > size.width * 0.95, 'the picture fills the panel');
       await H.shot(pv, 'pv-panel-prison-empty-' + name);
       await page.evaluate(() => TSI.bastion.debug.change(function (s) { TSI.bastion.rules.prisonLockUp(s, { bastion: TSI_DATA.bastion, facilities: TSI_DATA.bastionFacilities }, 1, { name: 'ZZPRISONER', thread: 'ZZTHREAD', days: 7, conditions: '' }); }));
-      await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === 'prison_tower-occupied-1.jpg', null, { timeout: 6000 });
+      await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === 'prison_tower-cells-010.jpg', null, { timeout: 6000 });
       await H.shot(pv, 'pv-panel-prison-occupied-' + name);
       const t = await pv.$eval('[data-test=pv-panel]', n => n.textContent);
       assert(!/ZZ|prisoner/i.test(t.replace(/Lock up captives here, and question them if you dare\./, '')), 'nothing about the prisoner: ' + t);
@@ -380,6 +380,16 @@ const SECRETS = ['ZZWAREHOUSE', 'ZZDMNOTE', 'ZZPRISONER', 'ZZBEAST', 'ZZPAIRCODE
       await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === 'prison_tower-empty.jpg', null, { timeout: 6000 });
       await page.evaluate(() => TSI.bastion.debug.change(function (s) { TSI.bastion.rules.prisonLockUp(s, { bastion: TSI_DATA.bastion, facilities: TSI_DATA.bastionFacilities }, 0, { name: 'ZZPRISONER', thread: 'ZZTHREAD', days: 7, conditions: '' }); }));
       await pv.waitForFunction(() => document.querySelector('.tsi-bpv-panel__art').dataset.art === 'prison_tower-occupied-1.jpg', null, { timeout: 6000 });
+      /* Every combination of cells: the exact picture, and middle and right (not painted yet) shows the middle one. */
+      const want = { '000': 'prison_tower-empty.jpg', '100': 'prison_tower-occupied-1.jpg', '010': 'prison_tower-cells-010.jpg', '001': 'prison_tower-cells-001.jpg', '110': 'prison_tower-cells-110.jpg', '101': 'prison_tower-cells-101.jpg', '111': 'prison_tower-cells-111.jpg', '011': 'prison_tower-cells-010.jpg' };
+      for (const k of Object.keys(want)) {
+        await page.evaluate(bits => TSI.bastion.debug.change(function (s) {
+          for (let i = 0; i < 3; i++) s.prison.cells[i] = bits[i] === '1' ? { name: 'ZZPRISONER', thread: 'ZZTHREAD', days: 7, lockedDay: 1, endDay: 8, conditions: '', notes: [] } : null;
+        }), k);
+        await pv.waitForFunction(f => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === f, want[k], { timeout: 6000 });
+        const ok = await pv.$eval('.tsi-bpv-panel__art', n => n.complete && n.naturalWidth > 0);
+        assert(ok, 'the picture for ' + k + ' loads');
+      }
       await page.keyboard.press('Escape');
       await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
     });
