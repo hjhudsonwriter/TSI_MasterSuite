@@ -23,6 +23,7 @@
 
 ### 26 October 2026: the Bastion's Player View (P1 to P3)
 
+- The Prison Tower's Player View picture changes with its cells (empty, or any prisoner held); only which cells are in use is sent.
 - The Explorer's and Bastion's Player View windows stay open when the DM switches tool, goes Home or reloads, and reconnect by themselves (`keepOpen`, `tests/e2e/player-view-keep-open.test.js`).
 - The Beast Pen's Player View panel: its painting and a list of the housed beasts (name, kind, handler).
 - The Party Quarters tile opens a small panel, with a bare picture-only panel for the players; the Workshop's Level 3 picture is in.

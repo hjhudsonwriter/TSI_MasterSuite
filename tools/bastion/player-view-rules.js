@@ -18,7 +18,8 @@
      focus: a built facility's id, 'party_quarters', or null           the facility panel the DM has open
    }
    facilities.workshop.staff is [{ id, name, level, open }]; facilities.temple.gods is [{ id, name, pct }] (0 to 100).
-   The Prison Tower shows only a level and its pending orders' names (nothing about the cells). The Beast Pen adds
+   The Prison Tower shows only a level, its pending orders' names and facilities.prison_tower.cells: one true or false
+   for each cell that is in use (nothing about who is held). The Beast Pen adds
    facilities.beast_pen.beasts: [{ name, species, handler }] and more (a count), and nothing else about the beasts. */
 (function () {
   'use strict';
@@ -97,6 +98,8 @@
         });
         f.more = Math.max(0, housed.length - R.PLAYER_BEAST_MAX);
       }
+      /* The Prison Tower's picture follows which cells hold someone: three yes/no answers, and nothing about who. */
+      if (id === R.PRISON_ID) f.cells = R.prison(s, data).cells.map(function (c) { return !!c; });
       facilities[id] = f;
     });
 

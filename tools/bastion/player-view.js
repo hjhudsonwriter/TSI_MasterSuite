@@ -41,10 +41,17 @@
 
   /* The picture file for a facility at a level (player-panels data), or '' when it has none of its own: a single file,
      or art.levels, using the nearest lower level's picture when a level has none. */
-  function artFile(def, level) {
+  function artFile(def, level, cells) {
     var a = def && def.art;
     if (!a) return '';
     if (typeof a === 'string') return a;
+    if (a.states) {
+      /* A state picture: the most particular that exists ('cells-101'), then 'occupied', then 'empty'. */
+      var used = Array.isArray(cells) ? cells : [];
+      var any = used.some(function (x) { return !!x; });
+      var key = 'cells-' + used.map(function (x) { return x ? '1' : '0'; }).join('');
+      return a.states[key] || (any ? a.states.occupied : '') || a.states.empty || '';
+    }
     var lv = a.levels || {};
     for (var n = level; n >= 1; n--) if (lv[n]) return lv[n];
     for (n = level + 1; n <= 5; n++) if (lv[n]) return lv[n];
@@ -52,8 +59,8 @@
   }
   /* The picture on a facility's panel: Harry's own (player-panels data), else the panel painting, else the tile's.
      It fills the picture area, cropped to fit, keeping the data's focus point in view. */
-  function panelArt(def, id, name, level) {
-    var file = artFile(def, level);
+  function panelArt(def, id, name, level, cells) {
+    var file = artFile(def, level, cells);
     var fx = def && def.focus && typeof def.focus.x === 'number' ? def.focus.x : 50;
     var fy = def && def.focus && typeof def.focus.y === 'number' ? def.focus.y : 50;
     var node;
@@ -228,15 +235,15 @@
     var artFac = null;
     var artKey = null;
     function artArea(def, f, title, shrines) {
-      var key = artFile(def, f.level) || 'existing';
+      var key = artFile(def, f.level, f.cells) || 'existing';
       if (!artWrap || artFac !== focus) {
-        artWrap = el('div', { class: 'tsi-bpv-panel__art-wrap' }, panelArt(def, focus, title, f.level));
+        artWrap = el('div', { class: 'tsi-bpv-panel__art-wrap' }, panelArt(def, focus, title, f.level, f.cells));
         artFac = focus;
         artKey = key;
       } else if (key !== artKey) {
         artKey = key;
         var older = Array.prototype.slice.call(artWrap.querySelectorAll('.tsi-bpv-panel__art'));
-        var fresh = panelArt(def, focus, title, f.level);
+        var fresh = panelArt(def, focus, title, f.level, f.cells);
         fresh.classList.add('is-entering');
         artWrap.appendChild(fresh);
         var go = function () {

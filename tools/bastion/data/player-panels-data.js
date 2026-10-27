@@ -9,6 +9,7 @@
             Harry's picture arrives: the panel then shows the facility's existing painting (bastion-data.js panelImages,
             facilityImages, then the building cut from the map). Pictures fill the picture area (cropped to fit)
    bare     true: only the title and the picture (the Party Quarters)
+   art.states  { empty, occupied, 'cells-101'... }: a picture for a state of the facility (the Prison Tower's cells)
    focus    where the crop keeps in view, { x: 50, y: 50 } by default: percent across and down the picture
    blurb    one or two lines under the picture
    widgets  the small things shown under the picture:
@@ -38,7 +39,11 @@ window.TSI_DATA.bastionPlayerPanels = [
   /* The Beast Pen shows no level, orders or blurb: only the beasts housed there (name, kind and handler). */
   { id: 'beast_pen', title: 'Beast Pen', tagline: 'Something stirs in the stalls...', art: 'beast_pen.jpg', focus: { x: 50, y: 50 },
     blurb: '', widgets: ['beasts'] },
-  { id: 'prison_tower', title: 'Prison Tower', tagline: 'Stone walls keep their secrets...', art: null,
+  /* The Prison Tower's picture follows which cells are in use: art.states has 'empty' (no prisoner), 'occupied' (any prisoner)
+     and, as Harry supplies them, 'cells-101' (cells 1 and 3 in use: 1 is in use, 0 is empty, left to right). The most
+     particular picture that exists is used, then 'occupied', then 'empty'. */
+  { id: 'prison_tower', title: 'Prison Tower', tagline: 'Stone walls keep their secrets...',
+    art: { states: { empty: 'prison_tower-empty.jpg', occupied: 'prison_tower-occupied-1.jpg' } }, focus: { x: 50, y: 50 },
     blurb: 'Lock up captives here, and question them if you dare.', widgets: ['level', 'orders'] },
   { id: 'herbal_gardens', title: 'Herbal Gardens', tagline: 'Green things grow where care is given...', art: null,
     blurb: 'Gather herbs and brew remedies.', widgets: ['level', 'orders'] },
