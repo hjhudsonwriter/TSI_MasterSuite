@@ -1,14 +1,25 @@
-Pelagosi Puzzle Trials: five sounds still to come
+Pelagosi Puzzle Trials: sounds still to come
 
-The Tidal Sequence has a place for five more sounds. The old tool named them,
-but the files were never made, so those moments are silent for now:
+The Tidal Sequence ("The Absent Tide") has places for these .mp3 sounds. None
+exist yet, so those moments are silent. Put each file in this folder with
+exactly this name, then ask a Claude Code session to switch it on (ready: true
+in tools/pelagosi/data/pelagosi-data.js). The five .wav files already here
+stay as they are.
 
-  water-stir.wav       pressure rises to Stirring
-  pressure-rise.wav    pressure rises to Rising
-  current-reverse.wav  pressure rises to Reversing
-  tidal-surge.wav      the chamber surges
-  basin-wake.wav       the central basin wakes
+  chamber-bed.mp3         quiet ambient bed, loops (about 12 seconds), played softly
+  water-stir.mp3          pressure rises to Stirring
+  pressure-rise.mp3       pressure rises to Rising
+  current-reverse.mp3     pressure rises to Reversing (pressure-rise.mp3 played backwards, made offline)
+  tidal-surge.mp3         the chamber surges
+  basin-wake.mp3          the outer ring is solved and the basin wakes
+  anchor-release.mp3      the Anchor is taken out (Current confirmed)
+  knock-1.mp3             the first of the three knocks
+  knock-2.mp3             the second knock
+  knock-3.mp3             the third knock, the heaviest
+  water-backward.mp3      water running backward at the end (water-flow.mp3 played backwards, made offline)
+  absence-void.mp3        optional: the hush as the Absence begins
+  inscription-reveal.mp3  optional: a wall line becomes whole
+  tide-return-toll.mp3    optional: the tide timer raises the pressure
 
-When you have them, give them to a Claude Code session and ask it to add the
-Pelagosi sounds. It will put them in this folder with exactly these names and
-switch each one on in tools/pelagosi/data/pelagosi-data.js (ready: true).
+Also keep water-flow.mp3 here as the source for water-backward.mp3. It is not
+played by the tool, so it has no entry in the data file.

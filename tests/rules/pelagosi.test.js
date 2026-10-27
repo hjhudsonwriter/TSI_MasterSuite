@@ -42,13 +42,21 @@
     t.equal(D.tidal.maxPressure, 4);
   });
 
-  test('the five sounds still to come are switched off until Harry supplies them (P2)', function (t) {
-    ['waterStir', 'pressureRise', 'currentReverse', 'tidalSurge', 'basinWake'].forEach(function (k) {
-      t.equal(D.sounds[k].ready, false, k);
-    });
+  test('sounds: the five old WAVs are ready; every new .mp3 is off until its file is in the audio folder', function (t) {
+    var fs = typeof require === 'function' ? require('fs') : null;
     ['runePlace', 'runeClick', 'puzzleFail', 'puzzleSolve', 'cavernOpen'].forEach(function (k) {
       t.equal(D.sounds[k].ready, true, k);
+      t.ok(/\.wav$/.test(D.sounds[k].file), k);
     });
+    ['chamberBed', 'waterStir', 'pressureRise', 'currentReverse', 'tidalSurge', 'basinWake', 'anchorRelease',
+      'knock1', 'knock2', 'knock3', 'waterBackward', 'absenceVoid', 'inscriptionReveal', 'tideToll'].forEach(function (k) {
+      t.ok(/\.mp3$/.test(D.sounds[k].file), k + ' is an mp3');
+      if (fs) t.equal(D.sounds[k].ready, fs.existsSync(require('path').join(__dirname, '../../tools/pelagosi/assets/audio', D.sounds[k].file)), k + ' ready matches the folder');
+    });
+    t.equal(D.sounds.chamberBed.volume, 0.35);
+    t.equal(D.sounds.chamberBed.loop, true);
+    t.ok(!D.sounds.waterFlow, 'water-flow is only a source file');
+    D.tidal.pressure.slice(1).forEach(function (p, i) { t.equal(p.sound, ['waterStir', 'pressureRise', 'currentReverse', 'tidalSurge'][i]); });
   });
 
   group('Pelagosi: The Marker Remembers');
@@ -127,14 +135,14 @@
   });
 
   test('turning a rune or arrow goes round in order', function (t) {
-    t.equal(R.turn(0, 6), 1);
-    t.equal(R.turn(5, 6), 0);
+    t.equal(R.turn(0, 9), 1);
+    t.equal(R.turn(8, 9), 0);
     t.equal(R.turn(3, 4), 0);
   });
 
   test('Shuffle Pillars never lands on the solution', function (t) {
     /* These dice would give the solution first, so it must roll again. */
-    var solvedDice = [0 / 6, 1 / 4, 1 / 6, 2 / 4, 2 / 6, 3 / 4, 3 / 6, 0 / 4].map(function (v) { return v + 0.001; });
+    var solvedDice = [0 / 9, 1 / 4, 1 / 9, 2 / 4, 2 / 9, 3 / 4, 3 / 9, 0 / 4].map(function (v) { return v + 0.001; });
     var shuffled = R.shuffledPillars(dice(solvedDice.concat([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5])));
     t.ok(!R.isOuterSolved(shuffled));
     for (var i = 0; i < 200; i++) t.ok(!R.isOuterSolved(R.shuffledPillars()));
@@ -147,5 +155,183 @@
   test('labels read as in the old tool', function (t) {
     t.equal(R.label('topLeft'), 'Top Left');
     t.equal(R.label('current'), 'Current');
+  });
+
+  group('Pelagosi: The Absent Tide rules');
+
+  var T = D.tidal;
+  function state(over) {
+    var s = { pillars: R.startPillars(), basinRuneIndex: 5, pressure: 0, lines: ['cut', 'cut', 'cut', 'cut', 'cut'], attempts: 0, phase: 'outer', solved: false };
+    Object.keys(over || {}).forEach(function (k) { s[k] = over[k]; });
+    return s;
+  }
+
+  test('nine runes: the first six keep their order, the start and solution are unchanged', function (t) {
+    t.same(T.runes, ['flow', 'echo', 'depth', 'stone', 'current', 'anchor', 'life', 'remains', 'tide']);
+    t.equal(T.basinStartIndex, 5);
+    t.equal(T.maxPressure, 4);
+    t.equal(Object.keys(T.runeMeanings).length, 9);
+    T.runes.forEach(function (r) { t.ok(T.runeMeanings[r], r); });
+  });
+
+  test('cycleRune wraps both ways round nine', function (t) {
+    t.equal(R.cycleRune(8, 1, 9), 0);
+    t.equal(R.cycleRune(0, -1, 9), 8);
+    t.equal(R.cycleRune(3, 1, 9), 4);
+    t.equal(R.cycleRune(3, -12, 9), 0);
+  });
+
+  test('setLineLevel stays between cut and whole and ignores bad input', function (t) {
+    var l = ['cut', 'cut', 'cut'];
+    t.same(R.setLineLevel(l, 1, 'whole'), ['cut', 'whole', 'cut']);
+    t.same(l, ['cut', 'cut', 'cut'], 'the original is not changed');
+    t.same(R.setLineLevel(l, 1, 'fragment'), ['cut', 'fragment', 'cut']);
+    t.same(R.setLineLevel(l, 1, 'burning'), l);
+    t.same(R.setLineLevel(l, 7, 'whole'), l);
+    t.same(R.setLineLevel(l, -1, 'whole'), l);
+    t.same(R.setLineLevel(l, 1.5, 'whole'), l);
+    t.equal(R.setLineLevel(null, 0, 'whole'), null);
+  });
+
+  test('raiseLine lifts the lowest line that is not whole, one level', function (t) {
+    t.same(R.raiseLine(['cut', 'cut']), ['fragment', 'cut']);
+    t.same(R.raiseLine(['fragment', 'cut']), ['whole', 'cut']);
+    t.same(R.raiseLine(['whole', 'cut', 'cut']), ['whole', 'fragment', 'cut']);
+    var done = ['whole', 'whole'];
+    t.equal(R.raiseLine(done), done, 'the same array when all are whole');
+  });
+
+  test('wallLineText: cut is one block per letter, fragment as authored, whole in full', function (t) {
+    var B = '▒';
+    var line = T.wall.lines[0];
+    t.equal(R.wallLineText(line, 'whole'), 'Flow follows memory.');
+    t.equal(R.wallLineText(line, 'fragment'), line.fragment);
+    t.equal(R.wallLineText(line, 'cut'), B + B + B + B + ' ' + B + B + B + B + B + B + B + ' ' + B + B + B + B + B + B + '.');
+    T.wall.lines.forEach(function (ln) {
+      var cut = R.wallLineText(ln, 'cut');
+      t.equal(cut.length, ln.whole.length, 'same length as the whole line: ' + ln.id);
+      t.ok(!/[A-Za-z]/.test(cut), 'no letters leak: ' + ln.id);
+    });
+    t.equal(R.wallLineText(T.wall.lines[4], 'cut').split('.').length, 3, 'punctuation kept');
+  });
+
+  test('five readings map to the five wall lines', function (t) {
+    t.same(T.readings.map(function (r) { return r.line; }), [1, 2, 3, 4, 5]);
+    t.equal(T.wall.lines.length, 5);
+    t.same(T.readings.slice(0, 4).map(function (r) { return r.pillar; }), T.pillarOrder);
+  });
+
+  test('canAskChamber: yes at 0 to 2, no at 3 and 4', function (t) {
+    [0, 1, 2].forEach(function (p) { t.ok(R.canAskChamber(p, T), 'p' + p); });
+    [3, 4].forEach(function (p) { t.ok(!R.canAskChamber(p, T), 'p' + p); });
+  });
+
+  test('askChamber raises pressure one step and reveals a line, then falls back to the clue', function (t) {
+    var r = R.askChamber(state({ pressure: 1 }), T);
+    t.equal(r.pressure, 2);
+    t.same(r.lines, ['fragment', 'cut', 'cut', 'cut', 'cut']);
+    t.same(r.revealed, { kind: 'line', index: 0 });
+    var all = state({ pressure: 1, lines: ['whole', 'whole', 'whole', 'whole', 'whole'] });
+    var c = R.askChamber(all, T);
+    t.equal(c.pressure, 2);
+    t.equal(c.revealed.kind, 'clue');
+    t.equal(c.revealed.text, R.outerClue(all.pillars, 2));
+    var no = R.askChamber(state({ pressure: 3 }), T);
+    t.equal(no.pressure, 3);
+    t.equal(no.revealed, null);
+    t.equal(R.askChamber(state({ pressure: 2 }), T).pressure, 3, 'from 2 it reaches Reversing, never a surge');
+  });
+
+  test('tideReturns: off by default, rises after the interval, never above the cap', function (t) {
+    t.ok(!R.tideReturns(999999, T, 0), 'off by default');
+    var on = Object.create(T);
+    on.timerOn = true;
+    t.ok(!R.tideReturns(89999, on, 0));
+    t.ok(R.tideReturns(90000, on, 0));
+    t.ok(R.tideReturns(90000, on, 2));
+    t.ok(!R.tideReturns(999999, on, 3), 'cap 3');
+    t.ok(!R.tideReturns(999999, on, 4));
+    t.equal(T.timer.cap, 3);
+    t.equal(T.timer.seconds, 90);
+    t.equal(T.timer.enabledByDefault, false);
+  });
+
+  test('basinOutcome: Current confirms, Anchor holds, anything else is wrong', function (t) {
+    t.equal(R.basinOutcome('current', T), 'confirm');
+    t.equal(R.basinOutcome('anchor', T), 'hold');
+    ['flow', 'echo', 'depth', 'stone', 'life', 'remains', 'tide'].forEach(function (r) { t.equal(R.basinOutcome(r, T), 'wrong', r); });
+  });
+
+  test('misreadOutcome never causes a surge', function (t) {
+    [0, 1, 2].forEach(function (p) { t.equal(R.misreadOutcome(p, T).raise, true, 'p' + p); });
+    [3, 4].forEach(function (p) { t.equal(R.misreadOutcome(p, T).raise, false, 'p' + p); });
+    t.equal(R.misreadOutcome(3, T).text, 'The chamber hears the wrong word.');
+    var off = Object.create(T);
+    off.misreadCostsPressure = false;
+    t.equal(R.misreadOutcome(0, off).raise, false);
+  });
+
+  test('finaleCues: sorted, exactly three knocks with uneven gaps, ends on end', function (t) {
+    var cues = R.finaleCues(T);
+    t.ok(cues.every(function (c, i) { return i === 0 || cues[i - 1].at <= c.at; }));
+    var knocks = cues.filter(function (c) { return c.type === 'knock'; });
+    t.equal(knocks.length, 3);
+    t.same(knocks.map(function (k) { return k.sound; }), ['knock1', 'knock2', 'knock3']);
+    t.ok(knocks[1].at - knocks[0].at !== knocks[2].at - knocks[1].at, 'uneven gaps');
+    t.equal(cues[cues.length - 1].type, 'end');
+    var shuffled = { finale: { cues: [{ at: 5, type: 'end' }, { at: 1, type: 'duck' }] } };
+    t.same(R.finaleCues(shuffled).map(function (c) { return c.type; }), ['duck', 'end']);
+  });
+
+  test('finaleEndOptions: solve offers Replay and Reset; anyway adds Return to the puzzle', function (t) {
+    t.same(R.finaleEndOptions('solve'), ['replay', 'reset']);
+    t.same(R.finaleEndOptions('anyway'), ['replay', 'return', 'reset']);
+    t.equal(T.finale.noAutoFocus, true);
+    R.finaleEndOptions('solve').push('x');
+    t.same(R.finaleEndOptions('solve'), ['replay', 'reset'], 'a copy each time');
+  });
+
+  test('snapshotPuzzle / restorePuzzle round trip, with deep copies', function (t) {
+    var live = state({ pressure: 2, attempts: 3, phase: 'basin', solved: false, basinRuneIndex: 4, lines: ['whole', 'fragment', 'cut', 'cut', 'cut'] });
+    live.pillars.topLeft = { runeIndex: 7, directionIndex: 2 };
+    var snap = R.snapshotPuzzle(live);
+    live.pillars.topLeft.runeIndex = 0;
+    live.lines[0] = 'cut';
+    live.pressure = 4;
+    live.phase = 'solved';
+    live.solved = true;
+    t.equal(snap.pillars.topLeft.runeIndex, 7, 'later changes do not alter the snapshot');
+    t.equal(snap.lines[0], 'whole');
+    t.equal(snap.pressure, 2);
+    var back = R.restorePuzzle(snap);
+    t.same(back, snap);
+    t.ok(back !== snap && back.pillars !== snap.pillars && back.lines !== snap.lines && back.pillars.topLeft !== snap.pillars.topLeft, 'never the same object');
+    back.pillars.topLeft.runeIndex = 1;
+    back.lines[1] = 'cut';
+    t.equal(snap.pillars.topLeft.runeIndex, 7, 'changing the restored copy leaves the snapshot alone');
+    t.equal(snap.lines[1], 'fragment');
+    t.same(Object.keys(snap).sort(), ['attempts', 'basinRuneIndex', 'lines', 'phase', 'pillars', 'pressure', 'solved']);
+    t.equal(back.attempts, 3);
+    t.equal(back.phase, 'basin');
+    t.equal(back.solved, false);
+  });
+
+  test('the rewritten texts no longer reveal the inscription or the old ending', function (t) {
+    t.equal(T.text.startClue, 'The wall is scarred. Something has been cut away here.');
+    t.equal(T.text.basinClue, 'Something is set in the basin that does not belong to the Current.');
+    t.ok(!/Flow follows|Memory seeks|Depth breaks/.test(T.text.startClue + T.text.basinClue));
+    t.equal(T.text.solvedClue, 'The basin has taken the Current.');
+    t.equal(T.text.solvedDescription, 'The chamber is waiting.');
+    t.equal(T.success.title, 'The Anchor Lifts');
+    t.ok(!/Middlemount|northern arch/.test(JSON.stringify(T.text) + JSON.stringify(T.success)));
+  });
+
+  test('stage mode and data guardrails', function (t) {
+    t.same(T.stageMode, { hides: ['readings', 'console', 'extras'], keeps: ['wall', 'stage', 'pillars', 'basin', 'pips', 'pressureMeter'], enterKeyChecks: true, key: 'S' });
+    t.equal(T.finale.reducedMotionShake, false);
+    t.equal(T.hint.maxPressureToAsk, 2);
+    var text = JSON.stringify(T.wall) + JSON.stringify(T.basin) + JSON.stringify(T.finale) + JSON.stringify(T.readings);
+    t.ok(!/[\uD800-\uDBFF]/.test(text), 'no emoji in the new data');
+    t.ok(!/knocks? (are|is|come from|were)|who (made|cut)/i.test(text), 'nothing says what the knocks are');
   });
 }());

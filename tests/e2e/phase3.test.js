@@ -16,7 +16,6 @@ const INDEX = H.fileUrl('index.html');
 const PEL = INDEX + '?tool=pelagosi';
 const LEGACY = H.fileUrl('_legacy/pelagosi_marker_rune_puzzle/index.html');
 const HAS_LEGACY = fs.existsSync(path.join(H.ROOT, '_legacy/pelagosi_marker_rune_puzzle/app.js'));
-const MISSING_SOUNDS = ['water-stir.wav', 'pressure-rise.wav', 'current-reverse.wav', 'tidal-surge.wav', 'basin-wake.wav'];
 
 /* Record every sound the page starts, with the time. Works for the old tool too. */
 function recordSounds() {
@@ -98,17 +97,22 @@ async function solveOuter(page) {
       const want = D.solution[id];
       const r = (D.runes.indexOf(want.rune) - s.pillars[id].runeIndex + D.runes.length) % D.runes.length;
       const d = (D.directions.indexOf(want.direction) - s.pillars[id].directionIndex + D.directions.length) % D.directions.length;
-      return [id, r, d];
+      return [id, r, d, want.rune];
     });
   });
-  for (const [id, r, d] of clicks) {
-    for (let i = 0; i < r; i++) await page.click('[data-test=pillar-rune-' + id + ']');
+  for (const [id, r, d, rune] of clicks) {
+    /* Since Tidal v2 a click opens the rune ring: pick the rune directly. */
+    if (r > 0) {
+      await page.click('[data-test=pillar-rune-' + id + ']');
+      await page.click('[data-test=ring-rune-' + rune + ']');
+    }
     for (let i = 0; i < d; i++) await page.click('[data-test=pillar-arrow-' + id + ']');
   }
 }
 
 async function setBasin(page, rune) {
-  for (let i = 0; i < 6; i++) {
+  /* Nine runes since Tidal v2 (was six): up to nine clicks to come round. */
+  for (let i = 0; i < 9; i++) {
     if ((await page.getAttribute('[data-test=basin]', 'data-rune')) === rune) return;
     await page.click('[data-test=basin]');
   }
@@ -489,7 +493,7 @@ async function setBasin(page, rune) {
       await page.waitForFunction(() => document.querySelector('[data-test=stage]').textContent === 'Stone unlocks', null, { timeout: 4000 });
       assert((await plays(page)).includes('cavern-open.wav'), 'no cavern sound');
       await page.waitForSelector('.tsi-modal', { timeout: 3000 });
-      equal(await modalTitle(page), 'The Chamber Opens');
+      equal(await modalTitle(page), 'The Anchor Lifts'); /* success title rewritten in Tidal v2 phase 1 */
       await H.shot(page, 'pelagosi-chamber-opens');
     });
 
@@ -501,9 +505,12 @@ async function setBasin(page, rune) {
       await H.clickModal(page, 'Not Yet');
     });
 
-    await check('the five sounds still to come are never asked for (P2)', async () => {
-      const asked = context.log.failed.concat(context.log.aborted, await plays(page)).filter(u => MISSING_SOUNDS.some(m => u.includes(m)));
-      equal(asked, []);
+    await check('every sound marked ready has its file, and no sound file fails to load', async () => {
+      const fs = require('fs'), path = require('path');
+      const sounds = await page.evaluate(() => window.TSI_DATA.pelagosi.sounds);
+      const missing = Object.values(sounds).filter(s => s.ready && !fs.existsSync(path.join(__dirname, '../../tools/pelagosi/assets/audio', s.file))).map(s => s.file);
+      equal(missing, []);
+      equal(context.log.failed.concat(context.log.aborted).filter(u => /\.(mp3|wav)/.test(u)), []);
     });
 
     await check('no errors on the way', async () => {

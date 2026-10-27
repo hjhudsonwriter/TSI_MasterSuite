@@ -3294,6 +3294,26 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Phase 3:** Kept.
 
 
+### PEL-19 · The Tidal Sequence v2, phase 1: data and rules only (27 October 2026)
+**Added, Harry's request** · other · numbered PEL-19 because PEL-12 is already taken by the laptop-fit entry
+
+- **Before:** six runes per pillar; the wall inscription and old ending texts in the data; five Tidal sounds named as `.wav`; no rules for readings, hints, the tide timer, the Anchor dilemma, the finale or returning to the puzzle.
+- **After:** nine runes (Life, Remains and Tide added after the first six); wall lines, readings, hint, timer, basin, finale cues, end buttons and Stage Mode settings are in the data file; the new rules are plain functions with tests. The Tidal screen itself is unchanged: its click-to-cycle covers all nine runes, and Shuffle can now use all nine.
+- **Live-screen differences:** the start clue and basin clue no longer print the inscription; the success pop-up now reads "The Anchor Lifts" (no door-opening wording about Middlemount's mechanism or the northern arch in the data). `tool.js` still prints its own old status line when the puzzle is solved; phase 3 replaces it. The only code change is that `play()` multiplies a sound's own `volume` into the main volume (a sound with none plays exactly as before, so Memory is unaffected).
+- **Harry's decisions (they override the handover):** (1) new sounds use the handover's `.mp3` names, all `ready: false` until the files are in `assets/audio/`; the five old WAVs stay `.wav`; the reversed files are made offline and `water-flow.mp3` is only a source. (2) A Misread never causes a surge: it raises pressure only below 3, otherwise it only shows "The chamber hears the wrong word." (3) "Play the Absence anyway" can return to the puzzle: `snapshotPuzzle` and `restorePuzzle` keep pillars, basin rune, pressure, wall lines, attempts, phase and solved; after a normal solve the end offers Replay and Reset, after "anyway" Replay, Return to the puzzle and Reset, with no automatic focus. (4) Stage Mode hides the Readings panel, the console and the DM extras, and keeps the wall, stage, pillars, basin, pips and pressure meter (key S).
+- **Tests:** `tests/rules/pelagosi.test.js`.
+
+
+### PEL-20 · The Tidal Sequence v2, phase 2: the wall, rune ring, Readings and Stage Mode (27 October 2026)
+**Added, Harry's request** · other
+
+- **Before:** the Tidal screen printed the whole inscription, cycled a rune one step per click, and had no DM panel.
+- **After:** the left column shows the scarred wall (five lines, cut / fragment / whole, all cut at BEGIN, the full text nowhere on the page until revealed) and a rune legend with the nine real icons and Harry's meanings. Clicking a pillar rune opens the rune ring (pick directly; Escape or a click outside closes; Left and Right keys still step; the arrow button is unchanged). The basin still cycles through all nine runes by click or Left and Right. The right column has the Readings (DM) panel: Fragment, Read, Misread and Hide again per player (a button never lowers a line; only Hide again does). Misread raises pressure one step only below Reversing, otherwise it only shows "The chamber hears the wrong word." Stage Mode (key S or the button) hides the Readings panel, the console's text and buttons, keeping the wall, stage, pillars, basin, pips and pressure meter; Enter there checks or attunes; a faint exit button shows when the mouse moves.
+- **Not changed yet (phase 3):** the console, pressure ladder, solve behaviour and the old success pop-up, including the old status lines printed when solved.
+- **Open question for Harry:** the Sequence Rules text on the right ("First align the four pillars into Flow, Echo, Depth, Stone") and the rules window still tell the players the solution order. The handover did not list them for rewriting, so they are untouched.
+- **Tests:** `tests/e2e/pelagosi-tidal-v2.test.js`; `phase3.test.js` now picks runes through the ring.
+
+
 ### SUI-37 · Session safety and clarity (18 October 2026)
 **Fixed, Harry's request** · usability
 

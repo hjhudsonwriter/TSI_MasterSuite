@@ -926,6 +926,136 @@
   100% { opacity: 0; }
 }
 
+
+/* ---------- Tidal v2: the scarred wall, rune legend, rune ring, Readings and Stage Mode ---------- */
+.tsi-tool--pelagosi .tsi-pel--memory .tsi-pel-only-tidal,
+.tsi-tool--pelagosi .tsi-pel--tidal .tsi-pel-only-memory { display: none; }
+
+.tsi-tool--pelagosi .tsi-pel-wall { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; counter-reset: tsi-pel-wall; }
+.tsi-tool--pelagosi .tsi-pel-wall-line {
+  position: relative;
+  overflow: hidden;
+  padding: 4px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(140, 224, 255, 0.12);
+  background: rgba(8, 16, 24, 0.7);
+  font-size: 16px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  transition: color 0.4s ease, border-color 0.4s ease, background 0.4s ease;
+}
+.tsi-tool--pelagosi .tsi-pel-wall-line--cut { color: rgba(150, 160, 168, 0.42); letter-spacing: 0.04em; }
+.tsi-tool--pelagosi .tsi-pel-wall-line--cut::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(115deg, transparent 0 14px, rgba(0, 0, 0, 0.5) 14px 17px, transparent 17px 40px);
+}
+.tsi-tool--pelagosi .tsi-pel-wall-line--fragment { color: rgba(176, 196, 206, 0.72); border-color: rgba(140, 224, 255, 0.2); }
+.tsi-tool--pelagosi .tsi-pel-wall-line--whole {
+  color: var(--tsi-text);
+  font-style: italic;
+  border-color: rgba(155, 232, 255, 0.5);
+  background: rgba(20, 44, 62, 0.7);
+  text-shadow: 0 0 12px rgba(111, 217, 255, 0.3);
+}
+.tsi-tool--pelagosi .tsi-pel-wall-fresh { animation: tsi-pel-wall-in calc(900ms * var(--tsi-signature-slowdown)) ease-out; }
+@keyframes tsi-pel-wall-in { from { opacity: 0.2; } to { opacity: 1; } }
+
+.tsi-tool--pelagosi .tsi-pel-rune-legend { gap: 2px; }
+.tsi-tool--pelagosi .tsi-pel-rune-legend li { align-items: center; gap: 9px; font-size: 14px; line-height: 1.15; }
+.tsi-tool--pelagosi .tsi-pel-rune-legend strong { font-weight: 600; color: var(--tsi-text); }
+.tsi-tool--pelagosi .tsi-pel-legend-icon { width: 1.55rem; height: 1.55rem; flex: 0 0 auto; object-fit: contain; filter: drop-shadow(0 0 6px rgba(111, 217, 255, 0.25)); }
+
+/* The rune ring */
+.tsi-tool--pelagosi .tsi-pel-ring {
+  position: absolute;
+  left: var(--tsi-pel-x);
+  top: var(--tsi-pel-y);
+  width: 0;
+  height: 0;
+  z-index: 9;
+  --tsi-pel-ring-r: 10.5cqw;
+  --tsi-pel-ring-b: 5.2cqw;
+}
+.tsi-tool--pelagosi .tsi-pel-ring::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--tsi-pel-ring-r) * -1.25);
+  top: calc(var(--tsi-pel-ring-r) * -1.25);
+  width: calc(var(--tsi-pel-ring-r) * 2.5);
+  height: calc(var(--tsi-pel-ring-r) * 2.5);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(2, 8, 16, 0.86) 55%, rgba(2, 8, 16, 0) 72%);
+  animation: tsi-pel-ring-in calc(220ms * var(--tsi-signature-slowdown)) ease-out;
+  pointer-events: none;
+}
+.tsi-tool--pelagosi .tsi-pel-ring-btn {
+  position: absolute;
+  width: var(--tsi-pel-ring-b);
+  height: var(--tsi-pel-ring-b);
+  left: calc(var(--tsi-pel-ring-b) / -2);
+  top: calc(var(--tsi-pel-ring-b) / -2);
+  transform: rotate(var(--tsi-pel-a)) translateY(calc(var(--tsi-pel-ring-r) * -1)) rotate(calc(var(--tsi-pel-a) * -1));
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1px;
+  padding: 2px;
+  border-radius: 12px;
+  background: rgba(3, 12, 24, 0.92);
+  border: 1px solid rgba(140, 224, 255, 0.34);
+  color: rgba(232, 251, 255, 0.92);
+  cursor: pointer;
+}
+.tsi-tool--pelagosi .tsi-pel-ring-btn img { width: 66%; pointer-events: none; }
+.tsi-tool--pelagosi .tsi-pel-ring-btn span { font-size: clamp(0.5rem, 0.95cqw, 0.7rem); line-height: 1; pointer-events: none; }
+.tsi-tool--pelagosi .tsi-pel-ring-btn[aria-pressed="true"] { border-color: var(--tsi-gold-text); box-shadow: 0 0 12px rgba(255, 213, 120, 0.3); }
+.tsi-tool--pelagosi .tsi-pel-ring-btn:hover,
+.tsi-tool--pelagosi .tsi-pel-ring-btn:focus-visible { border-color: rgba(190, 240, 255, 0.95); outline: 2px solid rgba(190, 240, 255, 0.7); outline-offset: 1px; }
+@keyframes tsi-pel-ring-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* The Readings panel */
+.tsi-tool--pelagosi .tsi-pel-readings-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.tsi-tool--pelagosi .tsi-pel-readings-head .tsi-pel-h { margin: 0; }
+.tsi-tool--pelagosi .tsi-pel-readings-ctl { display: flex; gap: 6px; }
+.tsi-tool--pelagosi .tsi-pel-small-btn { padding: 2px 6px; min-height: 0; font-size: 11px; letter-spacing: 0; text-transform: none; line-height: 1.3; white-space: nowrap; }
+.tsi-tool--pelagosi .tsi-pel-readings-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 5px; }
+.tsi-tool--pelagosi .tsi-pel-reading-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 3px; }
+.tsi-tool--pelagosi .tsi-pel-reading-name { font-size: 14px; line-height: 1.2; color: var(--tsi-text); }
+.tsi-tool--pelagosi .tsi-pel-chip { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid rgba(140, 224, 255, 0.25); color: var(--tsi-text-muted); white-space: nowrap; }
+.tsi-tool--pelagosi .tsi-pel-chip[data-level="fragment"] { color: rgba(176, 196, 206, 0.95); border-color: rgba(176, 196, 206, 0.6); }
+.tsi-tool--pelagosi .tsi-pel-chip[data-level="whole"] { color: var(--tsi-gold-text); border-color: var(--tsi-gold-text); }
+.tsi-tool--pelagosi .tsi-pel-reading-btns { display: flex; gap: 4px; flex-wrap: nowrap; }
+.tsi-tool--pelagosi .tsi-pel-readings-note { margin-top: 6px; min-height: 1.2em; }
+
+/* In the Tidal view the notes (with Reset) sit above the rules and the clue, so Reset stays in view beside the Readings */
+.tsi-tool--pelagosi .tsi-pel--tidal .tsi-pel-notes { order: 1; }
+.tsi-tool--pelagosi .tsi-pel--tidal .tsi-pel-later { order: 2; }
+
+/* Stage Mode: the TV shows the wall, the stage, the pillars, the basin, the pips and the pressure meter */
+.tsi-tool--pelagosi .tsi-pel--stage .tsi-pel-only-readings,
+.tsi-tool--pelagosi .tsi-pel--stage .tsi-pel-console-row--info,
+.tsi-tool--pelagosi .tsi-pel--stage .tsi-pel-console-row--actions,
+.tsi-tool--pelagosi .tsi-pel--stage .tsi-pel-dm-extras { display: none; }
+.tsi-tool--pelagosi .tsi-pel-stage-exit { position: fixed; top: 70px; right: 16px; z-index: 30; opacity: 0; transition: opacity 0.6s ease; }
+.tsi-tool--pelagosi .tsi-pel-stage-exit--on,
+.tsi-tool--pelagosi .tsi-pel-stage-exit:focus-visible { opacity: 0.85; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tsi-tool--pelagosi .tsi-pel-wall-fresh,
+  .tsi-tool--pelagosi .tsi-pel-ring::before { animation: none; }
+  .tsi-tool--pelagosi .tsi-pel-stage-exit { transition: none; }
+}
+@media (max-width: 1260px) {
+  /* Narrow: the ring becomes a 3 x 3 grid in the middle of the chamber */
+  .tsi-tool--pelagosi .tsi-pel-ring { left: 50%; top: 50%; width: min(15rem, 80%); height: min(15rem, 80%); transform: translate(-50%, -50%); display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px; background: rgba(2, 8, 16, 0.92); border-radius: 14px; }
+  .tsi-tool--pelagosi .tsi-pel-ring::before { display: none; }
+  .tsi-tool--pelagosi .tsi-pel-ring-btn { position: static; width: auto; height: auto; transform: none; aspect-ratio: 1; }
+  .tsi-tool--pelagosi .tsi-pel-ring-btn span { font-size: 0.65rem; }
+}
+
 /* ---------- Smaller windows: stack the columns and scroll down ---------- */
 @media (max-width: 1260px) {
   .tsi-tool--pelagosi .tsi-pel-grid { grid-template-columns: minmax(0, 1fr); }
