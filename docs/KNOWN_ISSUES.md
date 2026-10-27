@@ -4208,7 +4208,7 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 
 ### BAS-SB-101 · The Explorer now zooms and pans, and the Player View copies it (26 October 2026)
 
-- Before: the Explorer always showed the whole map (BAS-SB-96). After: wheel or trackpad zoom at the pointer, drag to pan, +, - and 0 keys, and **+**, **−**, **Fit** buttons (1x to 6x; the map cannot leave the area; nothing about it is saved). BAS-SB-96 is replaced: the Player View shows the same region of the map as the DM (sent as fractions of the map, `view` in the snapshot), fitted into its own window and centred, so a TV and a laptop show the same part; at 1x it is the whole map exactly as before.
+- Before: the Explorer always showed the whole map (BAS-SB-96). After: wheel or trackpad zoom at the pointer, drag to pan, +, - and 0 keys, and **−**, **+**, **Fit** buttons in the map's bottom-left corner (not in the View box: there was no room for them there without making the side column scroll) (1x to 6x; the map cannot leave the area; nothing about it is saved). BAS-SB-96 is replaced: the Player View shows the same region of the map as the DM (sent as fractions of the map, `view` in the snapshot), fitted into its own window and centred, so a TV and a laptop show the same part; at 1x it is the whole map exactly as before.
 - Judgement call: while zoomed in, a left-drag on empty map pans, so the selection box needs **Shift** + drag then (at 1x it is a plain drag as always). A hero's drag, pins and plain clicks are unchanged. If the players' window is a different shape, it shows the DM's region fully plus a little more map (or dark bands) on the longer side.
 
 ### BAS-SB-102 · Reset to Day 1 now blanks the Explorer (26 October 2026)

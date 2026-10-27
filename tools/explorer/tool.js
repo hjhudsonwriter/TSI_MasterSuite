@@ -149,6 +149,7 @@
       var btnFullscreen = btn('Fullscreen', toggleFullscreen, '', 'fullscreen');
       var btnPlayerView = btn('Open Player View', function () { pvLink.open(); }, 'tsi-btn--ghost', 'open-player-view');
       btnPlayerView.title = 'Open the players\' view of the map in a new window, to drag onto the TV. It only looks.';
+      var zoomBox = el('div', { class: 'tsi-exp-zoombox', role: 'group', 'aria-label': 'Zoom' });
       var btnZoomIn = btn('+', function () { zoomBy(1.4); }, 'tsi-exp-zoom', 'zoom-in');
       var btnZoomOut = btn('−', function () { zoomBy(1 / 1.4); }, 'tsi-exp-zoom', 'zoom-out');
       var btnFit = btn('Fit', function () { zoomFit(); }, 'tsi-exp-zoom', 'zoom-fit');
@@ -157,6 +158,7 @@
       btnFit.title = 'Show the whole map (0). Drag the map to move it when zoomed in.';
       btnZoomIn.setAttribute('aria-label', 'Zoom in');
       btnZoomOut.setAttribute('aria-label', 'Zoom out');
+      zoomBox.appendChild(btnZoomOut); zoomBox.appendChild(btnZoomIn); zoomBox.appendChild(btnFit);
       var btnHideUi = btn('Hide UI', function () { setUiHidden(!uiHidden); }, '', 'hide-ui');
       var btnGrid = btn('Hex Grid: On', function () { state.grid.enabled = !state.grid.enabled; saveNow(); renderAll(); }, '', 'grid');
       var btnFog = btn('Fog of War: Off', toggleFog, '', 'fog');
@@ -184,7 +186,7 @@
           row([mapSelect, btn('Load', onLoadPreset, '', 'load')], 'tsi-exp-row--select'),
           row([uploadLabel, btn('Clear map', onClearMap, '', 'clear-map')])
         ]),
-        sectionWith('View', el('span', { class: 'tsi-exp-pvbox' }, [btnPlayerView, pvStatus]), [row([btnFullscreen, btnHideUi, btnZoomOut, btnZoomIn, btnFit])]),
+        sectionWith('View', el('span', { class: 'tsi-exp-pvbox' }, [btnPlayerView, pvStatus]), [row([btnFullscreen, btnHideUi])]),
         section('Hex grid', [
           row([btnGrid]),
           row([btn('Hex −', function () { gridSize(-2); }, '', 'hex-down'), btn('Hex +', function () { gridSize(2); }, '', 'hex-up')]),
@@ -224,7 +226,7 @@
       var tokenLayer = el('div', { class: 'tsi-exp-world tsi-exp-world--tokens' });
       var marquee = el('div', { class: 'tsi-exp-marquee', hidden: true });
       var showUi = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-showui', hidden: true, 'data-test': 'show-ui', onclick: function () { setUiHidden(false); } }, 'Show UI');
-      var stage = el('div', { class: 'tsi-exp-stage' }, [mapLayer, video, gridCanvas, pinLayer, fogCanvas, tokenLayer, marquee, showUi]);
+      var stage = el('div', { class: 'tsi-exp-stage' }, [mapLayer, video, gridCanvas, pinLayer, fogCanvas, tokenLayer, marquee, showUi, zoomBox]);
 
       /* The travel panel. */
       var dayLabel = el('strong', { class: 'tsi-exp-day', text: 'Day 1', 'data-test': 'day' });
@@ -731,7 +733,7 @@
       var pan = null;
       life.on(stage, 'pointerdown', function (e) {
         if (e.button !== 0) return;
-        if (e.target.closest('.tsi-exp-token') || e.target.closest('.tsi-exp-pin') || e.target.closest('.tsi-exp-showui')) return;
+        if (e.target.closest('.tsi-exp-token') || e.target.closest('.tsi-exp-pin') || e.target.closest('.tsi-exp-showui') || e.target.closest('.tsi-exp-zoombox')) return;
         if (pickXY) { pickAt(e); return; }
         var p = pointerOnStage(e);
         try { stage.focus({ preventScroll: true }); } catch (err) { /* ignore */ }
