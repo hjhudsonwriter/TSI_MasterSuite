@@ -715,6 +715,14 @@
   R.spawnParty = function (state, data, fromId, toId) {
     if (!fromId || !toId) return false;
     var entry = data.spawns[fromId] && data.spawns[fromId][toId];
+    /* A jump between maps that are not neighbours has no entry of its own (Harry, 26 October 2026): use one of the
+       entry points the destination map already has, the first listed, so the party never keeps a stale position. */
+    if (!entry) {
+      Object.keys(data.spawns).some(function (k) {
+        if (k !== toId && data.spawns[k] && data.spawns[k][toId]) { entry = data.spawns[k][toId]; return true; }
+        return false;
+      });
+    }
     if (!entry || !state.tokens.length) return false;
     var sx = 0, sy = 0;
     state.tokens.forEach(function (t) { sx += typeof t.x === 'number' ? t.x : 0.5; sy += typeof t.y === 'number' ? t.y : 0.5; });

@@ -463,11 +463,16 @@ function serve(dir) {
       const cells = Object.keys((await st(page)).fog.revealedByMapKey['preset:midland_province']).length;
       assert(cells > 19, String(cells));
       await loadMap(page, 'the_east_isle');
-      equal(Object.keys((await st(page)).fog.revealedByMapKey['preset:the_east_isle'] || {}).length, 0);
+      /* A jump to a map that is not a neighbour now puts the party on one of that map's entry points (26 October 2026),
+         so the isle's own fog starts with the land round them: some, and its own, not Midland's. */
+      const isleCells = Object.keys((await st(page)).fog.revealedByMapKey['preset:the_east_isle'] || {}).length;
+      assert(isleCells > 0 && isleCells < cells, String(isleCells));
       await loadMap(page, 'midland_province');
+      const midCells = Object.keys((await st(page)).fog.revealedByMapKey['preset:midland_province']).length;
+      assert(midCells >= cells, 'what Midland had stays uncovered');
       await page.reload();
       await page.waitForSelector('[data-test=camp]');
-      equal(Object.keys((await st(page)).fog.revealedByMapKey['preset:midland_province']).length, cells);
+      equal(Object.keys((await st(page)).fog.revealedByMapKey['preset:midland_province']).length, midCells);
       const fogOn = (await st(page)).fog.enabled;
       equal(await text(page, 'fog'), 'Fog of War: ' + (fogOn ? 'On' : 'Off'), 'the button follows the saved fog');
       equal(await page.$$('.tsi-exp-pin').then(p => p.length), 1);
@@ -477,7 +482,8 @@ function serve(dir) {
       await page.click('[data-test=reset-fog]');
       equal(await modalOpen(page), false, 'no question');
       equal(await text(page, 'notice'), 'Fog reset for this map.');
-      equal(Object.keys((await st(page)).fog.revealedByMapKey['preset:midland_province']).length, 19);
+      const afterReset = Object.keys((await st(page)).fog.revealedByMapKey['preset:midland_province']).length;
+      assert(afterReset > 0 && afterReset < 100, 'only the land round the party is uncovered again: ' + afterReset);
     });
 
     await check('Pick Marker XY gives the position on the map picture', async () => {

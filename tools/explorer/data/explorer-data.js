@@ -56,19 +56,23 @@ window.TSI_DATA.explorer = {
      the comments. Three links only go one way, as before (E11). */
   spawns: {
     eastern_province_north: {
-      eastern_province_south: { x: 0.3651, y: 0.0494 },   /* old 0.3741, 0.0278 */
-      the_east_isle: { x: 0.1399, y: 0.5148 }             /* old 0.1864, 0.4932 */
+      eastern_province_south: { x: 0.3651, y: 0.0494 }    /* old 0.3741, 0.0278 */
     },
+    /* 26 October 2026 (Harry): the East Isle's arrow ("To The East Isle", at Stalfort) is on the SOUTH map, so the
+       link to the isle belongs here, not under the north map. */
     eastern_province_south: {
       eastern_province_north: { x: 0.2755, y: 0.9874 },   /* old 0.2994, 0.9658 */
-      southern_province_east: { x: 0.9761, y: 0.8292 }    /* old 0.8833, 0.8076 */
+      southern_province_east: { x: 0.9761, y: 0.8292 },   /* old 0.8833, 0.8076 */
+      the_east_isle: { x: 0.1399, y: 0.5148 }             /* old 0.1864, 0.4932 */
     },
     the_east_isle: {
       eastern_province_south: { x: 0.9614, y: 0.3659 }    /* old 0.8710, 0.3443 */
     },
     southern_province_east: {
       southern_province_west: { x: 0.9154, y: 0.0412 },   /* old 0.8327, 0.0196 */
-      midland_province: { x: 0.0955, y: 0.6977 }          /* old 0.1494, 0.6761 */
+      midland_province: { x: 0.0955, y: 0.6977 },         /* old 0.1494, 0.6761 */
+      /* 26 October 2026 (Harry): the way back to the south map, beside its "To Southern Province" arrow. */
+      eastern_province_south: { x: 0.455, y: 0.925 }
     },
     southern_province_west: {
       southern_province_east: { x: 0.0502, y: 0.3042 },   /* old 0.1117, 0.2826 */
