@@ -795,6 +795,8 @@
 .tsi-page--bastion .tsi-bas-god-icon--aurush { color: var(--tsi-aurush); filter: drop-shadow(0 0 4px rgba(235, 55, 55, .6)); }
 .tsi-page--bastion .tsi-bas-god-icon--pelagos { color: var(--tsi-pelagos); filter: drop-shadow(0 0 4px rgba(60, 145, 255, .6)); }
 /* The Temple (22 October 2026): the panel split into thirds, one for each god, each with its Favour bar, Pray and Receive Blessing. */
+.tsi-page--bastion .tsi-bas-temple__show { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tsi-page--bastion .tsi-bas-temple__show .tsi-btn.is-on { background: rgba(214, 178, 94, .22); border-color: var(--tsi-gold); }
 .tsi-page--bastion .tsi-bas-temple { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 12px; }
 .tsi-page--bastion .tsi-bas-temple__god { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: var(--tsi-inset-fill); }
 .tsi-page--bastion .tsi-bas-temple__art { display: block; width: 100%; height: clamp(64px, 11vh, 104px); object-fit: cover; border-radius: 8px; border: 1px solid rgba(214, 178, 94, .5); }

@@ -303,7 +303,109 @@
     window.addEventListener('resize', layoutHotspot);
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && ledgerOpen) { ledgerOpen = false; ledgerApply(); } });
 
-    function artArea(def, f, title, shrines) {
+    /* ---- The Temple's picture: three shrines and the altar are zones on it; clicking one opens a small card over the picture ---- */
+    var temple = null;      /* { hots: { id: button }, card: the card element } while the Temple's panel is open */
+    var templeCard = null;  /* the card open here: null, a god's id or 'altar' */
+    var dmCard = null;      /* the card the DM last chose */
+    function templeReset() { temple = null; templeCard = null; }
+    function godLine(g) {
+      var pct = Math.max(0, Math.min(100, g.pct));
+      return el('div', { class: 'tsi-bpv-god tsi-bpv-god--' + (GOD_COLOUR[g.id] || 'green'), 'data-test': 'pv-god-' + g.id, 'data-pct': String(g.pct) }, [
+        el('div', { class: 'tsi-bpv-god__name', text: g.name }), ' ',
+        el('div', { class: 'tsi-bpv-bar', role: 'img', 'aria-label': g.name + '\'s favour: ' + g.pct + '%' }, el('div', { class: 'tsi-bpv-bar__fill', style: 'width:' + pct + '%' })), ' ',
+        el('div', { class: 'tsi-bpv-god__pct', 'data-test': 'pv-god-pct-' + g.id, text: g.pct + '%' })
+      ]);
+    }
+    /* The altar's card: the Great Rites held and any Blessing of Pelagos kept for the Dock, or "No blessings are active." */
+    function blessingsBody(f) {
+      var rows = (f.blessings || []).map(function (b, i) {
+        return el('li', { class: 'tsi-bpv-bless__one', 'data-test': 'pv-blessing-' + i }, [
+          el('b', { class: 'tsi-bpv-bless__name', text: b.rite }), ' (' + b.god + '): ' + (b.where === 'party' ? 'with the party' : 'waiting at the Ironbow')
+        ]);
+      });
+      if (f.held > 0) rows.push(el('li', { class: 'tsi-bpv-bless__one', 'data-test': 'pv-blessing-held', text: f.held + (f.held === 1 ? ' Blessing' : ' Blessings') + ' of Pelagos held for the next ship' }));
+      return rows.length ? el('ul', { class: 'tsi-bpv-bless__list' }, rows) : el('p', { class: 'tsi-bpv-bless__none', 'data-test': 'pv-blessing-none', text: 'No blessings are active.' });
+    }
+    function layoutTemple() {
+      if (!temple || !artWrap) return;
+      var def = panelDef(focus);
+      var imgs = artWrap.querySelectorAll('.tsi-bpv-panel__art');
+      var img = imgs[imgs.length - 1];
+      if (!def || !img || img.tagName !== 'IMG') return;
+      var W = artWrap.clientWidth, H = artWrap.clientHeight;
+      var iw = img.naturalWidth || 16, ih = img.naturalHeight || 9;
+      var s = Math.max(W / iw, H / ih), w = iw * s, h = ih * s;
+      var fx = def.focus && typeof def.focus.x === 'number' ? def.focus.x / 100 : 0.5;
+      var fy = def.focus && typeof def.focus.y === 'number' ? def.focus.y / 100 : 0.5;
+      var ox = (W - w) * fx, oy = (H - h) * fy;
+      var box = null;
+      (def.hotspots || []).forEach(function (hs) {
+        var b = temple.hots[hs.id];
+        if (!b) return;
+        b.style.left = (ox + w * hs.x / 100) + 'px'; b.style.top = (oy + h * hs.y / 100) + 'px';
+        b.style.width = (w * hs.w / 100) + 'px'; b.style.height = (h * hs.h / 100) + 'px';
+        if (hs.id === templeCard) box = { x: ox + w * hs.x / 100, y: oy + h * hs.y / 100, w: w * hs.w / 100, h: h * hs.h / 100 };
+      });
+      var card = temple.card;
+      if (!box || card.hidden) return;
+      /* Near the zone: a god's card sits in the lower part of its shrine, the altar's above the table; always kept on the picture. */
+      var cw = card.offsetWidth, ch = card.offsetHeight;
+      var cx = box.x + box.w / 2 - cw / 2;
+      var cy = templeCard === 'altar' ? box.y - ch - 10 : box.y + box.h * 0.62;
+      card.style.left = Math.max(10, Math.min(W - cw - 10, cx)) + 'px';
+      card.style.top = Math.max(10, Math.min(H - ch - 10, cy)) + 'px';
+    }
+    function templeDraw() {
+      var f = snap && snap.facilities.temple;
+      var def = panelDef(focus);
+      if (!temple || !f) return;
+      var open = templeCard && (templeCard === 'altar' || (f.gods || []).some(function (g) { return g.id === templeCard; })) ? templeCard : null;
+      templeCard = open;
+      (def.hotspots || []).forEach(function (hs) {
+        temple.hots[hs.id].classList.toggle('is-open', hs.id === open);
+        temple.hots[hs.id].setAttribute('aria-expanded', String(hs.id === open));
+      });
+      var card = temple.card;
+      TSI.clear(card);
+      card.hidden = !open;
+      card.setAttribute('data-card', open || '');
+      card.classList.toggle('tsi-bpv-card--altar', open === 'altar');
+      if (open === 'altar') {
+        card.appendChild(el('h3', { class: 'tsi-bpv-card__title', text: 'Blessings' }));
+        card.appendChild(document.createTextNode(' '));
+        card.appendChild(blessingsBody(f));
+      } else if (open) {
+        card.appendChild(godLine((f.gods || []).filter(function (g) { return g.id === open; })[0]));
+      }
+      layoutTemple();
+    }
+    function templeSync(def, f) {
+      if (!def || !def.hotspots || !artWrap || focus !== 'temple') { templeReset(); return; }
+      if (!temple || temple.card.parentNode !== artWrap) {
+        templeReset();
+        templeCard = dmCard = snap.card || null;
+        temple = { hots: {}, card: el('div', { class: 'tsi-bpv-card', 'data-test': 'pv-temple-card', role: 'dialog', hidden: true }) };
+        def.hotspots.forEach(function (hs) {
+          var b = el('button', { type: 'button', class: 'tsi-bpv-hotspot tsi-bpv-hotspot--zone', 'data-test': 'pv-hot-' + hs.id, title: hs.label, 'aria-label': hs.label, 'aria-expanded': 'false' });
+          b.addEventListener('click', function (e) { e.stopPropagation(); templeCard = templeCard === hs.id ? null : hs.id; templeDraw(); });
+          temple.hots[hs.id] = b;
+          artWrap.appendChild(b);
+        });
+        /* A click on the card closes it too (it never covers the middle of its own zone). */
+        temple.card.addEventListener('click', function (e) { e.stopPropagation(); templeCard = null; templeDraw(); });
+        artWrap.appendChild(temple.card);
+        var art = artWrap.querySelectorAll('.tsi-bpv-panel__art');
+        art = art[art.length - 1];
+        if (art && art.tagName === 'IMG' && !art.complete) art.addEventListener('load', layoutTemple, { once: true });
+      }
+      templeDraw();
+    }
+    window.addEventListener('resize', layoutTemple);
+    /* A click anywhere else, or Escape, closes the card. */
+    document.addEventListener('click', function () { if (templeCard) { templeCard = null; templeDraw(); } });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && templeCard) { templeCard = null; templeDraw(); } });
+
+    function artArea(def, f, title) {
       var key = artFile(def, f.level, f.cells) || 'existing';
       if (!artWrap || artFac !== focus) {
         artWrap = el('div', { class: 'tsi-bpv-panel__art-wrap' }, panelArt(def, focus, title, f.level, f.cells));
@@ -322,8 +424,6 @@
         if (fresh.complete === false) { fresh.addEventListener('load', function () { requestAnimationFrame(go); }); fresh.addEventListener('error', go); } else requestAnimationFrame(function () { requestAnimationFrame(go); });
       }
       artWrap.classList.toggle('is-repair', !!f.repair);
-      Array.prototype.slice.call(artWrap.querySelectorAll('.tsi-bpv-shrines')).forEach(function (n) { n.parentNode.removeChild(n); });
-      if (shrines) artWrap.appendChild(shrines);
       return artWrap;
     }
     /* ---- The Dock's Trade Routes (the DM has the Routes tab open) ----
@@ -422,7 +522,7 @@
       rv.strip.appendChild(journeys);
       if (rv.panel.parentNode !== panelHost) {
         TSI.clear(panelHost);
-        artWrap = null; artFac = null; ledgerEl = null; hotBtn = null; ledgerKey = ''; ledgerOpen = false;
+        artWrap = null; artFac = null; ledgerEl = null; hotBtn = null; ledgerKey = ''; ledgerOpen = false; templeReset();
         panelHost.appendChild(rv.panel);
       }
       panelHost.hidden = false;
@@ -435,11 +535,10 @@
       TSI.clear(panelHost);
       var def = panelDef(focus);
       var f = snap && focus && (snap.facilities[focus] || (def && def.bare ? { name: def.title, level: 1, single: true, repair: 0, orders: [] } : null));
-      if (!f) { panelHost.hidden = true; stage.classList.remove('has-panel'); artWrap = null; artFac = null; ledgerEl = null; hotBtn = null; ledgerKey = ''; ledgerOpen = false; return; }
+      if (!f) { panelHost.hidden = true; stage.classList.remove('has-panel'); artWrap = null; artFac = null; ledgerEl = null; hotBtn = null; ledgerKey = ''; ledgerOpen = false; templeReset(); return; }
       var widgets = def ? def.widgets : ['level', 'orders'];
       var title = (def && def.title) || f.name;
       var info = [];
-      var shrines = null;
       if (widgets.indexOf('level') !== -1) {
         info.push(el('div', { class: 'tsi-bpv-info', 'data-test': 'pv-panel-level' }, [
           el('b', { class: 'tsi-bpv-info__label', text: levelText(f) }),
@@ -472,27 +571,19 @@
           }))
         ]));
       }
-      if (widgets.indexOf('shrines') !== -1 && f.gods) {
-        shrines = (el('div', { class: 'tsi-bpv-shrines', 'data-test': 'pv-panel-shrines' }, f.gods.map(function (g) {
-          var fill = el('div', { class: 'tsi-bpv-bar__fill', style: 'width:' + Math.max(0, Math.min(100, g.pct)) + '%' });
-          return el('div', { class: 'tsi-bpv-god tsi-bpv-god--' + (GOD_COLOUR[g.id] || 'green'), 'data-test': 'pv-god-' + g.id, 'data-pct': String(g.pct) }, [
-            el('div', { class: 'tsi-bpv-god__name', text: g.name }),
-            el('div', { class: 'tsi-bpv-bar', role: 'img', 'aria-label': g.name + '\'s favour: ' + g.pct + '%' }, fill)
-          ]);
-        })));
-      }
       var panel = el('div', { class: 'tsi-bpv-panel', 'data-test': 'pv-panel', 'data-fac': focus, role: 'dialog', 'aria-label': title }, [
         el('div', { class: 'tsi-bpv-panel__head' }, [
           el('h2', { class: 'tsi-bpv-panel__title', 'data-test': 'pv-panel-title', text: title }),
           def && def.tagline ? el('div', { class: 'tsi-bpv-panel__tagline', 'data-test': 'pv-panel-tagline', text: def.tagline }) : null
         ]),
-        artArea(def, f, title, shrines),
+        artArea(def, f, title),
         info.length ? el('div', { class: 'tsi-bpv-panel__info' }, info) : null,
         def && def.blurb ? el('p', { class: 'tsi-bpv-panel__blurb', 'data-test': 'pv-panel-blurb', text: def.blurb }) : null
       ]);
       panelHost.appendChild(panel);
       panelHost.hidden = false;
       ledgerSync(def, f);
+      templeSync(def, f);
       stage.classList.add('has-panel');
     }
 
@@ -515,13 +606,16 @@
         snap = payload;
         focus = payload.focus || null;
         view = payload.focusView === 'routes' ? 'routes' : null;
+        if ((payload.card || null) !== dmCard) { dmCard = payload.card || null; templeCard = dmCard; }
         if (payload.ledger !== dmLedger) { dmLedger = payload.ledger === true; ledgerOpen = dmLedger; }
         drawAll();
       },
       message: function (type, payload) {
+        if (type === 'card') { dmCard = payload && typeof payload.card === 'string' ? payload.card : null; templeCard = dmCard; if (temple) templeDraw(); return; }
         if (type === 'ledger') { dmLedger = !!(payload && payload.open); ledgerOpen = dmLedger; ledgerApply(); return; }
         if (type === 'focus') {
           focus = payload && typeof payload.focus === 'string' ? payload.focus : null;
+          if (snap) snap.card = null;
           view = payload && payload.view === 'routes' ? 'routes' : null;
           drawPanel();
         }

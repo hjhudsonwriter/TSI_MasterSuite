@@ -337,20 +337,132 @@ const SECRETS = ['ZZWAREHOUSE', 'ZZDMNOTE', 'ZZPRISONER', 'ZZBEAST', 'ZZPAIRCODE
       await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
     });
 
-    await check('the Temple shows Telluria, Aurush and Pelagos with green, orange and blue favour bars from the real bars, and the prayer line', async () => {
-      await change(page, s => { s.builtExtras[1] = { facId: 'temple', status: 'built' }; s.partyLevel = 9; s.favour = { telluria: 80, aurush: 25, pelagos: 50 }; });
+    section('The Temple\'s hall: zones, favour cards and the altar at ' + name);
+    await check('the Temple shows its hall picture with four glowing zones and no always-on bars; the header and blurb stay', async () => {
+      await change(page, s => { s.builtExtras[1] = { facId: 'temple', status: 'built' }; s.partyLevel = 9; s.favour = { telluria: 80, aurush: 25, pelagos: 50 }; s.greatRites = []; s.tradeNetwork = Object.assign({}, s.tradeNetwork, { protections: {} }); });
       await pause(page);
       await page.click('[data-test=tile-temple]');
       await pv.waitForSelector('[data-test=pv-panel][data-fac=temple]');
-      equal(await pv.$$eval('.tsi-bpv-god__name', n => n.map(x => x.textContent)), ['Telluria', 'Aurush', 'Pelagos']);
-      equal(await pv.$$eval('.tsi-bpv-bar__fill', n => n.map(x => x.style.width)), ['80%', '25%', '50%']);
-      equal(await pv.$$eval('.tsi-bpv-bar__fill', n => n.map(x => getComputedStyle(x).backgroundColor)), ['rgb(95, 168, 74)', 'rgb(224, 138, 44)', 'rgb(74, 143, 208)']);
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-hot-altar]'));
+      equal(await pv.$$eval('.tsi-bpv-panel__art', n => n.map(x => x.dataset.art)), ['temple.jpg']);
+      equal(await bare(pv, '[data-test=pv-panel-title]'), 'Temple');
+      equal(await bare(pv, '[data-test=pv-panel-tagline]'), 'The Triarchy is always listening...');
       equal(await bare(pv, '[data-test=pv-panel-blurb]'), 'Say a prayer at a shrine and the gods may respond.');
-      equal(await pv.$$eval('.tsi-bpv-panel__art img', n => n.length), 3, 'the three shrine paintings');
+      equal(await pv.$$eval('.tsi-bpv-bar, .tsi-bpv-shrines, [data-test=pv-panel-shrines]', n => n.length), 0, 'no bars on the picture until a shrine is clicked');
+      equal(await pv.$$eval('.tsi-bpv-hotspot--zone', n => n.map(x => [x.tagName, x.title, x.tabIndex])), [['BUTTON', 'Telluria', 0], ['BUTTON', 'Aurush', 0], ['BUTTON', 'Pelagos', 0], ['BUTTON', 'The altar', 0]]);
+      await pv.mouse.move(2, 2);
+      equal(await pv.$eval('[data-test=pv-hot-altar]', n => getComputedStyle(n).animationName), 'tsi-bpv-hint', 'a gentle pulse');
+      /* The zones sit over their things in the picture (the cover fill is allowed for): the shrine centres are inside the picture area. */
+      const wrap = await rect(pv, '.tsi-bpv-panel__art-wrap');
+      for (const id of ['telluria', 'aurush', 'pelagos', 'altar']) {
+        const r = await rect(pv, '[data-test=pv-hot-' + id + ']');
+        assert(r.w > 40 && r.h > 40 && r.x + r.w / 2 > wrap.x && r.x + r.w / 2 < wrap.right && r.y + r.h / 2 > wrap.y && r.y + r.h / 2 < wrap.bottom, id + ' zone is on the picture: ' + JSON.stringify(r));
+      }
+      const img = await pv.$eval('.tsi-bpv-panel__art', n => ({ w: n.naturalWidth, h: n.naturalHeight, cw: n.clientWidth, ch: n.clientHeight }));
+      const cropped = 1 - Math.min(1, (img.cw / img.ch) / (img.w / img.h)) ;
+      assert(cropped < 0.3 && wrap.h > size.height * 0.7, 'the cover fill crops at most ' + Math.round(cropped * 100) + ' percent of the height');
       await H.shot(pv, 'pv-panel-temple-' + name);
-      /* A prayer in the DM view moves the bar in the Player View. */
-      await change(page, s => { s.favour.aurush = 60; });
-      await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-bar__fill')[1].style.width === '60%');
+    });
+
+    await check('clicking a shrine opens its favour card (name, bar, percentage, coloured as before) near it; one at a time; again, elsewhere or Escape closes; it updates live', async () => {
+      const text = () => pv.$eval('[data-test=pv-temple-card]', n => n.textContent.replace(/\s+/g, ' ').trim());
+      const card = () => pv.$eval('[data-test=pv-temple-card]', n => ({ hidden: n.hidden, god: n.querySelector('.tsi-bpv-god__name') && n.querySelector('.tsi-bpv-god__name').textContent, text: n.textContent.replace(/\s+/g, ' ').trim(), n: n.querySelectorAll('.tsi-bpv-god').length }));
+      equal((await card()).hidden, true);
+      const want = { telluria: ['Telluria', '80%', 'rgb(95, 168, 74)'], aurush: ['Aurush', '25%', 'rgb(224, 138, 44)'], pelagos: ['Pelagos', '50%', 'rgb(74, 143, 208)'] };
+      for (const id of Object.keys(want)) {
+        await pv.click('[data-test=pv-hot-' + id + ']');
+        const c = await card();
+        equal([c.hidden, c.n, c.text], [false, 1, want[id][0] + ' ' + want[id][1]]);
+        equal(await pv.$eval('[data-test=pv-temple-card] .tsi-bpv-bar__fill', n => [n.style.width, getComputedStyle(n).backgroundColor]), [want[id][1], want[id][2]]);
+        const cr = await rect(pv, '[data-test=pv-temple-card]'), hr = await rect(pv, '[data-test=pv-hot-' + id + ']');
+        assert(cr.x >= 0 && cr.right <= size.width && cr.y >= 0 && cr.bottom <= size.height, 'the card is on screen');
+        assert(cr.x < hr.right && cr.right > hr.x && cr.y < hr.bottom && cr.bottom > hr.y - 20, 'the card is by its shrine');
+        if (id === 'aurush') await H.shot(pv, 'pv-panel-temple-card-' + name);
+      }
+      /* Live: a prayer in the DM view moves the open card's bar. */
+      await change(page, s => { s.favour.pelagos = 77; });
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-temple-card] .tsi-bpv-bar__fill').style.width === '77%');
+      equal(await text(), 'Pelagos 77%');
+      /* Only one at a time. */
+      await pv.click('[data-test=pv-hot-aurush]');
+      equal((await card()).text, 'Aurush 25%');
+      /* Clicking the same shrine closes it. */
+      await pv.click('[data-test=pv-hot-aurush]');
+      equal((await card()).hidden, true);
+      /* Elsewhere closes it. */
+      await pv.click('[data-test=pv-hot-telluria]');
+      equal((await card()).hidden, false);
+      await pv.mouse.click(size.width / 2, 30);
+      equal((await card()).hidden, true);
+      /* Escape closes it, and does not close the panel. */
+      await pv.click('[data-test=pv-hot-telluria]');
+      await pv.keyboard.press('Escape');
+      equal((await card()).hidden, true);
+      equal(await pv.$('[data-test=pv-panel][data-fac=temple]') !== null, true);
+      /* The keyboard works too. */
+      await pv.focus('[data-test=pv-hot-pelagos]');
+      await pv.keyboard.press('Enter');
+      equal((await card()).text, 'Pelagos 77%');
+      await pv.keyboard.press('Escape');
+    });
+
+    await check('the altar card lists the blessings: none, a Great Rite waiting or with the party, and Pelagos\'s Blessings kept for the next ship', async () => {
+      const text = () => pv.$eval('[data-test=pv-temple-card]', n => n.textContent.replace(/\s+/g, ' ').trim());
+      await pv.click('[data-test=pv-hot-altar]');
+      equal(await text(), 'Blessings No blessings are active.');
+      await change(page, s => { s.greatRites = [{ id: 'gr-1', rite: 'earths_endurance', god: 'telluria', madeDay: 3, status: 'waiting' }]; });
+      await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-bless__one').length === 1);
+      equal(await text(), 'Blessings Earth\'s Endurance (Telluria): waiting at the Ironbow');
+      await change(page, s => { s.greatRites.push({ id: 'gr-2', rite: 'tides_passage', god: 'pelagos', madeDay: 4, status: 'assigned', assignedDay: 6 }); s.tradeNetwork = Object.assign({}, s.tradeNetwork, { protections: { pelagos_blessing: { charges: 1 } } }); });
+      await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-bless__one').length === 3);
+      equal(await pv.$$eval('.tsi-bpv-bless__one', n => n.map(x => x.textContent.replace(/\s+/g, ' ').trim())), ['Earth\'s Endurance (Telluria): waiting at the Ironbow', 'Tide\'s Passage (Pelagos): with the party', '1 Blessing of Pelagos held for the next ship']);
+      const cr = await rect(pv, '[data-test=pv-temple-card]');
+      assert(cr.x >= 0 && cr.right <= size.width && cr.y >= 0 && cr.bottom <= size.height, 'the altar card is on screen');
+      await pv.waitForTimeout(300);
+      await H.shot(pv, 'pv-panel-temple-altar-' + name);
+      /* Clicking a shrine swaps cards. */
+      await pv.click('[data-test=pv-hot-aurush]');
+      equal(await text(), 'Aurush 25%');
+      /* Nothing else about the Temple is in the window. */
+      const html = await pv.content();
+      for (const w of ['gr-1', 'gr-2', 'madeDay', 'assignedDay', 'Pray to', 'd50']) assert(html.indexOf(w) === -1, w + ' is not in the page');
+      await pv.keyboard.press('Escape');
+    });
+
+    await check('the DM\'s Show to players: buttons (Telluria, Aurush, Pelagos, Altar, Hide) mirror one card; the player\'s own click opens locally and the DM\'s next change overrides; changing focus closes it', async () => {
+      const card = () => pv.$eval('[data-test=pv-temple-card]', n => n.hidden ? '' : n.textContent.replace(/\s+/g, ' ').trim().slice(0, 30));
+      equal(await page.$$eval('[data-test=temple-show] button', n => n.map(x => x.textContent)), ['Telluria', 'Aurush', 'Pelagos', 'Altar', 'Hide']);
+      equal(await page.textContent('[data-test=temple-show] .tsi-bas-label'), 'Show to players:');
+      await page.click('[data-test=show-card-aurush]');
+      await pv.waitForFunction(() => !document.querySelector('[data-test=pv-temple-card]').hidden);
+      equal(await card(), 'Aurush 25%');
+      equal(await page.getAttribute('[data-test=show-card-aurush]', 'aria-pressed'), 'true');
+      await page.click('[data-test=show-card-altar]');
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-temple-card]').textContent.indexOf('Blessings') === 0);
+      /* The player closes it by hand, then clicks a shrine; the DM's next change overrides. */
+      await pv.keyboard.press('Escape');
+      equal(await card(), '');
+      await pv.click('[data-test=pv-hot-telluria]');
+      equal(await card(), 'Telluria 80%');
+      await page.click('[data-test=show-card-pelagos]');
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-temple-card]').textContent.indexOf('Pelagos') === 0);
+      await page.click('[data-test=show-card-none]');
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-temple-card]').hidden);
+      await page.click('[data-test=show-card-telluria]');
+      await pv.waitForFunction(() => !document.querySelector('[data-test=pv-temple-card]').hidden);
+      /* One value only goes over: nothing else about the Temple. */
+      const sent = await page.evaluate(() => { const s = TSI.bastion.rules.playerSnapshot(TSI.bastion.debug.state(), { bastion: TSI_DATA.bastion, facilities: TSI_DATA.bastionFacilities }, { focus: 'temple', card: 'altar' }); return [s.card, Object.keys(s.facilities.temple).sort().join(',')]; });
+      equal(sent, ['altar', 'blessings,gods,held,level,name,orders,repair,single']);
+      /* Closing the panel, or opening another, closes the card; reopening starts closed. */
+      await page.keyboard.press('Escape');
+      await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
+      await pause(page);
+      await page.click('[data-test=tile-temple]');
+      await pv.waitForSelector('[data-test=pv-panel][data-fac=temple]');
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-temple-card]'));
+      await pause(page);
+      equal(await card(), '');
+      equal(await page.getAttribute('[data-test=show-card-telluria]', 'aria-pressed'), 'false');
       await page.keyboard.press('Escape');
       await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
     });
