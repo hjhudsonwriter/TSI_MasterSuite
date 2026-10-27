@@ -112,7 +112,7 @@ window.TSI_DATA.pelagosi = {
 
   /* ---------- The Tidal Sequence ---------- */
   tidal: {
-    runes: ['flow', 'echo', 'depth', 'stone', 'current', 'anchor'],
+    runes: ['flow', 'echo', 'depth', 'stone', 'current', 'anchor', 'life', 'remains', 'tide'], /* the first six keep their order; Life, Remains and Tide are decoys */
     directions: ['up', 'right', 'down', 'left'],
     directionSymbols: { up: '↑', right: '→', down: '↓', left: '←' },
     /* Clockwise around the basin. */
@@ -203,27 +203,107 @@ window.TSI_DATA.pelagosi = {
     },
     success: {
       eyebrow: 'Sequence Response',
-      title: 'The Chamber Opens',
+      title: 'The Anchor Lifts',
       paragraphs: [
-        'One by one, the pillars cease their grinding. Water pours upward instead of down, gathering above the basin in a perfect suspended ring.',
-        'The current completes itself. The central basin accepts the Current, fills without source, then drains in a single spiralling breath.',
-        'Somewhere behind the northern arch, ancient stone unlocks. Whatever Maerys came here to witness lies beyond.'
+        'The Anchor slides free, and the basin shudders as if it had been holding its breath. Water gathers above it in a slow ring, climbing without a source.',
+        'Beside the pedestal, a narrow door of wet stone stands open. Nothing else answers. The chamber waits.'
       ],
       again: 'RESET SEQUENCE'
     },
     text: {
       idleClue: 'The pillars are dormant. Each one carries a rune-face and a flow notch. The central basin is dark.',
       idleDescription: 'Press BEGIN to wake the chamber. Then restore the outer current before naming the basin.',
-      startClue: 'Ancient text nearby reads: Flow follows memory. Memory seeks depth. Depth breaks upon stone. Stone returns the current.',
+      startClue: 'The wall is scarred. Something has been cut away here.',
       startDescription: 'Phase I: create the clockwise current: top-left → top-right → bottom-right → bottom-left → top-left.',
       surgeClue: 'The surge vents through the chamber. The basin goes dark and the outer pillars return to their starting disorder.',
       surgeDescription: 'The Tidal Sequence has reset. Restore the outer current again before the chamber grows restless.',
-      basinClue: 'The inscription’s final line presses into your thoughts: Stone does not end the path. Stone returns the Current.',
+      basinClue: 'Something is set in the basin that does not belong to the Current.',
       basinDescription: 'Phase II: click the central basin rune until it shows the final principle, then choose ATTUNE BASIN.',
-      solvedClue: 'The room accepts the full sequence: Flow remembers Echo, Echo sinks to Depth, Depth breaks upon Stone, and Stone returns the Current.',
-      solvedDescription: 'The chamber is opening. The hidden mechanism beneath Middlemount has accepted the sequence.',
+      solvedClue: 'The basin has taken the Current.',
+      solvedDescription: 'The chamber is waiting.',
       consoleDescription: 'Rotate each pillar rune and arrow. Create a closed clockwise current around the basin.',
       tip: 'Tip: click a rune to cycle its symbol. Click the arrow below it to rotate the flow direction.'
+    },
+
+    /* ---------- The Absent Tide (v2) data ---------- */
+    /* Harry's Pelagosi rune table. Deep Mind has no icon, so it is left out. */
+    runeMeanings: {
+      life: ['Creatures', 'Growth'],
+      current: ['Movement', 'Destiny'],
+      flow: ['Magic', 'Arcana'],
+      tide: ['Change', 'Inevitability'],
+      anchor: ['Stability', 'Restraint'],
+      depth: ['Unknown', 'Hidden truth'],
+      remains: ['Death', 'Warning'],
+      stone: ['Permanence'],
+      echo: ['Memory', 'History']
+    },
+    /* The scarred wall. A line is shown 'cut' (one block per letter, worked out in code from
+       whole), 'fragment' (the text below, as written) or 'whole'. cutLength is the old brief's
+       length hint; the code uses wallLineText() and ignores it. */
+    wall: {
+      title: 'The Wall',
+      lines: [
+        { id: 1, whole: 'Flow follows memory.', fragment: 'Flow follows \u2592\u2592\u2592\u2592\u2592\u2592.', cutLength: 20 },
+        { id: 2, whole: 'Memory seeks depth.', fragment: '\u2592\u2592\u2592\u2592\u2592\u2592 seeks depth.', cutLength: 19 },
+        { id: 3, whole: 'Depth breaks upon stone.', fragment: 'Depth breaks upon \u2592\u2592\u2592\u2592\u2592.', cutLength: 23 },
+        { id: 4, whole: 'Stone returns the current.', fragment: '\u2592\u2592\u2592\u2592\u2592 returns the \u2592\u2592\u2592\u2592\u2592\u2592\u2592.', cutLength: 25 },
+        { id: 5, whole: 'The Anchor holds the water. Held water cannot speak.', fragment: 'The \u2592\u2592\u2592\u2592\u2592\u2592 holds the water. \u2592\u2592\u2592\u2592 \u2592\u2592\u2592\u2592\u2592 cannot \u2592\u2592\u2592\u2592\u2592.', cutLength: 40 }
+      ]
+    },
+    /* One reading per player: which pillar, which wall line it teaches. */
+    readings: [
+      { id: 'tl', label: 'Pillar of the First Voice', pillar: 'topLeft', line: 1 },
+      { id: 'tr', label: 'Pillar of Memory', pillar: 'topRight', line: 2 },
+      { id: 'br', label: 'Pillar of the Deep', pillar: 'bottomRight', line: 3 },
+      { id: 'bl', label: 'Pillar of Stone', pillar: 'bottomLeft', line: 4 },
+      { id: 'basin', label: 'The Basin-keeper', pillar: null, line: 5 }
+    ],
+    /* A Misread raises pressure only while pressure is below this (never into a surge). */
+    misreadCostsPressure: true,
+    misreadMaxPressure: 3,
+    misreadText: 'The chamber hears the wrong word.',
+    hint: {
+      maxPressureToAsk: 2,
+      askedText: 'The chamber answers, and the water remembers that you asked.',
+      refusedTip: 'The water will not answer now.'
+    },
+    timer: { enabledByDefault: false, seconds: 90, cap: 3 },
+    basin: {
+      confirmTitle: 'Remove the Anchor?',
+      confirmBody: 'The Anchor has held this basin since before the Isles. Only the Current is asked of you. Do you take the Anchor out?',
+      confirmYes: 'Take it out',
+      confirmNo: 'Leave it',
+      holdText: 'The basin is content to hold.'
+    },
+    /* The Absence: times in milliseconds from the press. Sounds are registry keys. The gaps
+       between the knocks are uneven on purpose (2.6 s, then 3.5 s). */
+    finale: {
+      cues: [
+        { at: 0, type: 'duck', sound: 'absenceVoid' },
+        { at: 2600, type: 'silence' },
+        { at: 6600, type: 'knock', sound: 'knock1' },
+        { at: 9200, type: 'knock', sound: 'knock2' },
+        { at: 12700, type: 'knock', sound: 'knock3' },
+        { at: 15200, type: 'hold' },
+        { at: 17200, type: 'reverse', sound: 'waterBackward' },
+        { at: 24000, type: 'end' }
+      ],
+      endNote: 'End of session. Read the cliffhanger.',
+      /* Buttons offered at the end, by how the finale began. */
+      endButtons: {
+        solve: ['replay', 'reset'],
+        anyway: ['replay', 'return', 'reset']
+      },
+      noAutoFocus: true,
+      reducedMotionShake: false
+    },
+    /* Stage Mode (key S) for the TV: what it hides and keeps. */
+    stageMode: {
+      hides: ['readings', 'console', 'extras'],
+      keeps: ['wall', 'stage', 'pillars', 'basin', 'pips', 'pressureMeter'],
+      enterKeyChecks: true,
+      key: 'S'
     }
   },
 
@@ -238,11 +318,21 @@ window.TSI_DATA.pelagosi = {
     puzzleFail: { file: 'puzzle-fail.wav', ready: true },
     puzzleSolve: { file: 'puzzle-solve.wav', ready: true },
     cavernOpen: { file: 'cavern-open.wav', ready: true },
-    waterStir: { file: 'water-stir.wav', ready: false },
-    pressureRise: { file: 'pressure-rise.wav', ready: false },
-    currentReverse: { file: 'current-reverse.wav', ready: false },
-    tidalSurge: { file: 'tidal-surge.wav', ready: false },
-    basinWake: { file: 'basin-wake.wav', ready: false }
+    /* Tidal v2: .mp3 files Harry is making. ready becomes true only when the file is in assets/audio/. */
+    chamberBed: { file: 'chamber-bed.mp3', ready: false, volume: 0.35, loop: true },
+    waterStir: { file: 'water-stir.mp3', ready: false },
+    pressureRise: { file: 'pressure-rise.mp3', ready: false },
+    currentReverse: { file: 'current-reverse.mp3', ready: false },
+    tidalSurge: { file: 'tidal-surge.mp3', ready: false },
+    basinWake: { file: 'basin-wake.mp3', ready: false },
+    anchorRelease: { file: 'anchor-release.mp3', ready: false },
+    knock1: { file: 'knock-1.mp3', ready: false, volume: 1 },
+    knock2: { file: 'knock-2.mp3', ready: false, volume: 1 },
+    knock3: { file: 'knock-3.mp3', ready: false, volume: 1 },
+    waterBackward: { file: 'water-backward.mp3', ready: false },
+    absenceVoid: { file: 'absence-void.mp3', ready: false },
+    inscriptionReveal: { file: 'inscription-reveal.mp3', ready: false },
+    tideToll: { file: 'tide-return-toll.mp3', ready: false }
   },
   volume: 0.85
 };

@@ -34,7 +34,7 @@
       Object.keys(D.sounds).forEach(function (name) {
         var s = D.sounds[name];
         if (!s.ready) return; /* not supplied yet (P2): that moment stays silent */
-        sounds[name] = life.audio(asset('audio/' + s.file), { volume: D.volume, preload: 'auto' });
+        sounds[name] = life.audio(asset('audio/' + s.file), { volume: D.volume * (s.volume == null ? 1 : s.volume), preload: 'auto' });
       });
       function play(name) {
         var s = sounds[name];
