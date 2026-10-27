@@ -108,7 +108,8 @@ async function solveOuter(page) {
 }
 
 async function setBasin(page, rune) {
-  for (let i = 0; i < 6; i++) {
+  /* Nine runes since Tidal v2 (was six): up to nine clicks to come round. */
+  for (let i = 0; i < 9; i++) {
     if ((await page.getAttribute('[data-test=basin]', 'data-rune')) === rune) return;
     await page.click('[data-test=basin]');
   }
@@ -489,7 +490,7 @@ async function setBasin(page, rune) {
       await page.waitForFunction(() => document.querySelector('[data-test=stage]').textContent === 'Stone unlocks', null, { timeout: 4000 });
       assert((await plays(page)).includes('cavern-open.wav'), 'no cavern sound');
       await page.waitForSelector('.tsi-modal', { timeout: 3000 });
-      equal(await modalTitle(page), 'The Chamber Opens');
+      equal(await modalTitle(page), 'The Anchor Lifts'); /* success title rewritten in Tidal v2 phase 1 */
       await H.shot(page, 'pelagosi-chamber-opens');
     });
 
