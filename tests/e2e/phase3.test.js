@@ -16,7 +16,6 @@ const INDEX = H.fileUrl('index.html');
 const PEL = INDEX + '?tool=pelagosi';
 const LEGACY = H.fileUrl('_legacy/pelagosi_marker_rune_puzzle/index.html');
 const HAS_LEGACY = fs.existsSync(path.join(H.ROOT, '_legacy/pelagosi_marker_rune_puzzle/app.js'));
-const MISSING_SOUNDS = ['water-stir.mp3', 'pressure-rise.mp3', 'current-reverse.mp3', 'tidal-surge.mp3', 'basin-wake.mp3'];
 
 /* Record every sound the page starts, with the time. Works for the old tool too. */
 function recordSounds() {
@@ -506,9 +505,12 @@ async function setBasin(page, rune) {
       await H.clickModal(page, 'Not Yet');
     });
 
-    await check('the five sounds still to come are never asked for (P2)', async () => {
-      const asked = context.log.failed.concat(context.log.aborted, await plays(page)).filter(u => MISSING_SOUNDS.some(m => u.includes(m)));
-      equal(asked, []);
+    await check('every sound marked ready has its file, and no sound file fails to load', async () => {
+      const fs = require('fs'), path = require('path');
+      const sounds = await page.evaluate(() => window.TSI_DATA.pelagosi.sounds);
+      const missing = Object.values(sounds).filter(s => s.ready && !fs.existsSync(path.join(__dirname, '../../tools/pelagosi/assets/audio', s.file))).map(s => s.file);
+      equal(missing, []);
+      equal(context.log.failed.concat(context.log.aborted).filter(u => /\.(mp3|wav)/.test(u)), []);
     });
 
     await check('no errors on the way', async () => {
