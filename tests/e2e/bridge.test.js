@@ -279,7 +279,7 @@ async function changeRows(ba) {
     equal(Object.values(s.bridge.done).map(r => r.day).sort(), [1, 4]);
   });
 
-  await check('Reset Travel with a change waiting: the Bastion moves back with it and applies the change once', async () => {
+  await check('Reset to Day 1 with changes waiting: the Explorer\'s list is cleared, and the Bastion drops its receipts once (scores stay)', async () => {
     await ba3.close();
     await playT4Won(ex3);
     await camp(ex3);
@@ -287,16 +287,22 @@ async function changeRows(ba) {
     await ex3.click('[data-test=reset-travel]');
     await H.clickModal(ex3, 'OK');
     await ex3.waitForTimeout(200);
-    const out = (await exs(ex3)).journey.outbox;
-    equal(out.map(m => m.day), [-4, -1, 0], 'every message moves back with the day');
+    const save = await exs(ex3);
+    equal(save.journey.outbox, [], 'nothing left to send');
+    assert(save.resetId, 'a reset id was saved');
     ba3 = await openBastion(B);
-    await ba3.waitForFunction(() => TSI.bastion.debug.state().day === 1 && TSI.bastion.debug.state().honourRespectByClan.slade === 3, null, { timeout: 10000 });
+    await ba3.waitForFunction(id => TSI.bastion.debug.state().day === 1 && TSI.bastion.debug.state().bridge.resetSeen === id, save.resetId, { timeout: 10000 });
     await ba3.waitForTimeout(4500);
-    equal((await bas(ba3)).honourRespectByClan.slade, 3, 'each change once');
-    await waitStatus(ex3, ['applied', 'applied', 'applied']);
+    const s = await bas(ba3);
+    equal(s.honourRespectByClan.slade, 2, 'what was already applied stays applied');
+    equal(Object.keys(s.bridge.done), [], 'the receipts are gone');
+    equal(await changeRows(ba3), [], 'Changes from the Explorer is empty');
+    await waitStatus(ex3, []);
   });
 
   await check('a Bastion Reset skips the changes sent before it, lists them, and the Explorer says Skipped', async () => {
+    await playT4Won(ex3);
+    await ba3.waitForFunction(() => Object.keys(TSI.bastion.debug.state().bridge.done).length === 1, null, { timeout: 10000 });
     await pause(ba3);
     await ba3.click('[data-test=reset]');
     await H.modalText(ba3);
@@ -304,11 +310,11 @@ async function changeRows(ba) {
     await ba3.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored && !TSI.bastion.debug.state().bridge.fresh, null, { timeout: 10000 });
     const s = await bas(ba3);
     equal(s.honourRespectByClan.slade, 0);
-    equal(Object.values(s.bridge.done).map(r => r.r), ['skipped', 'skipped', 'skipped']);
+    equal(Object.values(s.bridge.done).map(r => r.r), ['skipped']);
     const rows = await changeRows(ba3);
-    equal(rows.map(r => r.r), ['skipped', 'skipped', 'skipped']);
+    equal(rows.map(r => r.r), ['skipped']);
     assert(/Sent before this Bastion started\. Use Change a score in the DM doc if it should count/.test(rows[0].text), rows[0].text);
-    await waitStatus(ex3, ['skipped', 'skipped', 'skipped']);
+    await waitStatus(ex3, ['skipped']);
   });
 
   await B.close();

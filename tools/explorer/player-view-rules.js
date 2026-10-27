@@ -25,6 +25,9 @@
      pin: { id, label, image, description } or null,   the town pin card the DM has open: only what the card itself shows
                                                     (its name, picture and description); never the Port Charter or
                                                     Courier boxes, which are the DM's
+     view: { x0, y0, x1, y1 },              the part of the map the DM's window shows, as fractions of the map (0 to 1); the whole
+                                          map (0, 0, 1, 1) when the DM has not zoomed. The players' window fits that region
+                                          into its own shape, centred (R.regionView), so both show the same part of the map.
      dim: 'none' | 'night' | 'event',     'event' while a campfire event is open in the DM's window: the map stays very dark
      camp: n                               how many times the DM has made camp; each new number fades the map out and in once
    } */
@@ -38,7 +41,7 @@
   function str(v, max) { return typeof v === 'string' ? v.slice(0, max || 200) : ''; }
   function num(v, fallback) { return typeof v === 'number' && isFinite(v) ? v : fallback; }
 
-  /* extras: { pin: a marker's id or null, dim: 'none' | 'night' | 'event', camp: a whole number }. */
+  /* extras: { view: the DM's visible region ({ x0, y0, x1, y1 }) or none, pin: a marker's id or null, dim: 'none' | 'night' | 'event', camp: a whole number }. */
   R.playerSnapshot = function (s, data, extras) {
     extras = extras && typeof extras === 'object' ? extras : {};
     var limit = R.dayLimit(s);
@@ -74,6 +77,10 @@
         }
       }
     }
+    var vr = extras.view && typeof extras.view === 'object' ? extras.view : {};
+    var view = { x0: 0, y0: 0, x1: 1, y1: 1 };
+    var ok = ['x0', 'y0', 'x1', 'y1'].every(function (k) { return typeof vr[k] === 'number' && isFinite(vr[k]) && vr[k] >= 0 && vr[k] <= 1; });
+    if (ok && vr.x1 - vr.x0 > 0.0005 && vr.y1 - vr.y0 > 0.0005) view = { x0: vr.x0, y0: vr.y0, x1: vr.x1, y1: vr.y1 };
     var dim = extras.dim === 'event' || extras.dim === 'night' ? extras.dim : 'none';
     var camp = typeof extras.camp === 'number' && isFinite(extras.camp) && extras.camp > 0 ? Math.floor(extras.camp) : 0;
 
@@ -97,6 +104,7 @@
         return { id: str(t.id, 60), name: str(t.name, 80), initial: str(t.initial, 4), size: num(Number(t.size), 46), x: spot.x, y: spot.y };
       }),
       pin: pin,
+      view: view,
       dim: dim,
       camp: camp
     };

@@ -461,7 +461,7 @@ const STORM = 'cr-storm';
     equal([before.bonding.awaySince, before.bonding.lastTick, before.bonding.days], [9, 32, 26]);
     await ex.waitForTimeout(400);
     await ex.click('[data-test=reset-travel]');
-    assert(/Reset travel back to Day 1/.test(await H.modalText(ex)));
+    assert(/Start again from Day 1/.test(await H.modalText(ex)));
     await H.clickModal(ex, 'OK');
     await ex.waitForTimeout(300);
     equal(await exDay(ex), 1);

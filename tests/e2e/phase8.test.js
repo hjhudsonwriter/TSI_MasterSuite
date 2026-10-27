@@ -698,15 +698,16 @@ function serve(dir) {
       await closeAll(page);
     });
 
-    await check('Reset Travel asks first, then goes back to day 1 with no miles', async () => {
+    await check('Reset to Day 1 asks first, then goes back to day 1 with no miles', async () => {
       await pause(page);
       await page.click('[data-test=reset-travel]');
-      assert(/Reset travel back to Day 1/.test(await H.modalText(page)));
+      assert(/Start again from Day 1/.test(await H.modalText(page)));
       await H.clickModal(page, 'Cancel');
       assert((await text(page, 'day')) !== 'Day 1');
       await pause(page);
       await page.click('[data-test=reset-travel]');
       await H.clickModal(page, 'OK');
+      await page.waitForFunction(() => document.querySelector('[data-test=day]').textContent === 'Day 1');
       equal(await text(page, 'day'), 'Day 1');
       equal((await st(page)).tokens.map(t => t.milesUsed), [0, 0, 0, 0, 0]);
     });

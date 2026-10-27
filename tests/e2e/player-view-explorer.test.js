@@ -258,6 +258,134 @@ async function openPlayer(page, size) {
       await pv.emulateMedia({ reducedMotion: 'no-preference' });
     });
 
+    const zoomState = () => page.evaluate(() => TSI.explorer.debug.zoomState());
+    const stageRect = () => rect(page, '.tsi-exp-stage');
+    /* A spot on the DM's map with nothing on it (no hero, pin, button or notice). */
+    const emptySpot = () => page.evaluate(() => {
+      const r = document.querySelector('.tsi-exp-stage').getBoundingClientRect();
+      for (const fy of [0.9, 0.5, 0.7, 0.3, 0.1]) for (const fx of [0.9, 0.7, 0.5, 0.3, 0.1]) {
+        const x = r.x + r.width * fx, y = r.y + r.height * fy;
+        const e = document.elementFromPoint(x, y);
+        if (e && document.querySelector('.tsi-exp-stage').contains(e) && !e.closest('.tsi-exp-token, .tsi-exp-pin, button, .tsi-notice')) return { x, y };
+      }
+      return null;
+    });
+    const settle = () => pv.waitForTimeout(500);
+    await check('zooming the DM map with the wheel: anchored at the pointer, the players\' map follows, heroes line up', async () => {
+      await dismissModals(page);
+      const hero = (await st(page)).tokens[0].id;
+      const at = await page.evaluate(id => TSI.explorer.debug.tokenScreen(id), hero);
+      const before = await dmFrac(page, hero);
+      await page.mouse.move(at.x, at.y - 60);
+      await page.mouse.wheel(0, -500);
+      await page.waitForFunction(() => TSI.explorer.debug.zoomState().zoom > 1.5);
+      await settle();
+      const z = (await zoomState()).zoom;
+      assert(z > 1.5 && z <= 6, 'zoomed: ' + z);
+      near(await dmFrac(page, hero), await pvFrac(pv, hero), 'hero, zoomed');
+      near(before, await dmFrac(page, hero), 'the map did not slide: the hero is the same place on the picture');
+      const m = await rect(page, '.tsi-exp-map'), sg = await stageRect();
+      assert(m.w > sg.w * 0.99 && m.h > sg.h * 0.99, 'the map is bigger than the area');
+      const pm = await rect(pv, '.tsi-xpv-map'), ps = await rect(pv, '[data-test=pv-stage]');
+      assert(pm.w * pm.h > ps.w * ps.h * 0.9, 'and bigger than the players\' area too');
+      await H.shot(pv, 'pv-explorer-zoom-' + name);
+    });
+
+    await check('dragging the empty map pans it (only after a few pixels); a plain click does not; the players follow; the map can\'t leave the area', async () => {
+      const hero = (await st(page)).tokens[0].id;
+      const sg = await stageRect();
+      const was = await zoomState();
+      const sp = await emptySpot();
+      assert(sp, 'an empty spot');
+      await page.mouse.click(sp.x, sp.y);
+      equal(await zoomState(), was, 'a plain click moves nothing');
+      await page.mouse.move(sp.x, sp.y);
+      await page.mouse.down();
+      for (let i = 1; i <= 10; i++) await page.mouse.move(sp.x - i * 12, sp.y - i * 7);
+      await page.mouse.up();
+      const after = await zoomState();
+      assert(Math.abs(after.cx - was.cx) > 0.01 || Math.abs(after.cy - was.cy) > 0.01, 'the view moved: ' + JSON.stringify([was, after]));
+      await settle();
+      near(await dmFrac(page, hero), await pvFrac(pv, hero), 'hero, panned');
+      /* Way past the edge: the map stays on the area. */
+      const sp2 = await emptySpot();
+      await page.mouse.move(sp2.x, sp2.y);
+      await page.mouse.down();
+      for (let i = 1; i <= 10; i++) await page.mouse.move(sp2.x + i * 400, sp2.y + i * 300);
+      await page.mouse.up();
+      const m = await rect(page, '.tsi-exp-map');
+      assert(m.x <= sg.x + 1 && m.y <= sg.y + 1 && m.right >= sg.right - 1 && m.bottom >= sg.bottom - 1, 'the map still covers the area: ' + JSON.stringify([m, sg]));
+      await settle();
+      const pm = await rect(pv, '.tsi-xpv-map');
+      assert(pm.w > 100, 'players still show it');
+    });
+
+    await check('at zoom, dragging a hero still moves it, spends miles, and shows on the players\' map and Daily Travel', async () => {
+      await change(page, s => { s.snap.enabled = true; s.tokens.forEach(t => { t.milesUsed = 0; }); });
+      const hero = (await st(page)).tokens[0].id;
+      const at = await page.evaluate(id => TSI.explorer.debug.tokenScreen(id), hero);
+      const sg = await stageRect();
+      assert(at.x > sg.x && at.x < sg.right && at.y > sg.y && at.y < sg.bottom, 'the hero is in view: ' + JSON.stringify([at, sg]));
+      const was = await zoomState();
+      await dragHex(page, hero, 1, 0);
+      await dismissModals(page);
+      assert(Math.max(...(await st(page)).tokens.map(t => t.milesUsed)) > 0, 'miles were spent');
+      equal(await zoomState(), was, 'dragging a hero does not pan');
+      await settle();
+      near(await dmFrac(page, hero), await pvFrac(pv, hero), 'hero, moved at zoom');
+      await pv.waitForFunction(() => /^[1-9]/.test(document.querySelector('[data-test=pv-travel] .tsi-xpv-pill__n').textContent));
+    });
+
+    await check('the grid lines up with the heroes at zoom: a hero snapped to a hex sits in the middle of a drawn hex', async () => {
+      const ok = await page.evaluate(() => {
+        const R = TSI.explorer.rules, d = TSI.explorer.debug, s = d.state();
+        const t = s.tokens[0];
+        const a = R.tokenHex(s, d.board(), t);
+        const c = R.axialToPixel(s.grid, a.q, a.r);
+        const scr = d.toScreen(c.x, c.y);
+        const spot = d.tokenScreen(t.id);
+        return Math.hypot(scr.x - spot.x, scr.y - spot.y) < 14 + 10;
+      });
+      assert(ok, 'the hero is on its hex centre');
+    });
+
+    await check('the + and − buttons, the keys + − 0, and Fit work; the players\' map follows to the whole map', async () => {
+      await page.click('[data-test=zoom-fit]');
+      equal((await zoomState()).zoom, 1);
+      await page.click('[data-test=zoom-in]');
+      assert(Math.abs((await zoomState()).zoom - 1.4) < 0.01, 'zoom in');
+      await page.click('[data-test=zoom-out]');
+      equal((await zoomState()).zoom, 1);
+      await page.click('.tsi-exp-stage', { position: { x: 5, y: 5 } });
+      await page.keyboard.press('+');
+      assert((await zoomState()).zoom > 1.3, 'key +');
+      await page.keyboard.press('-');
+      equal((await zoomState()).zoom, 1);
+      await page.keyboard.press('+'); await page.keyboard.press('+');
+      await page.keyboard.press('0');
+      equal((await zoomState()).zoom, 1);
+      await settle();
+      const hero = (await st(page)).tokens[0].id;
+      near(await dmFrac(page, hero), await pvFrac(pv, hero), 'hero, fitted again');
+      const pm = await rect(pv, '.tsi-xpv-map'), ps = await rect(pv, '[data-test=pv-stage]');
+      assert(pm.x >= ps.x - 1 && pm.right <= ps.right + 1 && pm.bottom <= ps.bottom + 1 && pm.y >= ps.y - 1, 'the whole map in view at 1x');
+      const base = Math.min(ps.w, ps.h * 4 / 3);
+      assert(Math.abs(pm.w - base) < 2, 'exactly as before at 1x: ' + pm.w + ' vs ' + base);
+    });
+
+    await check('with reduced motion the players\' map jumps to the new view at once', async () => {
+      await pv.emulateMedia({ reducedMotion: 'reduce' });
+      await page.click('[data-test=zoom-in]');
+      await page.click('[data-test=zoom-in]');
+      const hero = (await st(page)).tokens[0].id;
+      await pv.waitForTimeout(80);
+      const pm = await rect(pv, '.tsi-xpv-map'), ps = await rect(pv, '[data-test=pv-stage]');
+      assert(pm.w > ps.w * 1.05 || pm.h > ps.h * 1.05, 'already zoomed after 80 ms');
+      await pv.emulateMedia({ reducedMotion: 'no-preference' });
+      await page.click('[data-test=zoom-fit]');
+      await settle();
+    });
+
     await check('the same region at any window shape: resizing either window keeps every hero at the same place on the picture', async () => {
       const t = (await st(page)).tokens[0].id;
       await pv.setViewportSize({ width: 900, height: 900 });

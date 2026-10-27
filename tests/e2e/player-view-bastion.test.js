@@ -355,14 +355,31 @@ const SECRETS = ['ZZWAREHOUSE', 'ZZDMNOTE', 'ZZPRISONER', 'ZZBEAST', 'ZZPAIRCODE
       await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
     });
 
-    await check('the Prison Tower\'s panel shows only its level and pending orders (nothing of the cells)', async () => {
-      await change(page, s => { s.builtExtras[2] = { facId: 'prison_tower', status: 'built' }; TSI.bastion.rules.prisonLockUp(s, { bastion: TSI_DATA.bastion, facilities: TSI_DATA.bastionFacilities }, 0, { name: 'ZZPRISONER', thread: 'ZZTHREAD', days: 7, conditions: '' }); });
+    await check('the Prison Tower\'s panel: the empty-cells picture, then the occupied one when a prisoner is locked up (fading, live), back when the last is released; only which cells are in use is sent', async () => {
+      const art = () => pv.$$eval('.tsi-bpv-panel__art', n => n.map(x => x.dataset.art));
+      await change(page, s => { s.builtExtras[2] = { facId: 'prison_tower', status: 'built' }; });
       await pause(page);
       await page.click('[data-test=tile-prison_tower]');
       await pv.waitForSelector('[data-test=pv-panel][data-fac=prison_tower]');
-      const t = await pv.$eval('[data-test=pv-panel]', n => n.textContent);
-      assert(!/ZZ|cell|prisoner/i.test(t.replace(/Lock up captives here, and question them if you dare\./, '')), 'nothing about the prisoners: ' + t);
+      equal(await art(), ['prison_tower-empty.jpg']);
       equal(await bare(pv, '[data-test=pv-panel-orders]'), 'Orders pending: None');
+      equal(await bare(pv, '[data-test=pv-panel-level]'), 'One level');
+      const wrap = await rect(pv, '.tsi-bpv-panel__art-wrap');
+      assert(wrap.h > size.height * 0.7 && wrap.w > size.width * 0.95, 'the picture fills the panel');
+      await H.shot(pv, 'pv-panel-prison-empty-' + name);
+      await page.evaluate(() => TSI.bastion.debug.change(function (s) { TSI.bastion.rules.prisonLockUp(s, { bastion: TSI_DATA.bastion, facilities: TSI_DATA.bastionFacilities }, 1, { name: 'ZZPRISONER', thread: 'ZZTHREAD', days: 7, conditions: '' }); }));
+      await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === 'prison_tower-occupied-1.jpg', null, { timeout: 6000 });
+      await H.shot(pv, 'pv-panel-prison-occupied-' + name);
+      const t = await pv.$eval('[data-test=pv-panel]', n => n.textContent);
+      assert(!/ZZ|prisoner/i.test(t.replace(/Lock up captives here, and question them if you dare\./, '')), 'nothing about the prisoner: ' + t);
+      const html = await pv.content();
+      assert(html.indexOf('ZZPRISONER') === -1 && html.indexOf('ZZTHREAD') === -1, 'not in the page');
+      const sent = await page.evaluate(() => JSON.stringify(TSI.bastion.rules.playerSnapshot(TSI.bastion.debug.state(), { bastion: TSI_DATA.bastion, facilities: TSI_DATA.bastionFacilities }, {}).facilities.prison_tower.cells));
+      equal(sent, '[false,true,false]');
+      await page.evaluate(() => TSI.bastion.debug.change(function (s) { s.prison.cells[1] = null; }));
+      await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === 'prison_tower-empty.jpg', null, { timeout: 6000 });
+      await page.evaluate(() => TSI.bastion.debug.change(function (s) { TSI.bastion.rules.prisonLockUp(s, { bastion: TSI_DATA.bastion, facilities: TSI_DATA.bastionFacilities }, 0, { name: 'ZZPRISONER', thread: 'ZZTHREAD', days: 7, conditions: '' }); }));
+      await pv.waitForFunction(() => document.querySelector('.tsi-bpv-panel__art').dataset.art === 'prison_tower-occupied-1.jpg', null, { timeout: 6000 });
       await page.keyboard.press('Escape');
       await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
     });

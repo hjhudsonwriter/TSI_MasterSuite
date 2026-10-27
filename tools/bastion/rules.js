@@ -520,6 +520,8 @@
     var out = { fresh: false, done: {} };
     if (!isObj(src)) return out;
     out.fresh = src.fresh === true;
+    /* The Explorer's reset to Day 1 that this Bastion has already acted on (R.clearExplorerDeliveries), so it acts once. */
+    if (typeof src.resetSeen === 'string' && src.resetSeen) out.resetSeen = src.resetSeen.slice(0, 60);
     if (isObj(src.done)) {
       Object.keys(src.done).forEach(function (id) {
         var r = isObj(src.done[id]) ? src.done[id] : {};
@@ -570,6 +572,40 @@
            start: the receipt says only that, so it is never described as a change to a Clan. */
         if (r.type === 'newer') out.done[id].type = 'newer';
       });
+    }
+    return out;
+  };
+
+  /* ---------- The Explorer was reset to Day 1 (Harry, 26 October 2026) ----------
+     The Explorer saves a resetId each time it is reset. The Bastion acts on each id once: it drops what the Explorer
+     delivered, so a fresh Day 1 run applies cleanly. Dropped: the receipts ("Changes from the Explorer", and with them the
+     memory of which messages it has seen), creatures the Explorer granted that are still waiting for a home, and Port
+     Charters the Explorer sent that are only held (not registered, and no Register order running for them).
+     Kept, on the safe side: every building and order, the treasury and the Warehouse, creatures already housed (and
+     Elara's wyvern), registered Port Charters, ships and shipments, the Great Rites (including those given to the
+     party), parcels (a collected parcel stays closed) and every Honour/Respect score the changes already made.
+     Returns null if this id was seen (nothing changed), or { receipts, creatures, charters } counts. */
+  R.clearExplorerDeliveries = function (s, resetId) {
+    var id = typeof resetId === 'string' ? resetId : '';
+    if (!id) return null;
+    if (!isObj(s.bridge) || !isObj(s.bridge.done)) s.bridge = R.cleanBridge(s.bridge);
+    if (s.bridge.resetSeen === id) return null;
+    var out = { receipts: Object.keys(s.bridge.done).length, creatures: 0, charters: 0 };
+    s.bridge.done = {};
+    /* (A Bastion that has just started from nothing stays "fresh", so it still skips what was sent before it.) */
+    s.bridge.resetSeen = id;
+    if (Array.isArray(s.creatures)) {
+      var before = s.creatures.length;
+      s.creatures = s.creatures.filter(function (c) { return !(isObj(c) && c.msgId && c.status === 'waiting'); });
+      out.creatures = before - s.creatures.length;
+    }
+    if (Array.isArray(s.portCharters)) {
+      var held = s.portCharters.length;
+      s.portCharters = s.portCharters.filter(function (c) {
+        if (!isObj(c) || c.status !== 'earned') return true;
+        return !!(R.registerOrderFor && R.registerOrderFor(s, c.id));
+      });
+      out.charters = held - s.portCharters.length;
     }
     return out;
   };

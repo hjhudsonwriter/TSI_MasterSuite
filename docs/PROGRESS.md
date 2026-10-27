@@ -9,15 +9,21 @@
 - Five unused pictures moved to `tools/bastion/assets/extras/` (see `docs/ASSETS.md` and `docs/BASTION-MAP-ART.md`); nothing deleted. The Temple's three Shrine paintings and map overlays and the Beast Pen's tile, panel strip and map overlay are wired.
 - `guide.html` facilities paragraph brought up to date.
 
+### 26 October 2026: zoom and pan, and Reset to Day 1 (BAS-SB-101 to 103)
+
+- Zoom and pan in the Explorer (wheel at the pointer, drag, +/-/0, + - Fit buttons), mirrored by the Player View as the region of the map the DM sees (`tools/explorer/rules.js` R.zoomView, R.visibleRegion, R.regionView; tests in `tests/rules/player-view-explorer.test.js` and `tests/e2e/player-view-explorer.test.js`).
+- Reset to Day 1 blanks the Explorer; the Bastion drops the Explorer's deliveries once (`R.resetToDayOne`, `R.clearExplorerDeliveries`; `tests/rules/explorer-reset.test.js`, `tests/e2e/explorer-reset.test.js`).
+
 ### 26 October 2026: the Explorer's Player View (P4)
 
 - Done: **Open Player View** in the Explorer's View box; `player.html?view=explorer` shows the map filling the window under a slim row (Day, Daily Travel, Gold) with heroes, grid, pins, fog and weather; snapshot rules and leak tests (`tools/explorer/player-view-rules.js`, `tests/rules/player-view-explorer.test.js`); the grid and fog drawing moved into `tools/explorer/draw.js`, shared by both maps; an uploaded map is sent once; guide and KNOWN_ISSUES (BAS-SB-95 to 98); `tests/e2e/player-view-explorer.test.js`.
 - Added the same day: the DM's open town-pin card mirrors to the players (read only); Make Camp fades the players' map to black and back, and a campfire event holds it very dark until closed (BAS-SB-99, BAS-SB-100).
-- Note: the Explorer has no pan or zoom, so "the same view" is the whole map, fitted and centred (BAS-SB-96).
+- Note: the Explorer had no pan or zoom at first (BAS-SB-96); it now has, and the Player View copies it (BAS-SB-101).
 - Next: P5 (Bastion artwork), P6 (checks on Harry's screens).
 
 ### 26 October 2026: the Bastion's Player View (P1 to P3)
 
+- The Prison Tower's Player View picture changes with its cells (empty, or any prisoner held); only which cells are in use is sent.
 - The Explorer's and Bastion's Player View windows stay open when the DM switches tool, goes Home or reloads, and reconnect by themselves (`keepOpen`, `tests/e2e/player-view-keep-open.test.js`).
 - The Beast Pen's Player View panel: its painting and a list of the housed beasts (name, kind, handler).
 - The Party Quarters tile opens a small panel, with a bare picture-only panel for the players; the Workshop's Level 3 picture is in.

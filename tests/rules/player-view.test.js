@@ -150,7 +150,7 @@
     t.equal(text.indexOf('honour'), -1);
     t.equal(text.indexOf('dueDay'), -1, 'the days an order is due are not sent');
     t.equal(text.indexOf('warehouse'), -1);
-    t.equal(text.indexOf('cells'), -1);
+    t.equal(text.indexOf('prisoner'), -1);
     t.equal(text.indexOf('creature'), -1);
   });
 
@@ -162,14 +162,26 @@
     s.labels.forEach(function (l) { t.ok(Object.keys(l).every(function (k) { return ['fac', 'name', 'level', 'single', 'x', 'y', 'repair', 'part'].indexOf(k) !== -1; }), 'a label has only its own fields'); });
     s.tiles.forEach(function (x) { t.ok(Object.keys(x).every(function (k) { return ['row', 'kind', 'fac', 'name', 'level', 'single', 'repair', 'orders', 'daysLeft', 'plot'].indexOf(k) !== -1; }), 'a tile has only its own fields'); });
     Object.keys(s.facilities).forEach(function (id) {
-      t.ok(Object.keys(s.facilities[id]).every(function (k) { return ['name', 'level', 'single', 'repair', 'orders', 'staff', 'gods', 'beasts', 'more'].indexOf(k) !== -1; }), id + ' has only its own fields');
+      t.ok(Object.keys(s.facilities[id]).every(function (k) { return ['name', 'level', 'single', 'repair', 'orders', 'staff', 'gods', 'beasts', 'more', 'cells'].indexOf(k) !== -1; }), id + ' has only its own fields');
     });
   });
 
   test('the Prison Tower and the Beast Pen show only a level and their orders\' names', function (t) {
     var s = snap(busy());
-    t.same(Object.keys(s.facilities.prison_tower).sort(), ['level', 'name', 'orders', 'repair', 'single']);
+    t.same(Object.keys(s.facilities.prison_tower).sort(), ['cells', 'level', 'name', 'orders', 'repair', 'single']);
     t.same(Object.keys(s.facilities.beast_pen).sort(), ['beasts', 'level', 'more', 'name', 'orders', 'repair', 'single']);
+  });
+
+  test('the Prison Tower carries only which cells are in use, as three true or false', function (t) {
+    var s = snap(busy());
+    t.same(s.facilities.prison_tower.cells, [true, false, false]);
+    var b = busy(); b.prison.cells = [null, { name: 'ZZPRISONER', thread: 'ZZTHREAD', days: 7, lockedDay: 12, endDay: 19, conditions: 'ZZCOND', notes: [{ day: 12, text: 'ZZFOUND' }] }, null];
+    t.same(snap(b).facilities.prison_tower.cells, [false, true, false]);
+    var none = busy(); none.prison.cells = [null, null, null];
+    t.same(snap(none).facilities.prison_tower.cells, [false, false, false]);
+    var text = JSON.stringify(snap(b, { focus: 'prison_tower' }));
+    ['ZZPRISONER', 'ZZTHREAD', 'ZZCOND', 'ZZFOUND', 'lockedDay', 'endDay'].forEach(function (w) { t.equal(text.indexOf(w), -1, w); });
+    t.equal(snap(busy()).facilities.workshop.cells, undefined);
   });
 
   test('the Beast Pen lists the housed beasts: name, kind and handler only, in the Pen\'s order', function (t) {
@@ -249,7 +261,7 @@
       t.ok(p.widgets.indexOf('level') !== -1 && p.widgets.indexOf('orders') !== -1, p.id + ' shows its level and orders');
       }
       }
-      var files = p.art === null ? [] : typeof p.art === 'string' ? [p.art] : Object.keys(p.art.levels).map(function (k) { return p.art.levels[k]; });
+      var files = p.art === null ? [] : typeof p.art === 'string' ? [p.art] : Object.keys(p.art.levels || p.art.states).map(function (k) { return (p.art.levels || p.art.states)[k]; });
       t.ok(files.every(function (f) { return /^[a-z0-9_\-]+\.(png|jpg|webp)$/.test(f); }), p.id + '\'s art is file names or null');
     });
     t.equal(panels.filter(function (p) { return p.bare; }).length, 1, 'only the Party Quarters is bare');

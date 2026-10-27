@@ -121,15 +121,50 @@
       gold.n.textContent = String(snap.gold);
 
       var board = { w: snap.board.w, h: snap.board.h };
-      var view = R.view(stage.clientWidth || 1, stage.clientHeight || 1, board);
+      showMap();
+      showWeather();
+      /* The DM's zoom and pan: the region of the map their window shows, fitted into this window's shape and centred.
+         A change glides over a fraction of a second (at once under reduced motion). */
+      var W = stage.clientWidth || 1, H = stage.clientHeight || 1;
+      var target = R.regionView(snap.view, W, H, board);
+      var key = W + 'x' + H + '|' + board.w + 'x' + board.h;
+      if (!current || key !== currentKey || (reduced && reduced.matches)) { stopGlide(); current = target; currentKey = key; paint(current); return; }
+      if (same(target, current)) { stopGlide(); paint(current); return; }
+      glide(target);
+    }
+
+    var current = null;
+    var currentKey = '';
+    var glideId = 0;
+    function same(a, b) { return Math.abs(a.fit - b.fit) < 1e-6 && Math.abs(a.ox - b.ox) < 0.01 && Math.abs(a.oy - b.oy) < 0.01; }
+    function stopGlide() { if (glideId) { cancelAnimationFrame(glideId); glideId = 0; } }
+    function glide(target) {
+      stopGlide();
+      var from = { fit: current.fit, ox: current.ox, oy: current.oy };
+      var t0 = null;
+      var DUR = 220;
+      function step(now) {
+        if (t0 === null) t0 = now;
+        var k = Math.min(1, (now - t0) / DUR);
+        var e = 1 - Math.pow(1 - k, 3);
+        /* Zoom glides on a log scale, so it feels even. */
+        var fit = from.fit * Math.pow(target.fit / from.fit, e);
+        current = { fit: fit, ox: from.ox + (target.ox - from.ox) * e, oy: from.oy + (target.oy - from.oy) * e };
+        paint(current);
+        if (k < 1) glideId = requestAnimationFrame(step); else { glideId = 0; current = target; paint(current); }
+      }
+      glideId = requestAnimationFrame(step);
+    }
+
+    /* Draw the map's layers at a given view. */
+    function paint(view) {
+      var board = { w: snap.board.w, h: snap.board.h };
       var t = 'translate(' + view.ox + 'px,' + view.oy + 'px) scale(' + view.fit + ')';
       [mapLayer, tokenLayer].forEach(function (layer) {
         layer.style.width = board.w + 'px';
         layer.style.height = board.h + 'px';
         layer.style.transform = t;
       });
-      showMap();
-      showWeather();
 
       var g = sizeCanvas(gridCanvas);
       D.grid(g.ctx, g.w, g.h, view, snap.grid);

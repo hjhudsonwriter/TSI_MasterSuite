@@ -583,3 +583,5 @@ Harry's uploads (2000 x 1116, no level pictures yet) are `tools/bastion/assets/p
 | Harry's `workshop-level-3.jpg` (3 people, added 26 October 2026) | `tools/bastion/assets/player-panels/workshop-level-3.jpg` |
 | Harry's `party_quarters.jpg` (a hall with a fireplace, 26 October 2026) | `tools/bastion/assets/player-panels/party_quarters.jpg` |
 | `tools/bastion/assets/facilities/beast_pen.jpg` (kept where it is) | copied to `tools/bastion/assets/player-panels/beast_pen.jpg` (the Beast Pen's Player View panel, 26 October 2026) |
+| Harry's upload, three empty cells (`571f7c32-image.jpg`, 26 October 2026) | `tools/bastion/assets/player-panels/prison_tower-empty.jpg` (2576 x 1438, JPEG quality 86) |
+| Harry's upload, a prisoner in the left cell (`179ec958-image.jpg`) | `tools/bastion/assets/player-panels/prison_tower-occupied-1.jpg` (2576 x 1438, JPEG quality 86) |

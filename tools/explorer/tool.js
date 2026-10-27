@@ -90,7 +90,7 @@
         name: 'ScarlettExplorerPlayers',
         keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
-        getState: function () { return R.playerSnapshot(state, DATA, { pin: pvPin, dim: pvDim(), camp: pvCamp }); },
+        getState: function () { return R.playerSnapshot(state, DATA, { view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, dim: pvDim(), camp: pvCamp }); },
         onStatus: function (st) {
           pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvStatus.classList.toggle('is-connected', st === 'connected');
@@ -149,6 +149,16 @@
       var btnFullscreen = btn('Fullscreen', toggleFullscreen, '', 'fullscreen');
       var btnPlayerView = btn('Open Player View', function () { pvLink.open(); }, 'tsi-btn--ghost', 'open-player-view');
       btnPlayerView.title = 'Open the players\' view of the map in a new window, to drag onto the TV. It only looks.';
+      var zoomBox = el('div', { class: 'tsi-exp-zoombox', role: 'group', 'aria-label': 'Zoom' });
+      var btnZoomIn = btn('+', function () { zoomBy(1.4); }, 'tsi-exp-zoom', 'zoom-in');
+      var btnZoomOut = btn('−', function () { zoomBy(1 / 1.4); }, 'tsi-exp-zoom', 'zoom-out');
+      var btnFit = btn('Fit', function () { zoomFit(); }, 'tsi-exp-zoom', 'zoom-fit');
+      btnZoomIn.title = 'Zoom in (+, or the mouse wheel over the map)';
+      btnZoomOut.title = 'Zoom out (−)';
+      btnFit.title = 'Show the whole map (0). Drag the map to move it when zoomed in.';
+      btnZoomIn.setAttribute('aria-label', 'Zoom in');
+      btnZoomOut.setAttribute('aria-label', 'Zoom out');
+      zoomBox.appendChild(btnZoomOut); zoomBox.appendChild(btnZoomIn); zoomBox.appendChild(btnFit);
       var btnHideUi = btn('Hide UI', function () { setUiHidden(!uiHidden); }, '', 'hide-ui');
       var btnGrid = btn('Hex Grid: On', function () { state.grid.enabled = !state.grid.enabled; saveNow(); renderAll(); }, '', 'grid');
       var btnFog = btn('Fog of War: Off', toggleFog, '', 'fog');
@@ -216,7 +226,7 @@
       var tokenLayer = el('div', { class: 'tsi-exp-world tsi-exp-world--tokens' });
       var marquee = el('div', { class: 'tsi-exp-marquee', hidden: true });
       var showUi = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-showui', hidden: true, 'data-test': 'show-ui', onclick: function () { setUiHidden(false); } }, 'Show UI');
-      var stage = el('div', { class: 'tsi-exp-stage' }, [mapLayer, video, gridCanvas, pinLayer, fogCanvas, tokenLayer, marquee, showUi]);
+      var stage = el('div', { class: 'tsi-exp-stage' }, [mapLayer, video, gridCanvas, pinLayer, fogCanvas, tokenLayer, marquee, showUi, zoomBox]);
 
       /* The travel panel. */
       var dayLabel = el('strong', { class: 'tsi-exp-day', text: 'Day 1', 'data-test': 'day' });
@@ -275,7 +285,7 @@
         pills,
         btnCamp,
         row([btnBastion]),
-        row([btnFreeMove, btn('Reset Travel', resetTravel, '', 'reset-travel')]),
+        row([btnFreeMove, btn('Reset to Day 1', resetTravel, '', 'reset-travel')]),
         row([btnRollNow]),
         section('Main campaign', [
           row([mainSelect, btn('Queue', queueMainEvent, '', 'queue')], 'tsi-exp-row--select')
@@ -301,10 +311,12 @@
 
       /* ---------- Where things are on screen ---------- */
       var board = R.board(R.aspect(state, DATA));
+      /* Zoom and pan (26 October 2026): not saved. zoom 1 is the whole map fitted, as it always was. */
+      var viewZoom = 1, viewCx = 0.5, viewCy = 0.5;
       var view = R.view(1, 1, board);
       function layout() {
         board = R.board(R.aspect(state, DATA));
-        view = R.view(stage.clientWidth || 1, stage.clientHeight || 1, board);
+        view = R.zoomView(stage.clientWidth || 1, stage.clientHeight || 1, board, viewZoom, viewCx, viewCy);
         var t = 'translate(' + view.ox + 'px,' + view.oy + 'px) scale(' + view.fit + ')';
         [mapLayer, tokenLayer].forEach(function (layer) {
           layer.style.width = board.w + 'px';
@@ -504,6 +516,7 @@
         var res = R.loadPreset(state, DATA, id);
         if (!res) { note('Preset map not found.'); return; }
         dropUpload();
+        zoomFit();
         layout();
         if (res.spawned && state.fog.enabled) R.revealAroundFocus(state, board, focusId);
         saveNow();
@@ -536,6 +549,7 @@
             state.mapAspect = probe.naturalWidth && probe.naturalHeight ? probe.naturalWidth / probe.naturalHeight : null;
             state.mapPresetId = null;
             ctx.store.set('mapImage', { dataUrl: dataUrl, key: key, name: file.name });
+            viewZoom = 1; viewCx = 0.5; viewCy = 0.5;
             saveNow();
             renderAll();
           };
@@ -561,6 +575,7 @@
           state.mapUploadKey = null;
           state.mapAspect = null;
           dropUpload();
+          viewZoom = 1; viewCx = 0.5; viewCy = 0.5;
           saveNow();
           renderAll();
         });
@@ -678,17 +693,60 @@
         resizeTokens(e.deltaY < 0 ? 2 : -2);
       }, { passive: false });
 
+      /* ---------- Zoom and pan ---------- */
+      var viewQueued = false;
+      function applyView() {
+        /* Keep the map where the limits allow (it can't leave the area), then redraw once a frame. */
+        var v = R.zoomView(stage.clientWidth || 1, stage.clientHeight || 1, board, viewZoom, viewCx, viewCy);
+        var c = R.viewCentre(v, stage.clientWidth || 1, stage.clientHeight || 1, board);
+        viewZoom = v.zoom; viewCx = c.cx; viewCy = c.cy;
+        layout();
+        if (viewQueued) return;
+        viewQueued = true;
+        life.raf(function () { viewQueued = false; redrawMap(); });
+      }
+      function setView(r) { viewZoom = r.zoom; viewCx = r.cx; viewCy = r.cy; applyView(); }
+      function zoomBy(factor, sx, sy) {
+        var W = stage.clientWidth || 1, H = stage.clientHeight || 1;
+        if (sx === undefined) { sx = W / 2; sy = H / 2; }
+        setView(R.zoomAround(view, W, H, board, viewZoom * factor, sx, sy));
+      }
+      function zoomFit() { viewZoom = 1; viewCx = 0.5; viewCy = 0.5; applyView(); }
+      life.on(stage, 'wheel', function (e) {
+        /* Over a hero the wheel still makes it bigger or smaller (above). */
+        if (e.target.closest('.tsi-exp-token')) return;
+        e.preventDefault();
+        var dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+        var p = pointerOnStage(e);
+        zoomBy(Math.exp(-dy * (e.ctrlKey ? 0.01 : 0.0015)), p.x, p.y);
+      }, { passive: false });
+      stage.tabIndex = 0;
+      life.on(stage, 'keydown', function (e) {
+        if (e.ctrlKey || e.altKey || e.metaKey) return;
+        if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomBy(1.4); }
+        else if (e.key === '-' || e.key === '_') { e.preventDefault(); zoomBy(1 / 1.4); }
+        else if (e.key === '0') { e.preventDefault(); zoomFit(); }
+      });
+
       /* ---------- Selecting and dragging ---------- */
       var box = null;
+      var pan = null;
       life.on(stage, 'pointerdown', function (e) {
         if (e.button !== 0) return;
-        if (e.target.closest('.tsi-exp-token') || e.target.closest('.tsi-exp-pin') || e.target.closest('.tsi-exp-showui')) return;
+        if (e.target.closest('.tsi-exp-token') || e.target.closest('.tsi-exp-pin') || e.target.closest('.tsi-exp-showui') || e.target.closest('.tsi-exp-zoombox')) return;
         if (pickXY) { pickAt(e); return; }
         var p = pointerOnStage(e);
-        box = { x: p.x, y: p.y, pointerId: e.pointerId };
+        try { stage.focus({ preventScroll: true }); } catch (err) { /* ignore */ }
         try { stage.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-        setMarquee(p.x, p.y, p.x, p.y);
-        marquee.hidden = false;
+        /* Zoomed in, dragging the empty map moves it (after a few pixels, so a plain click still does what it did);
+           hold Shift to draw the selection box instead. Not zoomed, the box is as it always was. */
+        if (viewZoom > 1 && !e.shiftKey) {
+          pan = { x: p.x, y: p.y, from: { zoom: viewZoom, ox: view.ox, oy: view.oy, fit: view.fit }, moved: false, pointerId: e.pointerId };
+        } else {
+          box = { x: p.x, y: p.y, pointerId: e.pointerId };
+          setMarquee(p.x, p.y, p.x, p.y);
+          marquee.hidden = false;
+        }
         /* Without Ctrl, a new box starts a fresh selection. */
         if (!e.ctrlKey) selected.clear();
         renderTokens();
@@ -700,11 +758,21 @@
         marquee.style.height = Math.abs(y2 - y1) + 'px';
       }
       life.on(stage, 'pointermove', function (e) {
+        if (pan) {
+          var q = pointerOnStage(e);
+          var dx = q.x - pan.x, dy = q.y - pan.y;
+          if (!pan.moved && Math.abs(dx) + Math.abs(dy) < 5) return;
+          pan.moved = true;
+          stage.classList.add('tsi-exp-stage--panning');
+          setView(R.panBy(pan.from, stage.clientWidth || 1, stage.clientHeight || 1, board, dx, dy));
+          return;
+        }
         if (!box) return;
         var p = pointerOnStage(e);
         setMarquee(box.x, box.y, p.x, p.y);
       });
       function endBox(e) {
+        if (pan) { pan = null; stage.classList.remove('tsi-exp-stage--panning'); return; }
         if (!box) return;
         var p = pointerOnStage(e);
         var a = R.toBoard(view, Math.min(box.x, p.x), Math.min(box.y, p.y));
@@ -719,7 +787,7 @@
         renderTokens();
       }
       life.on(stage, 'pointerup', endBox);
-      life.on(stage, 'pointercancel', function () { box = null; marquee.hidden = true; });
+      life.on(stage, 'pointercancel', function () { box = null; pan = null; stage.classList.remove('tsi-exp-stage--panning'); marquee.hidden = true; });
 
       life.on(tokenLayer, 'pointerdown', function (e) {
         var node = e.target.closest('.tsi-exp-token');
@@ -801,12 +869,18 @@
         setNotice(state.freeMove ? 'Free Move enabled: miles/events paused.' : 'Free Move disabled.');
       }
       function resetTravel() {
-        ask('Reset travel back to Day 1 and clear miles for ALL heroes? Active Effects and Threads stay, counted from the new Day 1. The Bastion follows the Explorer\'s day, so its calendar goes back to Day 1 as well: every order, build and timer there keeps the same number of days to go, but its dates move with it. Back up first if you are unsure.').then(function (ok) {
+        ask('Start again from Day 1, with a blank Explorer? This clears the day and every hero\'s miles, today\'s weather, any event in progress, the Active Effects and Threads, the journey log, the party\'s event gold, the Travel bags, the expedition and the changes sent to the Bastion. The Bastion drops what the Explorer delivered to it as well (its "Changes from the Explorer" list, creatures still waiting for a home and Port Charters not yet registered) and its calendar goes back to Day 1; its buildings, orders, treasury and Warehouse are not touched. What stays: the map and its grid, the fog already uncovered, the heroes (names and places) and the pins. A safety copy of the Explorer is kept first.').then(function (ok) {
           if (!ok) return;
-          R.resetTravel(state);
-          setNotice('');
-          saveNow();
-          updateTravelUI();
+          return TSI.store.keepCopy('tsi.explorer.save', 'Before the Explorer was reset to Day 1').catch(function () { return null; }).then(function () {
+            if (!life.alive) return;
+            R.resetToDayOne(state, rand);
+            pvPin = null;
+            pvNightUntil = 0;
+            focusId = state.tokens[0] ? state.tokens[0].id : null;
+            setNotice('');
+            saveNow();
+            renderAll();
+          });
         });
       }
       life.on(provinceSelect, 'change', function () {
@@ -2250,6 +2324,7 @@
         change: function (fn) { fn(state); saveNow(); renderAll(); },
         board: function () { return board; },
         view: function () { return view; },
+        zoomState: function () { return { zoom: viewZoom, cx: viewCx, cy: viewCy }; },
         focus: function () { return focusId; },
         selected: function () { return Array.from(selected); },
         toScreen: function (bx, by) {

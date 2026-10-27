@@ -416,7 +416,7 @@ const sessionPdf = () => F.write(TMP, 'Session 13.pdf', F.pdf([['Chapter One', '
       await waitSaved(page);
     });
 
-    await check('Reset Travel: the expedition line still makes sense (its days moved with the rest, to below 1)', async () => {
+    await check('Reset to Day 1: the expedition is cleared with the rest of the journey', async () => {
       await makeCamp(page);
       await makeCamp(page);                                               /* Day 11: the expedition began on Day 9 */
       const before = await until(page, x => x.day === 'Day 11 10 days passed', 'Day 11');
@@ -424,13 +424,13 @@ const sessionPdf = () => F.write(TMP, 'Session 13.pdf', F.pdf([['Chapter One', '
       await page.click('[data-test=reset-travel]');
       await H.clickModal(page, 'OK');
       await waitSaved(page);
-      const line = 'Expedition Expedition: began Day \u22121 \u00b7 running 2 days (Reset Travel moved the days)';
+      const line = 'Expedition No expedition yet';
       const d = await until(page, x => x.day === 'Day 1 0 days passed', 'Day 1 again');
-      equal(d.expedition, line, 'Day 9 moved with the reset: 2 days before the new Day 1 is Day \u22121');
+      equal(d.expedition, line, 'the reset cleared the expedition');
       await page.reload();
       await page.waitForSelector('[data-test=region]');
       await openDoc(page);
-      equal((await until(page, x => /Expedition:/.test(x.expedition || ''), 'the line after a reload')).expedition, line, 'and a reload keeps it');
+      equal((await until(page, x => /Expedition/.test(x.expedition || ''), 'the line after a reload')).expedition, line, 'and a reload keeps it');
       await H.shot(page, 'dmdoc-contents-reset');
     });
 
