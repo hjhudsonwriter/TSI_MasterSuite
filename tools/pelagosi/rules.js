@@ -9,6 +9,7 @@
   var pel = TSI.pelagosi = TSI.pelagosi || {};
 
   function data() { return window.TSI_DATA.pelagosi; }
+  var LEVELS = ['cut', 'fragment', 'whole'];
 
   var rules = {
     /* ---------- The Marker Remembers ---------- */
@@ -113,6 +114,117 @@
         });
       } while (rules.isOuterSolved(pillars));
       return pillars;
+    },
+
+    /* ---------- The Tidal Sequence, v2 (The Absent Tide) ---------- */
+
+    /* Step a rune index round a ring of `count`, either way. */
+    cycleRune: function (index, step, count) {
+      return (((index + step) % count) + count) % count;
+    },
+
+    /* Wall line levels run cut < fragment < whole. */
+    setLineLevel: function (levels, i, level) {
+      var order = LEVELS;
+      if (!Array.isArray(levels)) return levels;
+      if (order.indexOf(level) < 0 || !(i >= 0 && i < levels.length) || Math.floor(i) !== i) return levels.slice();
+      var out = levels.slice();
+      out[i] = level;
+      return out;
+    },
+
+    /* Raise the lowest line that is not yet whole by one level. Returns the same array when all are whole. */
+    raiseLine: function (levels) {
+      for (var i = 0; i < levels.length; i++) {
+        var at = LEVELS.indexOf(levels[i]);
+        if (at < 2) {
+          var out = levels.slice();
+          out[i] = LEVELS[at < 0 ? 1 : at + 1];
+          return out;
+        }
+      }
+      return levels;
+    },
+
+    /* The text to show for a wall line: cut = one block per letter (spaces and punctuation kept),
+       fragment = the authored fragment, whole = the whole line. */
+    wallLineText: function (line, level) {
+      if (level === 'whole') return line.whole;
+      if (level === 'fragment') return line.fragment;
+      return line.whole.replace(/[A-Za-z0-9À-ɏ]/g, '▒');
+    },
+
+    canAskChamber: function (pressure, cfg) {
+      return pressure <= cfg.hint.maxPressureToAsk;
+    },
+
+    /* Ask the Chamber: pressure up one step, one thing revealed. `state` is { pressure, lines, pillars };
+       returns a new state plus what was revealed ('line' with its index, or 'clue' with the outer clue).
+       If it can't be asked, the state is returned unchanged with revealed null. */
+    askChamber: function (state, cfg) {
+      if (!rules.canAskChamber(state.pressure, cfg)) return { pressure: state.pressure, lines: state.lines, revealed: null };
+      var pressure = rules.nextPressure(state.pressure);
+      var lines = rules.raiseLine(state.lines);
+      if (lines !== state.lines) {
+        var index = 0;
+        while (lines[index] === state.lines[index]) index++;
+        return { pressure: pressure, lines: lines, revealed: { kind: 'line', index: index } };
+      }
+      return { pressure: pressure, lines: lines, revealed: { kind: 'clue', text: rules.outerClue(state.pillars, pressure) } };
+    },
+
+    /* The optional timer: true when the tide should rise a step. Never above cfg.timer.cap. */
+    tideReturns: function (elapsedMs, cfg, pressure) {
+      var t = cfg.timer;
+      var on = cfg.timerOn === undefined ? t && t.enabledByDefault : cfg.timerOn;
+      if (!t || !on) return false;
+      return pressure < t.cap && elapsedMs >= t.seconds * 1000;
+    },
+
+    /* What attuning the basin does: 'confirm' (Current), 'hold' (Anchor) or 'wrong'. */
+    basinOutcome: function (runeId, cfg) {
+      if (runeId === cfg.basinSolution) return 'confirm';
+      if (runeId === 'anchor') return 'hold';
+      return 'wrong';
+    },
+
+    /* A Misread never causes a surge: pressure rises only while below the limit (Reversing is 3, so below 3). */
+    misreadOutcome: function (pressure, cfg) {
+      var raise = !!cfg.misreadCostsPressure && pressure < cfg.misreadMaxPressure;
+      return { raise: raise, text: cfg.misreadText };
+    },
+
+    /* The finale's cues, earliest first. */
+    finaleCues: function (cfg) {
+      return cfg.finale.cues.slice().sort(function (a, b) { return a.at - b.at; });
+    },
+
+    /* The ordered end buttons by how the finale began: 'solve' or 'anyway'. */
+    finaleEndOptions: function (source) {
+      var list = data().tidal.finale.endButtons[source === 'anyway' ? 'anyway' : 'solve'];
+      return list.slice();
+    },
+
+    /* Capture / restore the puzzle for 'Play the Absence anyway' then 'Return to the puzzle'.
+       Only these fields; both directions copy, so nothing is shared with the live state. */
+    snapshotPuzzle: function (state) {
+      var pillars = {};
+      Object.keys(state.pillars).forEach(function (id) {
+        pillars[id] = { runeIndex: state.pillars[id].runeIndex, directionIndex: state.pillars[id].directionIndex };
+      });
+      return {
+        pillars: pillars,
+        basinRuneIndex: state.basinRuneIndex,
+        pressure: state.pressure,
+        lines: state.lines.slice(),
+        attempts: state.attempts,
+        phase: state.phase,
+        solved: !!state.solved
+      };
+    },
+
+    restorePuzzle: function (snapshot) {
+      return rules.snapshotPuzzle(snapshot);
     },
 
     /* 'topLeft' → 'Top Left', 'current' → 'Current' (the old tool's labels). */
