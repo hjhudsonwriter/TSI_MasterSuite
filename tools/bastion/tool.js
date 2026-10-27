@@ -2707,15 +2707,30 @@
 
 
       /* ---------- The Routes map (the Hall's until step S08) ----------
-         The map of the Scarlett Isles. A Clan's lane GLOWS when the Ironbow holds a registered Port Charter at one of
-         its ports, and brighter while a ship is at sea to it (R.routesMap, commerce-rules.js). Beside it, every Charter
-         and the ships on the way. Nothing here changes the Bastion. */
+         The map of the Scarlett Isles. A Port's route GLOWS while the Ironbow holds a registered Port Charter for it, and
+         brighter while a ship is at sea to it (R.routesMap, commerce-rules.js). A ship at sea is a small badge that moves
+         along its route by the day (R.shipProgress). Beside the map, every Charter and the ships on the way. Nothing here
+         changes the Bastion. */
+      var boatSpots = {};   /* where each ship's badge was last drawn, so it glides when the day changes */
+      var MAP_W = 1494, MAP_H = 1996, BOAT_PX = 64;
       function routesPane() {
         var map = R.routesMap(state, data);
         var lit = map.lanes.filter(function (l) { return l.art; });
         var overlays = lit.map(function (l) {
-          return el('img', { class: 'tsi-bas-trademap__route' + (l.glow === 'sea' ? ' tsi-bas-trademap__route--sea' : ''), src: asset(l.art), alt: 'Clan ' + l.name + ' trade route', 'data-clan': l.name, 'data-glow': l.glow });
+          return el('img', { class: 'tsi-bas-trademap__route' + (l.glow === 'sea' ? ' tsi-bas-trademap__route--sea' : ''), src: asset(l.art), alt: l.name + ' trade route', 'data-port': l.port, 'data-glow': l.glow });
         });
+        var seen = {};
+        var boats = map.boats.map(function (b) {
+          function put(node, pt) { node.style.left = (pt[0] / MAP_W * 100) + '%'; node.style.top = (pt[1] / MAP_H * 100) + '%'; }
+          var node = el('img', { class: 'tsi-bas-trademap__ship', src: asset('ui/trade-ship.svg'), alt: b.label, title: b.label, role: 'img', 'aria-label': b.label, 'data-test': 'ship-badge', 'data-ship': b.id, 'data-port': b.port, 'data-phase': b.phase, 'data-day': String(b.day), 'data-of': String(b.of), 'data-fraction': b.fraction.toFixed(3), 'data-x': String(b.point[0]), 'data-y': String(b.point[1]) });
+          node.style.width = (BOAT_PX / MAP_W * 100) + '%';
+          var was = boatSpots[b.id];
+          seen[b.id] = b.point;
+          put(node, was || b.point);
+          if (was && (was[0] !== b.point[0] || was[1] !== b.point[1])) life.raf(function () { put(node, b.point); });
+          return node;
+        });
+        boatSpots = seen;
         var rows = map.rows.map(function (r) {
           return el('li', { 'data-test': 'route-row-' + r.port, 'data-status': r.status }, [
             el('b', { text: r.label }), ': ' + r.stateText + '.',
@@ -2725,12 +2740,12 @@
         return el('div', { class: 'tsi-bas-routes', 'data-test': 'dock-routes' }, [
           el('div', { class: 'tsi-bas-trademap', 'data-test': 'trade-map' }, el('div', { class: 'tsi-bas-trademap__canvas' }, [
             el('img', { class: 'tsi-bas-trademap__img', src: asset('ui/clan_trading_locations.png'), alt: 'The Scarlett Isles: where the Clans trade' })
-          ].concat(overlays))),
+          ].concat(overlays, boats))),
           el('div', { class: 'tsi-bas-routes__side' }, [
-            muted('A Clan\'s route glows while the Ironbow holds a registered Port Charter at one of its ports, and glows brighter while a ship is at sea to it.'),
+            muted('A port\'s route glows while the Ironbow holds a registered Port Charter for it, and glows brighter while a ship is at sea to it. A ship at sea sails along its route, day by day.'),
             el('p', { class: 'tsi-bas-muted' }, ['Glowing now: ', el('b', { 'data-test': 'routes-shown', text: lit.length ? lit.map(function (l) { return l.name + (l.glow === 'sea' ? ' (a ship at sea)' : ''); }).join(', ') : 'none' })]),
             el('b', { class: 'tsi-bas-routes__head', text: 'Port Charters and ships' }),
-            rows.length ? el('ul', { class: 'tsi-bas-res-list', 'data-test': 'routes-list' }, rows) : muted('No Port Charter yet. The DM grants one in the Explorer; once the Dock has registered it, its Clan\'s route lights up here.')
+            rows.length ? el('ul', { class: 'tsi-bas-res-list', 'data-test': 'routes-list' }, rows) : muted('No Port Charter yet. The DM grants one in the Explorer; once the Dock has registered it, its port\'s route lights up here.')
           ])
         ]);
       }

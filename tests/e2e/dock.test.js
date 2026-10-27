@@ -6,9 +6,9 @@
    - Register Port Charter is a Dock order (under Orders): a 3-day order, "Dock: Register Port
      Charter (Goldport)";
    - the Port Charters tab holds each Charter's state and terms;
-   - the Routes tab is the map of the Scarlett Isles: a Clan's route GLOWS for each registered Port
-     Charter (one lane for the ports of one Clan), glows brighter with a ship at sea, and lights
-     nothing for a Charter that is only earned; the pulse stops with "reduce motion";
+   - the Routes tab is the map of the Scarlett Isles: a Port's own route GLOWS for each registered Port
+     Charter, glows brighter with a ship at sea, and lights nothing for a Charter that is only
+     earned; a ship badge sails along the route by the day; the pulse stops with "reduce motion";
    - the panel fits the laptop (1707 x 930 at 1.5) and the TV (1920 x 1080 at 1) on every tab, with no
      sideways scrolling;
    - an old Bastion whose Hall had a Register Port Charter order pending is converted: the order is
@@ -27,6 +27,7 @@ const CHARTER = (id, port, clan, status, day) => ({ id: id, port: port, clan: cl
 async function open(browser, size) {
   const ctx = await H.newContext(browser, size, { backedUp: true });
   await ctx.setOffline(true);
+  await ctx.addInitScript(() => { Math.random = () => 0.99; });
   /* The Bastion reads the Explorer's day, so the Explorer is open beside it. */
   const ex = await ctx.newPage();
   await ex.goto(HARNESS + '?tool=explorer');
@@ -133,18 +134,23 @@ async function panelFits(ba, sels) {
   });
 
   /* ------------------------------------------------------------------ */
-  section('The Routes map: a Clan glows for each registered Port Charter');
+  section('The Routes map: a port\'s route glows for each registered Port Charter, and a ship sails along it');
 
-  await check('no registered Charter: the map shows, nothing glows, and the Charter that is only earned or being registered lights nothing but is listed', async () => {
+  const VOY = (id, port, clan, charterId, dep, arr, ret, extra) => Object.assign({ id: id, port: port, clan: clan, charterId: charterId, mode: 'commodity_backed', cargo: [{ goodId: 'sawn_lumber', name: 'Sawn Lumber', qty: 1 }], departDay: dep, arriveDay: arr, returnDay: ret, stage: 'outbound', risk: 'high', basePct: 20, protections: [], chance: 20, scheduleId: null, outcome: null, recalledDay: null, roll: null, terms: null }, extra || {});
+  const routes = ba => ba.$$eval('[data-test=trade-map] img.tsi-bas-trademap__route', l => l.map(x => [x.getAttribute('data-port'), x.getAttribute('data-glow'), x.classList.contains('tsi-bas-trademap__route--sea')]));
+  const badge = ba => ba.$$eval('[data-test=ship-badge]', l => l.map(x => ({ port: x.getAttribute('data-port'), phase: x.getAttribute('data-phase'), f: +x.getAttribute('data-fraction'), x: +x.getAttribute('data-x'), y: +x.getAttribute('data-y'), label: x.getAttribute('aria-label') })));
+
+  await check('no registered Charter: the map shows, nothing glows, no ship, and the Charter that is only earned or being registered lights nothing but is listed', async () => {
     await openDock(ba);
     await tab(ba, 'routes');
     assert(await ba.$('[data-test=trade-map] img.tsi-bas-trademap__img'), 'the map of the Scarlett Isles');
-    equal(await ba.$$('[data-test=trade-map] img.tsi-bas-trademap__route').then(l => l.length), 0);
+    equal(await routes(ba), []);
+    equal(await badge(ba), []);
     equal(await bare(ba, '[data-test=routes-shown]'), 'none');
     equal(await ba.$$eval('[data-test=routes-list] li', l => l.map(x => x.getAttribute('data-status'))), ['registering']);
   });
 
-  await check('registered Charters at Goldport and Moltenport (Clan Molten) and Timberport (Clan Blackstone) light two lanes; Steelport (Clan Slade), only earned, lights none', async () => {
+  await check('registered Charters at Goldport, Moltenport and Timberport light those three routes (one each); Steelport, only earned, lights none', async () => {
     await ba.evaluate(() => TSI.bastion.debug.change(s => {
       s.pendingOrders = [];
       s.tradeNetwork.portCharters = [
@@ -155,29 +161,83 @@ async function panelFits(ba, sels) {
       ];
     }));
     await ba.waitForSelector('[data-test=trade-map] img.tsi-bas-trademap__route');
-    equal(await ba.$$eval('[data-test=trade-map] img.tsi-bas-trademap__route', l => l.map(x => [x.getAttribute('data-clan'), x.getAttribute('data-glow'), x.classList.contains('tsi-bas-trademap__route--sea')])), [['Blackstone', 'registered', false], ['Molten', 'registered', false]]);
-    equal(await bare(ba, '[data-test=routes-shown]'), 'Blackstone, Molten');
+    equal(await routes(ba), [['timberport', 'registered', false], ['goldport', 'registered', false], ['moltenport', 'registered', false]]);
+    equal(await bare(ba, '[data-test=routes-shown]'), 'Timberport, Goldport, Moltenport');
     equal(await ba.$$eval('[data-test=routes-list] li', l => l.map(x => x.getAttribute('data-status'))), ['registered', 'registered', 'registered', 'earned']);
-    const src = await ba.$eval('[data-test=trade-map] img.tsi-bas-trademap__route[data-clan=Molten]', i => i.getAttribute('src'));
-    assert(/molten_trade_route\.png$/.test(src), src);
+    const src = await ba.$eval('[data-test=trade-map] img.tsi-bas-trademap__route[data-port=goldport]', i => i.getAttribute('src'));
+    assert(/routes\/goldport\.png$/.test(src), src);
     equal(await ba.evaluate(() => [...document.querySelectorAll('[data-test=trade-map] img')].every(i => i.complete && i.naturalWidth > 0)), true, 'every picture loaded');
     await H.shot(ba, 'dock-routes-laptop');
   });
 
-  await check('a ship at sea to a Clan makes its lane glow brighter (and the list says where it is); when the ship is home it is steady again', async () => {
-    await ba.evaluate(() => TSI.bastion.debug.change(s => {
-      s.tradeNetwork.voyages = [{ id: 'v1', port: 'goldport', clan: 'molten', charterId: 'c-gold', mode: 'commodity_backed', cargo: [{ goodId: 'sawn_lumber', name: 'Sawn Lumber', qty: 1 }], departDay: 1, arriveDay: 8, returnDay: 15, stage: 'outbound', risk: 'high', basePct: 20, protections: [], chance: 20, scheduleId: null, outcome: null, recalledDay: null, roll: null, terms: null }];
-    }));
-    await ba.waitForSelector('img.tsi-bas-trademap__route--sea');
-    equal(await ba.$$eval('[data-test=trade-map] img.tsi-bas-trademap__route', l => l.map(x => [x.getAttribute('data-clan'), x.getAttribute('data-glow')])), [['Blackstone', 'registered'], ['Molten', 'sea']]);
-    equal(await bare(ba, '[data-test=routes-shown]'), 'Blackstone, Molten (a ship at sea)');
-    assert(/Sailing to Goldport: arrives Day 8, home Day 15/.test(await bare(ba, '[data-test=route-row-goldport]')), await bare(ba, '[data-test=route-row-goldport]'));
+  await check('un-registering a Charter (or losing it) hides its route', async () => {
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.tradeNetwork.portCharters.find(c => c.id === 'c-mol').status = 'earned'; }));
+    await ba.waitForFunction(() => document.querySelectorAll('img.tsi-bas-trademap__route').length === 2);
+    equal((await routes(ba)).map(r => r[0]), ['timberport', 'goldport']);
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.tradeNetwork.portCharters = s.tradeNetwork.portCharters.filter(c => c.id !== 'c-timb'); }));
+    await ba.waitForFunction(() => document.querySelectorAll('img.tsi-bas-trademap__route').length === 1);
+    equal((await routes(ba)).map(r => r[0]), ['goldport']);
+  });
+
+  /* Real days: the Explorer makes Camp, the Bastion follows (as commerce.test.js does). */
+  async function passDay() {
+    await ex.waitForTimeout(400);
+    await ex.click('[data-test=camp]');
+    for (let n = 0; n < 20; n++) {
+      await ex.waitForTimeout(200);
+      if (!(await ex.$('.tsi-modal'))) { if (n > 2) break; continue; }
+      await ex.click('.tsi-modal__foot button:last-child');
+    }
+    const day = await ex.evaluate(() => TSI.explorer.debug.state().travel.day);
+    for (let n = 0; n < 60; n++) {
+      if (await ba.$('[data-test=ironbow-word]')) await ba.click('[data-test=ironbow-word] .tsi-modal__foot button.tsi-btn--primary');
+      const ok = await ba.evaluate(d => { const s = TSI.bastion.debug.state(); return s.day === d && !s.dayInProgress && !TSI.bastion.debug.busy(); }, day);
+      if (ok && !(await ba.$('[data-test=ironbow-word]'))) break;
+      await ba.waitForTimeout(250);
+    }
+    await ba.waitForTimeout(150);
+  }
+
+  await check('a ship sails: at the Ironbow on its sail day, along the route by the day, rests at the port, returns, and is gone when home; its route glows brighter meanwhile', async () => {
+    await ba.evaluate(v => TSI.bastion.debug.change(s => { s.tradeNetwork.voyages = [Object.assign(v, { departDay: s.day, arriveDay: s.day + 2, returnDay: s.day + 5, chance: 0 })]; }), VOY('v1', 'goldport', 'molten', 'c-gold', 0, 0, 0));
+    await ba.waitForSelector('[data-test=ship-badge]');
+    equal(await routes(ba), [['goldport', 'sea', true]]);
+    equal(await bare(ba, '[data-test=routes-shown]'), 'Goldport (a ship at sea)');
+    let b = (await badge(ba))[0];
+    equal([b.port, b.phase, b.f, b.label], ['goldport', 'outbound', 0, 'Ship to Goldport: day 0 of 5']);
+    const start = [b.x, b.y];
+    assert(Math.hypot(start[0] - 1056, start[1] - 1272) < 60, 'at the Ironbow: ' + start);
+    await H.shot(ba, 'dock-routes-ship-start');
+    await passDay();
+    b = (await badge(ba))[0];
+    equal([b.phase, b.f, b.label], ['outbound', 0.5, 'Ship to Goldport: day 1 of 5']);
+    assert(Math.hypot(b.x - start[0], b.y - start[1]) > 100, 'it has moved: ' + [b.x, b.y]);
+    await ba.waitForTimeout(1000);
+    const inMap = await ba.$eval('[data-test=ship-badge]', i => { const m = i.parentElement.getBoundingClientRect(), r = i.getBoundingClientRect(); return r.left >= m.left - 1 && r.right <= m.right + 1 && r.top >= m.top - 1 && r.bottom <= m.bottom + 1 && r.width > 10; });
+    equal(inMap, true, 'the badge sits inside the map and is visible');
+    await H.shot(ba, 'dock-routes-ship-mid');
+    await passDay();
+    b = (await badge(ba))[0];
+    equal([b.phase, b.f], ['at-port', 1], 'it rests at the port the day it sells');
+    await passDay();
+    b = (await badge(ba))[0];
+    equal([b.phase, +b.f.toFixed(3)], ['returning', 0.667]);
+    await passDay(); await passDay();
+    equal(await badge(ba), [], 'home: the badge is gone');
+    equal(await routes(ba), [['goldport', 'registered', false]]);
+  });
+
+  await check('a ship to a port whose Charter is not registered is still drawn, but that route does not show', async () => {
+    await ba.evaluate(v => TSI.bastion.debug.change(s => { s.tradeNetwork.voyages = [Object.assign(v, { departDay: s.day, arriveDay: s.day + 4, returnDay: s.day + 10 })]; }), VOY('v2', 'steelport', 'slade', 'c-stee', 0, 0, 0));
+    await ba.waitForSelector('[data-test=ship-badge]');
+    equal((await badge(ba)).map(x => x.port), ['steelport']);
+    equal((await routes(ba)).map(r => r[0]), ['goldport']);
     await ba.evaluate(() => TSI.bastion.debug.change(s => { s.tradeNetwork.voyages = []; }));
-    await ba.waitForFunction(() => !document.querySelector('img.tsi-bas-trademap__route--sea'));
+    await ba.waitForFunction(() => !document.querySelector('[data-test=ship-badge]'));
   });
 
   await check('the glow pulses by default and holds steady with "reduce motion"', async () => {
-    const anim = () => ba.$eval('[data-test=trade-map] img.tsi-bas-trademap__route[data-clan=Molten]', i => getComputedStyle(i).animationName);
+    const anim = () => ba.$eval('[data-test=trade-map] img.tsi-bas-trademap__route[data-port=goldport]', i => getComputedStyle(i).animationName);
     equal(await anim(), 'tsi-bas-route-pulse');
     await ba.emulateMedia({ reducedMotion: 'reduce' });
     equal(await anim(), 'none');
@@ -209,6 +269,7 @@ async function panelFits(ba, sels) {
     s.warehouse = [{ id: 'w1', goodId: 'sawn_lumber', item: 'Sawn Lumber', qty: 3, gp: '', notes: '' }];
     s.tradeNetwork.portCharters = ['goldport:molten', 'moltenport:molten', 'timberport:blackstone', 'steelport:slade', 'leatherport:karr', 'redport:farmer'].map((p, i) => ({ id: 'c' + i, port: p.split(':')[0], clan: p.split(':')[1], mode: 'commodity_backed', status: 'registered', earnedDay: 1, registeredDay: 1, terms: { priceMult: 1.1, feePerLot: 5, tariffPct: 4 }, from: { code: 'DM', title: 'DM award' }, text: '', termsLog: [{ day: 1, kind: 'amend', before: { priceMult: 1, feePerLot: 0, tariffPct: 0 }, after: { priceMult: 1.1, feePerLot: 5, tariffPct: 4 }, why: 'A feast.' }] }));
   }));
+  await ba.evaluate(() => TSI.bastion.debug.change(s => { s.tradeNetwork.voyages = [{ id: 'tv1', port: 'redport', clan: 'farmer', charterId: 'c5', mode: 'commodity_backed', cargo: [{ goodId: 'sawn_lumber', name: 'Sawn Lumber', qty: 1 }], departDay: s.day - 1, arriveDay: s.day + 3, returnDay: s.day + 8, stage: 'outbound', risk: 'low', basePct: 5, protections: [], chance: 5, scheduleId: null, outcome: null, recalledDay: null, roll: null, terms: null }]; }));
   await ba.waitForTimeout(500);
   section('The TV (1920 x 1080, 1)');
   await check('no sideways scrolling on any tab, Ship cargo… in view, six Charters with their terms', async () => {
@@ -217,7 +278,7 @@ async function panelFits(ba, sels) {
       await tab(ba, id);
       const fit = await panelFits(ba, id === 'cargo' ? ['[data-test=ship-cargo]'] : []);
       equal([id, fit.page, fit.dialog, fit.body, fit.inDialog, fit.notInView], [id, true, true, true, true, []]);
-      if (id === 'routes') await H.shot(ba, 'dock-routes-tv');
+      if (id === 'routes') { equal((await ba.$$('[data-test=ship-badge]')).length, 1, 'the ship badge on the TV'); await H.shot(ba, 'dock-routes-tv'); }
     }
     await tab(ba, 'charters');
     equal(await ba.$$eval('[data-test=dock-charters] .tsi-bas-terms', l => l.length), 6);
