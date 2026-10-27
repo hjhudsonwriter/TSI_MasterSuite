@@ -585,3 +585,12 @@ Harry's uploads (2000 x 1116, no level pictures yet) are `tools/bastion/assets/p
 | `tools/bastion/assets/facilities/beast_pen.jpg` (kept where it is) | copied to `tools/bastion/assets/player-panels/beast_pen.jpg` (the Beast Pen's Player View panel, 26 October 2026) |
 | Harry's upload, three empty cells (`571f7c32-image.jpg`, 26 October 2026) | `tools/bastion/assets/player-panels/prison_tower-empty.jpg` (2576 x 1438, JPEG quality 86) |
 | Harry's upload, a prisoner in the left cell (`179ec958-image.jpg`) | `tools/bastion/assets/player-panels/prison_tower-occupied-1.jpg` (2576 x 1438, JPEG quality 86) |
+
+## The Fishery & Smokehouse's Player View pictures, 27 October 2026
+
+Harry's upload of nine 2752 x 1536 JPEGs (placed in the repository's top folder, then removed; they stay in git history), shrunk to 2400 pixels wide (JPEG quality 84).
+
+| Old location | New location |
+|---|---|
+| `Fishery_L1.jpeg` to `Fishery_L4.jpeg` | `tools/bastion/assets/player-panels/fishery-level-1.jpg` to `fishery-level-4.jpg` (no Level 5 yet) |
+| `Fishery_Ledger1.jpeg` to `Fishery_Ledger5.jpeg` | `tools/bastion/assets/player-panels/fishery-ledger-1.jpg` to `fishery-ledger-5.jpg` |

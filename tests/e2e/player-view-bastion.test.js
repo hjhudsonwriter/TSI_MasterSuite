@@ -384,6 +384,108 @@ const SECRETS = ['ZZWAREHOUSE', 'ZZDMNOTE', 'ZZPRISONER', 'ZZBEAST', 'ZZPAIRCODE
       await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
     });
 
+    section('The Fishery\'s pictures and ledger at ' + name);
+    await check('the Fishery\'s room picture follows its level (Level 5 shows Level 4\'s), and the hotspot sits over the book', async () => {
+      await change(page, s => { s.partyLevel = 13; s.builtPlots[0] = { facId: 'fishery_smokehouse', status: 'built' }; s.facilityLevels.fishery_smokehouse = 1; });
+      await pause(page);
+      await page.click('[data-test=tile-fishery_smokehouse]');
+      await pv.waitForSelector('[data-test=pv-panel][data-fac=fishery_smokehouse]');
+      const art = () => pv.$$eval('.tsi-bpv-panel__art', n => n.map(x => x.dataset.art));
+      equal(await art(), ['fishery-level-1.jpg']);
+      equal(await bare(pv, '[data-test=pv-panel-tagline]'), 'The catch comes in with every tide...');
+      equal(await bare(pv, '[data-test=pv-panel-level]'), 'Level 1');
+      equal(await pv.$eval('[data-test=pv-ledger-hotspot]', b => [b.title, b.tagName, b.hidden]), ['Open the ledger', 'BUTTON', false]);
+      /* The book sits at about x 72 to 84, y 58 to 67 percent of the picture: inside the hotspot, on the screen. */
+      const inside = await pv.evaluate(() => {
+        const img = document.querySelector('.tsi-bpv-panel__art'), wrap = document.querySelector('.tsi-bpv-panel__art-wrap').getBoundingClientRect();
+        const W = wrap.width, H = wrap.height, iw = img.naturalWidth, ih = img.naturalHeight, sc = Math.max(W / iw, H / ih), w = iw * sc, h = ih * sc;
+        const ox = wrap.x + (W - w) * 0.5, oy = wrap.y + (H - h) * 0.55;
+        const hs = document.querySelector('[data-test=pv-ledger-hotspot]').getBoundingClientRect();
+        const bx0 = ox + w * 0.72, bx1 = ox + w * 0.84, by0 = oy + h * 0.58, by1 = oy + h * 0.67;
+        return { ok: hs.x <= bx0 && hs.right >= bx1 && hs.y <= by0 && hs.bottom >= by1, hs: [hs.x, hs.y, hs.right, hs.bottom], book: [bx0, by0, bx1, by1], vis: hs.right <= innerWidth && hs.bottom <= innerHeight };
+      });
+      assert(inside.ok && inside.vis, 'the hotspot covers the book: ' + JSON.stringify(inside));
+      equal(await pv.$eval('[data-test=pv-ledger]', n => getComputedStyle(n).visibility), 'hidden');
+      await H.shot(pv, 'pv-panel-fishery-level1-' + name);
+      for (const lv of [2, 3, 4, 5]) {
+        await page.evaluate(l => TSI.bastion.debug.change(function (s) { s.facilityLevels.fishery_smokehouse = l; }), lv);
+        const want = 'fishery-level-' + Math.min(lv, 4) + '.jpg';
+        await pv.waitForFunction(w => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === w, want, { timeout: 6000 });
+      }
+      await page.evaluate(() => TSI.bastion.debug.change(function (s) { s.facilityLevels.fishery_smokehouse = 1; }));
+      await pv.waitForFunction(() => document.querySelector('.tsi-bpv-panel__art').dataset.art === 'fishery-level-1.jpg' && document.querySelectorAll('.tsi-bpv-panel__art').length === 1, null, { timeout: 6000 });
+    });
+
+    await check('clicking the hotspot (or Enter) opens that level\'s ledger over the panel; a click or Escape closes it', async () => {
+      const open = () => pv.$eval('[data-test=pv-ledger]', n => n.classList.contains('is-open'));
+      await pv.click('[data-test=pv-ledger-hotspot]');
+      await pv.waitForFunction(() => getComputedStyle(document.querySelector('[data-test=pv-ledger]')).visibility === 'visible');
+      equal(await pv.$eval('[data-test=pv-ledger]', n => n.dataset.ledger), 'fishery-ledger-1.jpg');
+      equal(await pv.$eval('.tsi-bpv-ledger__img', i => [i.naturalWidth, getComputedStyle(i).objectFit]), [2400, 'contain']);
+      const l = await rect(pv, '[data-test=pv-ledger]'), w = await rect(pv, '.tsi-bpv-panel__art-wrap');
+      assert(Math.abs(l.w - w.w) < 4 && Math.abs(l.h - w.h) < 4, 'it fills the picture area');
+      await pv.waitForTimeout(700);
+      await H.shot(pv, 'pv-panel-fishery-ledger-' + name);
+      await pv.click('[data-test=pv-ledger]');
+      equal(await open(), false);
+      await pv.focus('[data-test=pv-ledger-hotspot]');
+      await pv.keyboard.press('Enter');
+      equal(await open(), true);
+      await pv.keyboard.press('Escape');
+      equal(await open(), false);
+      equal(await pv.$('.tsi-bpv-panel [data-test=pv-panel-title]') !== null, true, 'Escape only closed the ledger');
+    });
+
+    await check('the DM\'s Show ledger to players button mirrors it, and an upgrade or another facility closes it; Level 5\'s ledger shows although its room picture is awaited', async () => {
+      const open = () => pv.$eval('[data-test=pv-ledger]', n => n.classList.contains('is-open'));
+      equal(await page.textContent('[data-test=ledger-toggle]'), 'Show ledger to players');
+      await page.click('[data-test=ledger-toggle]');
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-ledger]').classList.contains('is-open'));
+      equal(await page.textContent('[data-test=ledger-toggle]'), 'Hide ledger from players');
+      await pause(page);
+      await page.click('[data-test=ledger-toggle]');
+      await pv.waitForFunction(() => !document.querySelector('[data-test=pv-ledger]').classList.contains('is-open'));
+      equal(await page.textContent('[data-test=ledger-toggle]'), 'Show ledger to players');
+      await pause(page);
+      await page.click('[data-test=ledger-toggle]');
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-ledger]').classList.contains('is-open'));
+      /* The player closes it by hand; the DM's next change overrides. */
+      await pv.click('[data-test=pv-ledger]');
+      equal(await open(), false);
+      await pause(page);
+      await page.click('[data-test=ledger-toggle]');
+      await pause(page);
+      await page.click('[data-test=ledger-toggle]');
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-ledger]').classList.contains('is-open'));
+      /* An upgrade closes it. */
+      await page.evaluate(() => TSI.bastion.debug.change(function (s) { s.facilityLevels.fishery_smokehouse = 5; }));
+      await pv.waitForFunction(() => !document.querySelector('[data-test=pv-ledger]').classList.contains('is-open'));
+      await pv.waitForFunction(() => document.querySelector('.tsi-bpv-panel__art').dataset.art === 'fishery-level-4.jpg' && document.querySelectorAll('.tsi-bpv-panel__art').length === 1, null, { timeout: 6000 });
+      await pv.click('[data-test=pv-ledger-hotspot]');
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-ledger]').dataset.ledger === 'fishery-ledger-5.jpg' && document.querySelector('[data-test=pv-ledger]').classList.contains('is-open'));
+      await pv.waitForTimeout(700);
+      await H.shot(pv, 'pv-panel-fishery-ledger5-' + name);
+      /* Another facility, then back: closed. */
+      await page.keyboard.press('Escape');
+      await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
+      await pause(page);
+      await page.click('[data-test=tile-workshop]');
+      await pv.waitForSelector('[data-test=pv-panel][data-fac=workshop]');
+      equal(await page.$('[data-test=ledger-toggle]'), null, 'no ledger button where there is no ledger');
+      equal(await pv.$('[data-test=pv-ledger-hotspot], [data-test=pv-ledger]'), null);
+      await page.keyboard.press('Escape');
+      await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
+      await pause(page);
+      await page.click('[data-test=tile-fishery_smokehouse]');
+      await pv.waitForSelector('[data-test=pv-panel][data-fac=fishery_smokehouse]');
+      equal(await open(), false);
+      equal(await page.textContent('[data-test=ledger-toggle]'), 'Show ledger to players');
+      const sent = await page.evaluate(() => { const s = TSI.bastion.rules.playerSnapshot(TSI.bastion.debug.state(), { bastion: TSI_DATA.bastion, facilities: TSI_DATA.bastionFacilities }, { focus: 'fishery_smokehouse', ledger: true }); return [s.ledger, JSON.stringify(s).indexOf('ledger-')]; });
+      equal(sent, [true, -1]);
+      await page.keyboard.press('Escape');
+      await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
+    });
+
     await check('the DM\'s other panels (Orders, Warehouse, Construction) show nothing on the Player View', async () => {
       await pause(page);
       await page.click('[data-test=orders-count]');

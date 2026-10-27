@@ -8,6 +8,7 @@
             for one picture per facility level (a level with none uses the nearest lower level's). Leave it null until
             Harry's picture arrives: the panel then shows the facility's existing painting (bastion-data.js panelImages,
             facilityImages, then the building cut from the map). Pictures fill the picture area (cropped to fit)
+   ledger   { levels: { 1: 'file.jpg' }, hotspot: { 1: { x, y, w, h } } }: a book on the room picture that opens full size
    bare     true: only the title and the picture (the Party Quarters)
    art.states  { empty, occupied, 'cells-101'... }: a picture for a state of the facility (the Prison Tower's cells)
    focus    where the crop keeps in view, { x: 50, y: 50 } by default: percent across and down the picture
@@ -47,7 +48,17 @@ window.TSI_DATA.bastionPlayerPanels = [
     blurb: 'Lock up captives here, and question them if you dare.', widgets: ['level', 'orders'] },
   { id: 'herbal_gardens', title: 'Herbal Gardens', tagline: 'Green things grow where care is given...', art: null,
     blurb: 'Gather herbs and brew remedies.', widgets: ['level', 'orders'] },
-  { id: 'fishery_smokehouse', title: 'Fishery & Smokehouse', tagline: 'The catch comes in with every tide...', art: null,
+  /* The Fishery & Smokehouse: a picture per level (Level 5's is awaited: it shows Level 4's meanwhile) and a LEDGER: the
+     open book on the table at the right. ledger.hotspot is where it sits on the room picture, in percent of the picture
+     (x, y, width, height), per level; clicking it (or the DM's "Show ledger to players") opens ledger.levels[level] over
+     the panel. Any facility can get a ledger the same way. */
+  { id: 'fishery_smokehouse', title: 'Fishery & Smokehouse', tagline: 'The catch comes in with every tide...',
+    art: { levels: { 1: 'fishery-level-1.jpg', 2: 'fishery-level-2.jpg', 3: 'fishery-level-3.jpg', 4: 'fishery-level-4.jpg' /* 5: awaited */ } },
+    focus: { x: 50, y: 55 },
+    ledger: {
+      levels: { 1: 'fishery-ledger-1.jpg', 2: 'fishery-ledger-2.jpg', 3: 'fishery-ledger-3.jpg', 4: 'fishery-ledger-4.jpg', 5: 'fishery-ledger-5.jpg' },
+      hotspot: { 1: { x: 70, y: 55, w: 18, h: 15 }, 2: { x: 70, y: 55, w: 18, h: 15 }, 3: { x: 70, y: 55, w: 18, h: 15 }, 4: { x: 70, y: 55, w: 19, h: 16 } }
+    },
     blurb: 'Bring in fish and smoked stores for the Ironbow.', widgets: ['level', 'orders'] },
   { id: 'timber_sawmill', title: 'Timber Yard & Sawmill', tagline: 'The saw sings from dawn to dusk...', art: null,
     blurb: 'Fell and mill timber for building and trade.', widgets: ['level', 'orders'] },

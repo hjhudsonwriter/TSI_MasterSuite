@@ -90,6 +90,7 @@ window.TSI_DATA.tools = [
         'tools/bastion/data/commerce-data.js',
         'tools/bastion/data/courier-data.js',
         'tools/bastion/data/creatures-data.js',
+        'tools/bastion/data/player-panels-data.js',
         'tools/bastion/rules.js',
         'tools/bastion/strip-back-rules.js',
         'tools/bastion/commerce-rules.js',
