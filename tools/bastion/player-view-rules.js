@@ -17,6 +17,9 @@
      facilities: { id: { name, level, single, repair, orders: [names], staff?, gods? } },   built facilities
      ledger: true when the DM has chosen to show the open facility's ledger picture (false with no facility open)
      focus: a built facility's id, 'party_quarters', or null           the facility panel the DM has open
+     focusView: 'routes' when the DM has the Dock's panel open on its Routes tab, else null
+     routes: only with focusView 'routes' (R.playerRoutes): { charters: [{ port, label }], lanes: [{ port, sea }],
+       boats: [{ key, port, phase, fraction, point: [x, y], label }], journeys: [{ port, line }], more }
    }
    facilities.workshop.staff is [{ id, name, level, open }]; facilities.temple.gods is [{ id, name, pct }] (0 to 100).
    The Prison Tower shows only a level, its pending orders' names and facilities.prison_tower.cells: one true or false
@@ -58,7 +61,27 @@
     return null;
   }
 
-  /* extras: { crest: the Bastion's crest ({ key, dataUrl }) or null, focus: the open facility panel's id or null, ledger: true to show its ledger }. */
+  /* The Dock's Routes view for the players: which routes are lit (a registered Port Charter), where each ship at sea is,
+     and a line for each journey. Nothing else about the Dock reaches them: no gold, cargo, prices, risk, protections,
+     sales or ship records. At most PLAYER_JOURNEY_MAX journeys are sent (the rest are counted in `more`). */
+  R.PLAYER_JOURNEY_MAX = 12;
+  R.playerRoutes = function (s, data) {
+    var m = R.routesMap(s, data);
+    var seen = {};
+    var ships = R.voyages(s).filter(isObj);
+    return {
+      charters: R.registeredCharters(s).map(function (c) { return { port: str(c.port, 40), label: str(R.charterLabel(data, c), 120) }; }),
+      lanes: m.lanes.map(function (l) { return { port: str(l.port, 40), sea: l.glow === 'sea' }; }),
+      boats: m.boats.map(function (b) {
+        seen[b.port] = (seen[b.port] || 0) + 1;
+        return { key: str(b.port, 40) + '#' + seen[b.port], port: str(b.port, 40), phase: str(b.phase, 20), fraction: num(b.fraction, 0), point: [num(b.point[0], 0), num(b.point[1], 0)], label: str(b.label, 120) };
+      }),
+      journeys: ships.slice(0, R.PLAYER_JOURNEY_MAX).map(function (v) { return { port: str(v.port, 40), line: str(R.voyageState(v), 200) }; }),
+      more: Math.max(0, ships.length - R.PLAYER_JOURNEY_MAX)
+    };
+  };
+
+  /* extras: { crest: the Bastion's crest ({ key, dataUrl }) or null, focus: the open facility panel's id or null, ledger: true to show its ledger, view: 'routes' for the Dock's Routes tab }. */
   R.playerSnapshot = function (s, data, extras) {
     extras = isObj(extras) ? extras : {};
     var built = R.builtFacilityIds(s, data);
@@ -137,6 +160,7 @@
 
     var crest = extras.crest;
     var focus = typeof extras.focus === 'string' && (facilities[extras.focus] || extras.focus === R.PARTY_QUARTERS_ID) ? extras.focus : null;
+    var routesView = focus === 'dock' && extras.view === 'routes';
     return {
       v: 1,
       day: R.dayNum(s.day, 1),
@@ -155,7 +179,9 @@
       facilities: facilities,
       focus: focus,
       /* The DM has chosen to show the focused facility's ledger to the players (only ever true with a focus). */
-      ledger: !!focus && extras.ledger === true
+      ledger: !!focus && extras.ledger === true,
+      focusView: routesView ? 'routes' : null,
+      routes: routesView ? R.playerRoutes(s, data) : null
     };
   };
 }());

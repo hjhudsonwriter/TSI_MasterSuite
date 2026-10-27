@@ -8,6 +8,10 @@
 
 - The Dock's Routes tab lights a route for each registered Port Charter and sails a ship badge along it by the day. Tests: `tests/rules/hall-dock.test.js`, `tests/e2e/dock.test.js`. Open for Harry: the ship's path is traced from the pictures, so tell me if any route looks off.
 
+### 27 October 2026: the Player View's Trade Routes (BAS-SB-108)
+
+- The Dock's Routes tab is mirrored to the players as a scrolling map with lit routes, ship badges and a text strip. Tests: `tests/e2e/player-view-routes.test.js`.
+
 ### Strip Back Overhaul: done
 - All 14 development-facility orders are self-contained, including the four Level 5 bulk orders.
 - Five unused pictures moved to `tools/bastion/assets/extras/` (see `docs/ASSETS.md` and `docs/BASTION-MAP-ART.md`); nothing deleted. The Temple's three Shrine paintings and map overlays and the Beast Pen's tile, panel strip and map overlay are wired.

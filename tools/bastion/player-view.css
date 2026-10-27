@@ -294,6 +294,56 @@ img.tsi-bpv-panel__art.is-entering { opacity: 0; }
 .tsi-bpv-waiting[hidden] { display: none; }
 .tsi-bpv-waiting__text { font: 600 clamp(20px, 3.4vh, 36px) var(--tsi-font-display); letter-spacing: .12em; color: var(--tsi-gold-text); animation: tsi-bpv-breathe 3.2s ease-in-out infinite; }
 
+/* ---------- The Dock's Trade Routes view ---------- */
+.tsi-bpv-routes__scroll {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--tsi-line-feature);
+  border-radius: var(--tsi-radius-sm);
+  background: #0a0607;
+  box-shadow: 0 0 24px rgba(214, 178, 94, .2);
+  cursor: grab;
+  scrollbar-width: thin;
+  scrollbar-color: var(--tsi-gold) rgba(255, 255, 255, .08);
+  outline: none;
+}
+.tsi-bpv-routes__scroll.is-dragging { cursor: grabbing; }
+.tsi-bpv-routes__scroll::-webkit-scrollbar { width: 10px; }
+.tsi-bpv-routes__scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, .06); }
+.tsi-bpv-routes__scroll::-webkit-scrollbar-thumb { background: var(--tsi-gold); border-radius: 999px; border: 2px solid #0a0607; }
+.tsi-bpv-routes__map { position: relative; width: 100%; }
+.tsi-bpv-routes__img { display: block; width: 100%; height: 100%; object-fit: fill; pointer-events: none; filter: brightness(.92) contrast(1.05) saturate(1.04); }
+.tsi-bpv-routes__route {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; mix-blend-mode: screen;
+  filter: drop-shadow(0 0 8px rgba(255, 245, 210, 1)) drop-shadow(0 0 18px rgba(255, 220, 150, .95)) drop-shadow(0 0 36px rgba(214, 178, 94, .85));
+  animation: tsi-bpv-route-pulse 1.9s ease-in-out infinite;
+}
+.tsi-bpv-routes__route.is-sea {
+  filter: brightness(1.3) drop-shadow(0 0 10px rgba(255, 250, 225, 1)) drop-shadow(0 0 24px rgba(255, 228, 160, 1)) drop-shadow(0 0 48px rgba(230, 190, 100, .95));
+  animation-duration: 1.2s;
+}
+.tsi-bpv-routes__ship {
+  position: absolute; height: auto; aspect-ratio: 1; transform: translate(-50%, -50%); z-index: 3; pointer-events: none;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .8));
+  transition: left .8s ease-in-out, top .8s ease-in-out;
+}
+.tsi-bpv-routes__strip {
+  flex: 0 0 auto; display: flex; flex-direction: column; gap: .25em; padding: .5em .9vw .55em;
+  background: rgba(8, 5, 6, .88); border: 1px solid var(--tsi-line-control); border-radius: var(--tsi-radius-sm);
+  font: 400 clamp(14px, 2.1vh, 23px)/1.3 var(--tsi-font-body);
+}
+.tsi-bpv-routes__journeys { display: inline-flex; flex-wrap: wrap; gap: .1em 1.6em; }
+.tsi-bpv-routes__more { margin-left: 1.2em; color: var(--tsi-text-muted); font-style: italic; }
+@keyframes tsi-bpv-route-pulse { 0%, 100% { opacity: .8; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .tsi-bpv-routes__route { animation: none; opacity: 1; }
+  .tsi-bpv-routes__ship { transition: none; }
+}
+
 @keyframes tsi-bpv-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes tsi-bpv-breathe { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
 

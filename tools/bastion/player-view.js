@@ -5,7 +5,8 @@
    every click except the tray's arrow (which only changes how this screen looks).
 
    The DM tool sends:
-     state: the whole snapshot;  focus: { focus: id or null } when a facility panel opens or closes. */
+     state: the whole snapshot;  focus: { focus: id or null, view: 'routes' or null } when a facility panel opens or closes,
+     or the Dock's tab changes (the Routes tab shows the Trade Routes view: a scrolling map and a text strip). */
 (function () {
   'use strict';
 
@@ -97,6 +98,8 @@
     var dmLedger = false;
     var ledgerEl = null;
     var hotBtn = null;
+    var view = null;        /* 'routes' while the DM has the Dock's Routes tab open */
+    var rv = null;          /* the Trade Routes view, kept while it stays open so its scroll position and ships stay */
 
     /* ---- The map ---- */
     var overlayLayer = el('div', { class: 'tsi-bpv-map__overlays', 'data-test': 'pv-overlays' });
@@ -325,7 +328,112 @@
       if (shrines) artWrap.appendChild(shrines);
       return artWrap;
     }
+    /* ---- The Dock's Trade Routes (the DM has the Routes tab open) ----
+       A slim header, the map of the Scarlett Isles filling the width of the picture area (it is taller than the screen, so it
+       scrolls up and down), and a strip of text beneath: the Port Charters in force and the journeys. The route pictures
+       and ship badges are positioned in percent of the map, so they scale with it. */
+    var MAP_W = 1494, MAP_H = 1996, BOAT_PX = 64;
+    function buildRoutes() {
+      var canvas = el('div', { class: 'tsi-bpv-routes__map', 'data-test': 'pv-routes-map' }, [
+        el('img', { class: 'tsi-bpv-routes__img', src: assetUrl('ui/clan_trading_locations.png'), alt: 'The Scarlett Isles: where the Clans trade', draggable: 'false' })
+      ]);
+      canvas.style.aspectRatio = MAP_W + ' / ' + MAP_H;
+      var scroller = el('div', { class: 'tsi-bpv-routes__scroll', 'data-test': 'pv-routes-scroll', tabindex: '0', role: 'region', 'aria-label': 'The trade routes map: scroll up and down' }, canvas);
+      var strip = el('div', { class: 'tsi-bpv-routes__strip', 'data-test': 'pv-routes-strip' });
+      var panel = el('div', { class: 'tsi-bpv-panel tsi-bpv-panel--routes', 'data-test': 'pv-panel', 'data-fac': 'dock', 'data-view': 'routes', role: 'dialog', 'aria-label': 'Dock: trade routes' }, [
+        el('div', { class: 'tsi-bpv-panel__head' }, [
+          el('h2', { class: 'tsi-bpv-panel__title', 'data-test': 'pv-panel-title', text: 'Dock' }),
+          el('div', { class: 'tsi-bpv-panel__tagline', 'data-test': 'pv-panel-tagline', text: 'Trade routes' })
+        ]),
+        scroller, strip
+      ]);
+      /* Click-drag scrolls (the wheel, trackpad and the keys scroll by themselves). */
+      var drag = null;
+      scroller.addEventListener('pointerdown', function (e) {
+        if (e.button !== 0) return;
+        drag = { y: e.clientY, top: scroller.scrollTop, id: e.pointerId };
+        scroller.classList.add('is-dragging');
+        try { scroller.setPointerCapture(e.pointerId); } catch (x) { /* fine */ }
+      });
+      scroller.addEventListener('pointermove', function (e) { if (drag) scroller.scrollTop = drag.top - (e.clientY - drag.y); });
+      function endDrag() { drag = null; scroller.classList.remove('is-dragging'); }
+      scroller.addEventListener('pointerup', endDrag);
+      scroller.addEventListener('pointercancel', endDrag);
+      return { panel: panel, scroller: scroller, canvas: canvas, strip: strip, routes: {}, boats: {} };
+    }
+    /* Arrow keys, Page Up / Down, Home and End scroll the map without having to click it first. */
+    document.addEventListener('keydown', function (e) {
+      if (!rv || !rv.panel.isConnected) return;
+      var sc = rv.scroller, by = null;
+      if (e.key === 'ArrowDown') by = 70; else if (e.key === 'ArrowUp') by = -70;
+      else if (e.key === 'PageDown' || e.key === ' ') by = sc.clientHeight * 0.9; else if (e.key === 'PageUp') by = -sc.clientHeight * 0.9;
+      else if (e.key === 'Home') { sc.scrollTop = 0; e.preventDefault(); return; } else if (e.key === 'End') { sc.scrollTop = sc.scrollHeight; e.preventDefault(); return; }
+      if (by === null) return;
+      e.preventDefault();
+      sc.scrollTop += by;
+    });
+    function stripLine(label, text, test) {
+      return el('div', { class: 'tsi-bpv-routes__line', 'data-test': test }, [el('b', { class: 'tsi-bpv-info__label', text: label + ' ' }), el('span', { class: 'tsi-bpv-routes__text', text: text })]);
+    }
+    function drawRoutes() {
+      var r = snap.routes;
+      var fresh = !rv;
+      if (fresh) rv = buildRoutes();
+      /* The glowing routes: one picture for each registered port, brighter with a ship at sea. */
+      var want = {};
+      r.lanes.forEach(function (l) { var f = B().routeOverlays && B().routeOverlays[l.port]; if (f) want[l.port] = { file: f, sea: l.sea }; });
+      Object.keys(rv.routes).forEach(function (port) { if (!want[port]) { rv.routes[port].parentNode.removeChild(rv.routes[port]); delete rv.routes[port]; } });
+      Object.keys(want).forEach(function (port) {
+        var n = rv.routes[port];
+        if (!n) {
+          n = el('img', { class: 'tsi-bpv-routes__route', src: assetUrl(want[port].file), alt: '', draggable: 'false', 'data-test': 'pv-route-' + port, 'data-port': port });
+          rv.canvas.insertBefore(n, rv.canvas.querySelector('.tsi-bpv-routes__ship'));
+          rv.routes[port] = n;
+        }
+        n.classList.toggle('is-sea', want[port].sea);
+        n.setAttribute('data-glow', want[port].sea ? 'sea' : 'registered');
+      });
+      /* The ship badges: each keeps its element from day to day, so it glides to the new place. */
+      var keys = {};
+      r.boats.forEach(function (b) {
+        keys[b.key] = true;
+        var n = rv.boats[b.key];
+        if (!n) {
+          n = el('img', { class: 'tsi-bpv-routes__ship', src: assetUrl('ui/trade-ship.svg'), alt: '', draggable: 'false', 'data-test': 'pv-ship', 'data-port': b.port });
+          n.style.width = (BOAT_PX / MAP_W * 100) + '%';
+          rv.canvas.appendChild(n);
+          rv.boats[b.key] = n;
+        }
+        n.style.left = (b.point[0] / MAP_W * 100) + '%';
+        n.style.top = (b.point[1] / MAP_H * 100) + '%';
+        n.setAttribute('alt', b.label); n.setAttribute('aria-label', b.label); n.setAttribute('role', 'img');
+        n.setAttribute('data-phase', b.phase); n.setAttribute('data-fraction', b.fraction.toFixed(3));
+      });
+      Object.keys(rv.boats).forEach(function (k) { if (!keys[k]) { rv.boats[k].parentNode.removeChild(rv.boats[k]); delete rv.boats[k]; } });
+      /* The text strip. */
+      TSI.clear(rv.strip);
+      rv.strip.appendChild(stripLine('Active Port Charters:', r.charters.length ? r.charters.map(function (c) { return c.label; }).join(' · ') : 'None yet', 'pv-routes-charters'));
+      var shown = r.journeys.slice(0, 4);
+      var more = r.journeys.length - shown.length + (r.more || 0);
+      var journeys = el('div', { class: 'tsi-bpv-routes__line', 'data-test': 'pv-routes-journeys' }, [el('b', { class: 'tsi-bpv-info__label', text: 'Journeys: ' })]);
+      if (!shown.length) journeys.appendChild(el('span', { class: 'tsi-bpv-routes__text', text: 'No ships at sea.' }));
+      else {
+        journeys.appendChild(el('span', { class: 'tsi-bpv-routes__journeys' }, shown.map(function (j, i) { return el('span', { class: 'tsi-bpv-routes__journey', 'data-test': 'pv-journey-' + i, text: j.line + '.' }); })));
+        if (more > 0) journeys.appendChild(el('span', { class: 'tsi-bpv-routes__more', 'data-test': 'pv-journeys-more', text: 'and ' + more + ' more' }));
+      }
+      rv.strip.appendChild(journeys);
+      if (rv.panel.parentNode !== panelHost) {
+        TSI.clear(panelHost);
+        artWrap = null; artFac = null; ledgerEl = null; hotBtn = null; ledgerKey = ''; ledgerOpen = false;
+        panelHost.appendChild(rv.panel);
+      }
+      panelHost.hidden = false;
+      stage.classList.add('has-panel');
+    }
+
     function drawPanel() {
+      if (focus === 'dock' && view === 'routes' && snap && snap.routes) { drawRoutes(); return; }
+      rv = null;
       TSI.clear(panelHost);
       var def = panelDef(focus);
       var f = snap && focus && (snap.facilities[focus] || (def && def.bare ? { name: def.title, level: 1, single: true, repair: 0, orders: [] } : null));
@@ -408,6 +516,7 @@
         if (!payload || payload.v !== 1 || !Array.isArray(payload.tiles)) return;
         snap = payload;
         focus = payload.focus || null;
+        view = payload.focusView === 'routes' ? 'routes' : null;
         if (payload.ledger !== dmLedger) { dmLedger = payload.ledger === true; ledgerOpen = dmLedger; }
         drawAll();
       },
@@ -415,6 +524,7 @@
         if (type === 'ledger') { dmLedger = !!(payload && payload.open); ledgerOpen = dmLedger; ledgerApply(); return; }
         if (type === 'focus') {
           focus = payload && typeof payload.focus === 'string' ? payload.focus : null;
+          view = payload && payload.view === 'routes' ? 'routes' : null;
           drawPanel();
         }
       }
