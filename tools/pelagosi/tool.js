@@ -53,13 +53,16 @@
       /* ---------- State (as in the old tool) ---------- */
       var mode = 'memory';
       var memoryState = { started: false, phase: 'idle', roundIndex: -1, masterSequence: [], currentInput: [], locked: false, runToken: 0 };
+      function cutLines() { return T.wall.lines.map(function () { return 'cut'; }); }
       var tidalState = {
+        lines: cutLines(),
         started: false, solved: false, locked: true, phase: 'idle', attempts: 0, pressure: 0,
         feedbackActive: false, feedbackMode: 'none', runToken: 0,
         basinRuneIndex: T.basinStartIndex, pillars: R.startPillars()
       };
       var memTimers = life.group();
       var tidTimers = life.group();
+      var uiTimers = life.group(); /* Stage Mode's fading exit button; never cleared by a puzzle reset */
 
       /* The old tool put its state classes on <body>; here they go on the tool's own root. */
       var root = el('div', { class: 'tsi-pel tsi-pel--memory' });
@@ -89,6 +92,17 @@
       var inscriptionTitle = heading('');
       var inscriptionText = el('p', { class: 'tsi-pel-inscription' });
       var legendList = el('ul', { class: 'tsi-pel-legend' });
+
+      /* Tidal only: the scarred wall, the rune legend (real icons) and the DM's Readings panel. */
+      var wallList = el('ol', { class: 'tsi-pel-wall', 'aria-label': 'The scarred wall', 'data-test': 'wall' }, T.wall.lines.map(function (line, i) {
+        return el('li', { class: 'tsi-pel-wall-line', 'data-line': line.id, 'data-test': 'wall-line-' + line.id });
+      }));
+      var runeLegendList = el('ul', { class: 'tsi-pel-legend tsi-pel-rune-legend', 'data-test': 'rune-legend' }, T.runes.map(function (rune) {
+        return el('li', { 'data-rune': rune }, [
+          el('img', { class: 'tsi-pel-legend-icon', src: runeSrc(rune), alt: '' }),
+          el('span', null, [el('strong', { text: R.label(rune) }), ' ' + (T.runeMeanings[rune] || []).join(', ')])
+        ]);
+      }));
 
       /* Right column: status, structure, clue and notes. */
       var stageLabel = el('p', { class: 'tsi-pel-stage-label', 'data-test': 'stage' });
@@ -160,7 +174,13 @@
         el('img', { src: runeSrc('anchor'), alt: '' }),
         el('span', { text: 'Anchor' })
       ]);
-      life.on(basinRuneButton, 'click', rotateBasinRune);
+      life.on(basinRuneButton, 'click', function () { rotateBasinRune(1); });
+      life.on(basinRuneButton, 'keydown', function (event) {
+        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+          event.preventDefault();
+          rotateBasinRune(event.key === 'ArrowRight' ? 1 : -1);
+        }
+      });
       var basinSelector = el('div', { class: 'tsi-pel-basin tsi-pel-hidden', 'aria-label': 'Central basin rune selector' }, [el('p', { text: 'Central Basin' }), basinRuneButton]);
       var pillarEls = {};
       var pillarRuneButtons = {};
@@ -171,12 +191,30 @@
           el('img', { alt: '' }), el('span')
         ]);
         var arrowBtn = el('button', { type: 'button', class: 'tsi-pel-pillar-arrow', 'data-pillar': id, 'data-test': 'pillar-arrow-' + id, 'aria-label': 'Rotate ' + p.label + ' pillar direction' });
-        life.on(runeBtn, 'click', function () { rotateTidalRune(id); });
+        life.on(runeBtn, 'click', function () { if (ringFor === id) closeRing(true); else openRing(id); });
+        life.on(runeBtn, 'keydown', function (event) {
+          if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+            event.preventDefault();
+            stepPillarRune(id, event.key === 'ArrowRight' ? 1 : -1);
+          }
+        });
         life.on(arrowBtn, 'click', function () { rotateTidalDirection(id); });
         pillarRuneButtons[id] = runeBtn;
         pillarArrowButtons[id] = arrowBtn;
         pillarEls[id] = el('div', { class: 'tsi-pel-pillar', 'data-pillar': id, style: '--tsi-pel-x: ' + p.x + '%; --tsi-pel-y: ' + p.y + '%;' }, [runeBtn, arrowBtn]);
       });
+      /* The rune ring: nine runes in a circle over the pillar being changed. */
+      var ringButtons = T.runes.map(function (rune, i) {
+        var b = el('button', {
+          type: 'button', class: 'tsi-pel-ring-btn', 'data-rune': rune, 'data-test': 'ring-rune-' + rune,
+          style: '--tsi-pel-a: ' + (i * 360 / T.runes.length) + 'deg;',
+          'aria-label': R.label(rune) + ', ' + (T.runeMeanings[rune] || []).join(', ')
+        }, [el('img', { src: runeSrc(rune), alt: '' }), el('span', { text: R.label(rune) })]);
+        life.on(b, 'click', function () { if (ringFor) setPillarRune(ringFor, i); });
+        return b;
+      });
+      var ringEl = el('div', { class: 'tsi-pel-ring tsi-pel-hidden', role: 'dialog', 'aria-label': 'Choose a rune', 'data-test': 'ring' }, ringButtons);
+      var ringFor = null;
       var tidalEventTitle = el('p', { text: 'THE WATER ANSWERS' });
       var tidalEventText = el('span', { text: 'The basin listens.' });
       var tidalEventOverlay = el('div', { class: 'tsi-pel-event tsi-pel-hidden', 'aria-live': 'polite', 'data-test': 'event' }, [el('div', { class: 'tsi-pel-wave' }), tidalEventTitle, tidalEventText]);
@@ -190,6 +228,7 @@
         el('div', { class: 'tsi-pel-flow tsi-pel-flow--left', 'aria-hidden': 'true' }),
         basinSelector,
         pillarEls.topLeft, pillarEls.topRight, pillarEls.bottomLeft, pillarEls.bottomRight,
+        ringEl,
         tidalEventOverlay
       ]);
       var tidalDescription = el('p', { class: 'tsi-pel-copy tsi-pel-small', 'data-test': 'tidal-description' });
@@ -198,12 +237,13 @@
       var pressureLabel = el('strong', { 'data-test': 'pressure' });
       var pressureSegments = [1, 2, 3, 4].map(function (level) { return el('span', { class: 'tsi-pel-segment', 'data-level': level }); });
       var pressureEffect = el('p', { class: 'tsi-pel-copy tsi-pel-small', 'data-test': 'pressure-effect' });
-      var checkTidalButton = button('CHECK ALIGNMENT', 'check', TSI.oneAtATime(checkTidalAlignment, { minMs: CHECK_GUARD_MS }), 'tsi-btn tsi-btn--primary');
+      var guardedCheck = TSI.oneAtATime(checkTidalAlignment, { minMs: CHECK_GUARD_MS });
+      var checkTidalButton = button('CHECK ALIGNMENT', 'check', guardedCheck, 'tsi-btn tsi-btn--primary');
       var randomiseTidalButton = button('SHUFFLE PILLARS', 'shuffle', randomiseTidalPillars, 'tsi-btn');
       var tidalStage = el('div', { class: 'tsi-pel-stage tsi-pel-stage--tidal', 'data-test': 'tidal-stage' }, [
         el('div', { class: 'tsi-pel-tidal-fit' }, tidalFrame),
         panel('tsi-pel-console tsi-pel-console--tidal', [
-          el('div', { class: 'tsi-pel-console-row' }, [
+          el('div', { class: 'tsi-pel-console-row tsi-pel-console-row--info' }, [
             el('div', { class: 'tsi-pel-console-main' }, [heading('Sequence Console'), tidalDescription]),
             tidalAttemptLabel
           ]),
@@ -222,6 +262,41 @@
         ])
       ]);
 
+      /* The Readings panel (DM): one row per player; the DM rolls in the game and presses the result. */
+      var readingRows = T.readings.map(function (r, i) {
+        var chip = el('span', { class: 'tsi-pel-chip', 'data-test': 'reading-chip-' + r.id });
+        var name = r.label + (r.pillar ? ' (' + T.pillars[r.pillar].short + ')' : '');
+        function small(label, test, onClick) { return button(label, 'reading-' + test + '-' + r.id, onClick, 'tsi-btn tsi-pel-small-btn'); }
+        var b = {
+          fragment: small('Fragment', 'fragment', function () { setReading(i, 'fragment'); }),
+          read: small('Read', 'read', function () { setReading(i, 'whole'); }),
+          misread: small('Misread', 'misread', function () { misread(); }),
+          hide: small('Hide again', 'hide', function () { setReading(i, 'cut', true); })
+        };
+        return {
+          chip: chip, buttons: b,
+          el: el('li', { class: 'tsi-pel-reading', 'data-test': 'reading-' + r.id }, [
+            el('div', { class: 'tsi-pel-reading-head' }, [el('span', { class: 'tsi-pel-reading-name', text: name }), chip]),
+            el('div', { class: 'tsi-pel-reading-btns' }, [b.fragment, b.read, b.misread, b.hide])
+          ])
+        };
+      });
+      var readingsNote = el('p', { class: 'tsi-pel-copy tsi-pel-small tsi-pel-readings-note', 'aria-live': 'polite', 'data-test': 'readings-note' });
+      var readingsBody = el('div', { class: 'tsi-pel-readings-body', id: 'tsi-pel-readings-body' }, [
+        el('p', { class: 'tsi-pel-copy tsi-pel-small', text: 'Roll in the game, then press the result here.' }),
+        el('ul', { class: 'tsi-pel-readings-list' }, readingRows.map(function (row) { return row.el; })),
+        readingsNote
+      ]);
+      var readingsToggle = button('Hide', 'readings-toggle', function () {
+        var open = readingsBody.classList.toggle('tsi-pel-hidden') === false;
+        readingsToggle.textContent = open ? 'Hide' : 'Show';
+        readingsToggle.setAttribute('aria-expanded', String(open));
+      }, 'tsi-btn tsi-pel-small-btn', { 'aria-expanded': 'true', 'aria-controls': 'tsi-pel-readings-body' });
+      var stageBtn = button('Stage Mode (S)', 'stage-mode', function () { setStage(!stageOn); }, 'tsi-btn tsi-pel-small-btn', { 'aria-pressed': 'false' });
+      var stageExit = button('Leave Stage Mode', 'stage-exit', function () { setStage(false); }, 'tsi-btn tsi-pel-small-btn tsi-pel-stage-exit tsi-pel-hidden');
+      var stageOn = false;
+      var stageExitTimer = null;
+
       TSI.append(root, [
         el('div', { class: 'tsi-pel-ambient tsi-pel-ambient--a', 'aria-hidden': 'true' }),
         el('div', { class: 'tsi-pel-ambient tsi-pel-ambient--b', 'aria-hidden': 'true' }),
@@ -235,18 +310,25 @@
               ]),
               eyebrowEl, titleEl, heroEl, beginBtn
             ]),
-            panel('', [inscriptionTitle, inscriptionText]),
-            panel('', [heading('Rune Meanings'), legendList])
+            panel('tsi-pel-only-memory', [inscriptionTitle, inscriptionText]),
+            panel('tsi-pel-only-memory', [heading('Rune Meanings'), legendList]),
+            panel('tsi-pel-only-tidal tsi-pel-wall-panel', [heading(T.wall.title), wallList]),
+            panel('tsi-pel-only-tidal', [heading('Rune Legend'), runeLegendList])
           ]),
           el('div', { class: 'tsi-pel-centre' }, [memoryStage, tidalStage]),
           el('aside', { class: 'tsi-pel-col' }, [
             panel('tsi-pel-status', [heading('Status'), stageLabel, statusText]),
-            panel('', [structureTitle, structureList, structureCopy]),
-            panel('', [clueTitle, clueText]),
-            panel('', [heading('Trial Notes'), trialNotes, resetBtn])
+            panel('tsi-pel-only-tidal tsi-pel-only-readings', [
+              el('div', { class: 'tsi-pel-readings-head' }, [heading('Readings (DM)'), el('div', { class: 'tsi-pel-readings-ctl' }, [stageBtn, readingsToggle])]),
+              readingsBody
+            ]),
+            panel('tsi-pel-later', [structureTitle, structureList, structureCopy]),
+            panel('tsi-pel-later', [clueTitle, clueText]),
+            panel('tsi-pel-notes', [heading('Trial Notes'), trialNotes, resetBtn])
           ])
         ])
       ]);
+      root.appendChild(stageExit);
       ctx.root.appendChild(root);
 
       life.on(puzzleSelect, 'change', function () { setActivePuzzle(puzzleSelect.value); });
@@ -299,7 +381,8 @@
         heroEl.textContent = copy.hero;
         inscriptionTitle.textContent = copy.inscriptionTitle;
         TSI.clear(inscriptionText);
-        copy.inscription.forEach(function (line, i) {
+        /* The Tidal wall is never printed here: its lines only appear when revealed. */
+        if (which === 'memory') copy.inscription.forEach(function (line, i) {
           if (i) inscriptionText.appendChild(el('br'));
           inscriptionText.appendChild(document.createTextNode(line));
         });
@@ -308,7 +391,7 @@
         clueTitle.textContent = copy.clueTitle;
         trialNotes.textContent = copy.notes;
         TSI.clear(legendList);
-        copy.legend.forEach(function (item) {
+        if (which === 'memory') copy.legend.forEach(function (item) {
           legendList.appendChild(el('li', null, [el('span', { class: 'tsi-pel-legend-mark', text: item[0] }), ' ', item[1]]));
         });
         TSI.clear(structureList);
@@ -321,6 +404,8 @@
         tidalStop();
         silence();
         mode = which;
+        setStage(false);
+        closeRing(false);
         puzzleSelect.value = which;
         root.classList.toggle('tsi-pel--memory', which === 'memory');
         root.classList.toggle('tsi-pel--tidal', which === 'tidal');
@@ -653,6 +738,7 @@
       function tidalStop() {
         tidTimers.clear();
         tidalState.runToken += 1;
+        closeRing(false);
         tidalEventOverlay.classList.remove('tsi-pel-active');
         tidalEventOverlay.classList.add('tsi-pel-hidden');
         tidalFrame.classList.remove('tsi-pel-pulse', 'tsi-pel-tremor', 'tsi-pel-shake');
@@ -696,6 +782,8 @@
         basinSelector.classList.toggle('tsi-pel-hidden', tidalState.phase !== 'basin' && !tidalState.solved);
         basinSelector.classList.toggle('tsi-pel-basin-solved', tidalState.solved);
         checkTidalButton.textContent = tidalState.phase === 'basin' ? 'ATTUNE BASIN' : 'CHECK ALIGNMENT';
+        if (!pillarsOn) closeRing(false);
+        renderReadings();
       }
 
       function renderTidalBasin() {
@@ -795,6 +883,8 @@
         tidalState.solved = false;
         tidalState.locked = true;
         tidalState.phase = 'idle';
+        tidalState.lines = cutLines();
+        renderWall();
         tidalState.attempts = 0;
         tidalState.pressure = 0;
         tidalState.feedbackActive = false;
@@ -813,6 +903,8 @@
       function startTidalSequence() {
         tidalStop();
         tidalState.started = true;
+        tidalState.lines = cutLines();
+        renderWall();
         resetTidalSequenceActive(false);
         addState('tidal-started');
         removeState('tidal-solved');
@@ -822,15 +914,71 @@
         setStatus('The chamber wakes', 'The pillars unlock. Rotate their runes and arrows, then check the alignment.');
       }
 
-      function rotateTidalRune(id) {
-        if (tidalState.locked || tidalState.solved || tidalState.phase !== 'outer') return;
+      function pillarsEditable() { return !tidalState.locked && !tidalState.solved && tidalState.phase === 'outer'; }
+
+      /* Set a pillar's rune directly (the rune ring) or step it (Left and Right keys). */
+      function setPillarRune(id, index) {
+        if (!pillarsEditable()) return;
         var p = tidalState.pillars[id];
-        p.runeIndex = R.turn(p.runeIndex, T.runes.length);
+        p.runeIndex = index;
         resetTidalFeedback();
         renderTidalPillars();
         play('runeClick');
         setStatus('Rune rotated', R.label(id) + ' now bears the ' + R.label(R.runeOf(p)) + ' rune.');
+        closeRing(true);
       }
+      function stepPillarRune(id, step) {
+        if (!pillarsEditable()) return;
+        setPillarRune(id, R.cycleRune(tidalState.pillars[id].runeIndex, step, T.runes.length));
+      }
+
+      function openRing(id) {
+        if (!pillarsEditable()) return;
+        ringFor = id;
+        var p = T.pillars[id];
+        ringEl.style.setProperty('--tsi-pel-x', p.x + '%');
+        ringEl.style.setProperty('--tsi-pel-y', p.y + '%');
+        ringEl.setAttribute('aria-label', 'Choose a rune for the ' + p.label + ' pillar');
+        var current = tidalState.pillars[id].runeIndex;
+        ringButtons.forEach(function (b, i) { b.setAttribute('aria-pressed', String(i === current)); });
+        ringEl.classList.remove('tsi-pel-hidden');
+        pillarRuneButtons[id].setAttribute('aria-expanded', 'true');
+        ringButtons[current].focus({ preventScroll: true });
+      }
+      function closeRing(returnFocus) {
+        if (!ringFor) return;
+        var id = ringFor;
+        ringFor = null;
+        ringEl.classList.add('tsi-pel-hidden');
+        pillarRuneButtons[id].removeAttribute('aria-expanded');
+        if (returnFocus && !pillarRuneButtons[id].disabled) pillarRuneButtons[id].focus({ preventScroll: true });
+      }
+      life.on(ringEl, 'keydown', function (event) {
+        var at = ringButtons.indexOf(document.activeElement);
+        var n = ringButtons.length;
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          event.stopPropagation();
+          closeRing(true);
+        } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+          event.preventDefault();
+          ringButtons[(at + 1) % n].focus();
+        } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          ringButtons[(at - 1 + n) % n].focus();
+        } else if (event.key === 'Home') {
+          event.preventDefault();
+          ringButtons[0].focus();
+        } else if (event.key === 'End') {
+          event.preventDefault();
+          ringButtons[n - 1].focus();
+        }
+      });
+      /* A click anywhere else closes the ring (its own pillar button toggles it). */
+      life.on(document, 'pointerdown', function (event) {
+        if (!ringFor || ringEl.contains(event.target) || pillarRuneButtons[ringFor].contains(event.target)) return;
+        closeRing(false);
+      });
 
       function rotateTidalDirection(id) {
         if (tidalState.locked || tidalState.solved || tidalState.phase !== 'outer') return;
@@ -842,9 +990,9 @@
         setStatus('Flow rotated', R.label(id) + ' now points ' + R.directionOf(p) + '.');
       }
 
-      function rotateBasinRune() {
+      function rotateBasinRune(step) {
         if (tidalState.locked || tidalState.solved || tidalState.phase !== 'basin') return;
-        tidalState.basinRuneIndex = R.turn(tidalState.basinRuneIndex, T.runes.length);
+        tidalState.basinRuneIndex = R.cycleRune(tidalState.basinRuneIndex, step || 1, T.runes.length);
         tidalState.feedbackActive = false;
         renderTidalBasin();
         renderTidalControls();
@@ -964,6 +1112,81 @@
         }, 3600);
       }
 
+      /* ---------- The wall, the readings and Stage Mode ---------- */
+      var wallShown = [];
+      function renderWall() {
+        T.wall.lines.forEach(function (line, i) {
+          var level = tidalState.lines[i];
+          var li = wallList.children[i];
+          li.textContent = R.wallLineText(line, level);
+          li.dataset.level = level;
+          li.className = 'tsi-pel-wall-line tsi-pel-wall-line--' + level;
+          if (level === 'whole' && wallShown[i] && wallShown[i] !== 'whole') {
+            li.classList.add('tsi-pel-wall-fresh');
+            play('inscriptionReveal');
+          }
+          wallShown[i] = level;
+        });
+      }
+
+      var LEVEL_RANK = { cut: 0, fragment: 1, whole: 2 };
+      var CHIP_TEXT = { cut: 'Unread', fragment: 'Fragment', whole: 'Read' };
+      function setReading(i, level, allowDown) {
+        if (!allowDown && LEVEL_RANK[level] <= LEVEL_RANK[tidalState.lines[i]]) return;
+        tidalState.lines = R.setLineLevel(tidalState.lines, i, level);
+        renderWall();
+        renderReadings();
+      }
+      function renderReadings() {
+        var live = tidalState.started && tidalState.phase !== 'idle';
+        var canPress = live && !tidalState.locked && !tidalState.solved && (tidalState.phase === 'outer' || tidalState.phase === 'basin');
+        readingRows.forEach(function (row, i) {
+          var level = tidalState.lines[i];
+          row.chip.textContent = CHIP_TEXT[level];
+          row.chip.dataset.level = level;
+          row.buttons.fragment.disabled = !live || level !== 'cut';
+          row.buttons.read.disabled = !live || level === 'whole';
+          row.buttons.hide.disabled = !live || level === 'cut';
+          row.buttons.misread.disabled = !canPress;
+        });
+      }
+      /* A Misread costs a step of pressure only while below Reversing, so it can never cause a surge. */
+      function misread() {
+        if (tidalState.locked || tidalState.solved || (tidalState.phase !== 'outer' && tidalState.phase !== 'basin')) return;
+        var outcome = R.misreadOutcome(tidalState.pressure, T);
+        readingsNote.textContent = outcome.text;
+        if (outcome.raise) increaseTidalPressure(outcome.text);
+        else setStatus('A misread', outcome.text);
+      }
+
+      function setStage(on) {
+        on = !!on && mode === 'tidal';
+        stageOn = on;
+        root.classList.toggle('tsi-pel--stage', on);
+        stageBtn.setAttribute('aria-pressed', String(on));
+        stageExit.classList.toggle('tsi-pel-hidden', !on);
+        stageExit.classList.remove('tsi-pel-stage-exit--on');
+        uiTimers.clearTimeout(stageExitTimer);
+        if (on) closeRing(false);
+      }
+      life.on(root, 'mousemove', function () {
+        if (!stageOn) return;
+        stageExit.classList.add('tsi-pel-stage-exit--on');
+        uiTimers.clearTimeout(stageExitTimer);
+        stageExitTimer = uiTimers.setTimeout(function () { stageExit.classList.remove('tsi-pel-stage-exit--on'); }, 2600);
+      });
+      /* S toggles Stage Mode; Enter there checks the alignment or attunes the basin. Not while typing or with a pop-up open. */
+      life.onKey(function (event) {
+        if (mode !== 'tidal' || event.ctrlKey || event.metaKey || event.altKey || ringFor) return;
+        if (event.key === 's' || event.key === 'S') {
+          event.preventDefault();
+          setStage(!stageOn);
+        } else if (event.key === 'Enter' && stageOn && event.target !== stageExit && !/^(SELECT|INPUT|TEXTAREA|A)$/.test(event.target.tagName)) {
+          event.preventDefault();
+          guardedCheck();
+        }
+      });
+
       /* ---------- Leaving mid-puzzle (Harry's answer 7) ---------- */
       ctx.setLeaveCheck(function () {
         if (mode === 'memory' && memoryState.started && memoryState.phase !== 'solved') return 'This will end the memory trial in progress.';
@@ -972,6 +1195,7 @@
       });
 
       life.onStop(function () {
+        uiTimers.clear();
         memoryStop();
         tidalStop();
       });
@@ -983,7 +1207,7 @@
         mode: function () { return mode; },
         memory: function () { return JSON.parse(JSON.stringify(memoryState)); },
         tidal: function () { return JSON.parse(JSON.stringify(tidalState)); },
-        timers: function () { return { memory: memTimers.counts(), tidal: tidTimers.counts() }; },
+        timers: function () { return { memory: memTimers.counts(), tidal: tidTimers.counts(), ui: uiTimers.counts() }; },
         sounds: sounds
       };
     },
