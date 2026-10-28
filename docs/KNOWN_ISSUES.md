@@ -4293,3 +4293,7 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **Before/after:** before, solving opened the success window after about 3.6 s; now the DM chooses.
 - **Left alone:** the Sequence Rules text still says "Flow → Echo → Depth → Stone" (PEL-20 question to Harry). The Tidal state is not saved between page loads, as in the old tool.
 
+### PEL-20 closed (28 October 2026): Tidal rules text no longer gives the answer away
+- **Fixed, part of the Tidal Sequence redesign:** the Sequence Rules panel, the "How the Tidal Sequence works" pop-up and the footnote no longer show the rune order, the clockwise rule or "Stone returns the Current". The four pop-up items, the panel copy and the footnote use Harry's wording. The console and start descriptions no longer give the clockwise path either.
+- **Before/after:** before, the rules text spelled out "Flow → Echo → Depth → Stone", the closed clockwise current and the basin answer; now it says only that each pillar needs the right rune and current. The memory puzzle's text is untouched.
+
