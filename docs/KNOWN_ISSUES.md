@@ -4304,3 +4304,10 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **Needs your ears:** the real timing of the silence and the three knocks, and the bed loop, can't be judged in a test browser. Edge on the real laptop and TV is untested.
 - **Left alone:** nice-to-have sounds (inscription reveal, tide toll when the optional tide rises) already play; chalk ticks and caustics are phase 5.
 
+### PEL-23 · The Tidal Sequence v2, phase 5 and 6: chalk marks, caustics, final checks (28 October 2026)
+- **New:** two chalk marks on the floor, one beside the top-right pillar (a tally) and one beside the bottom-left (a smudged cross). Positions are data (`tidal.chalk`); the DM switches them off with "Chalk marks on the floor" (on by default). They carry no words and don't depend on the puzzle state. **Assumption to confirm with Harry:** the handover says the marks are "on the correct Echo" and "on a wrong rune (Anchor)"; I placed them by the pillars, not tied to a rune.
+- **New:** a faint moving light on the chamber floor (caustics), still under "reduce motion".
+- **Sounds:** every sound named in the handover is now in `tools/pelagosi/assets/audio/` and switched on; the five-sounds placeholder note is deleted.
+- **Final checks:** with every audio file blocked the puzzle and the whole finale still work in silence; Memory's sounds keep their old volume; every `ready` sound has its file.
+- **Not tested:** real-speed finale timing and sound in Edge on the laptop and the TV.
+

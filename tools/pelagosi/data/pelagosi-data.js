@@ -296,6 +296,16 @@ window.TSI_DATA.pelagosi = {
       noAutoFocus: true,
       reducedMotionShake: false
     },
+    /* Chalk marks on the floor beside two pillars (for the 'lamp oil and chalk' clue). Where they are
+       is data (% across, % down the chamber picture); the DM can switch them off. They are
+       ambiguous on purpose: nothing says whose they are. */
+    chalk: {
+      enabledByDefault: true,
+      marks: [
+        { id: 'tally', pillar: 'topRight', dx: 8.5, dy: 6, style: 'tally' },
+        { id: 'smudge', pillar: 'bottomLeft', dx: -8.5, dy: 5, style: 'smudge' }
+      ]
+    },
     /* Stage Mode (key S) for the TV: what it hides and keeps. */
     stageMode: {
       hides: ['readings', 'console', 'extras'],

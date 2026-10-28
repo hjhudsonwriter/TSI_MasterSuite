@@ -225,8 +225,18 @@
       var tidalEventTitle = el('p', { text: 'THE WATER ANSWERS' });
       var tidalEventText = el('span', { text: 'The basin listens.' });
       var tidalEventOverlay = el('div', { class: 'tsi-pel-event tsi-pel-hidden', 'aria-live': 'polite', 'data-test': 'event' }, [el('div', { class: 'tsi-pel-wave' }), tidalEventTitle, tidalEventText]);
+      var chalkOn = !!(T.chalk && T.chalk.enabledByDefault);
+      var chalkEls = (T.chalk ? T.chalk.marks : []).map(function (m) {
+        var base = T.pillars[m.pillar];
+        return el('span', {
+          class: 'tsi-pel-chalk tsi-pel-chalk--' + m.style, 'aria-hidden': 'true', 'data-test': 'chalk-' + m.id,
+          style: 'left:' + (base.x + m.dx) + '%;top:' + (base.y + m.dy) + '%'
+        });
+      });
+      var chalkMarks = el('div', { class: 'tsi-pel-chalk-layer', 'aria-hidden': 'true' }, chalkEls);
       var tidalFrame = el('div', { class: 'tsi-pel-frame tsi-pel-tidal-frame', 'aria-label': 'Tidal Sequence puzzle board', 'data-test': 'tidal-frame' }, [
         tidalImage,
+        el('div', { class: 'tsi-pel-caustics', 'aria-hidden': 'true' }),
         el('div', { class: 'tsi-pel-basin-aura', 'aria-hidden': 'true' }),
         el('div', { class: 'tsi-pel-water-pressure', 'aria-hidden': 'true' }),
         el('div', { class: 'tsi-pel-flow tsi-pel-flow--top', 'aria-hidden': 'true' }),
@@ -235,6 +245,7 @@
         el('div', { class: 'tsi-pel-flow tsi-pel-flow--left', 'aria-hidden': 'true' }),
         basinSelector,
         pillarEls.topLeft, pillarEls.topRight, pillarEls.bottomLeft, pillarEls.bottomRight,
+        chalkMarks,
         ringEl,
         tidalEventOverlay
       ]);
@@ -298,7 +309,10 @@
       var tideRow = el('label', { class: 'tsi-pel-tide-row', for: 'tsi-pel-tide-on' }, [tideBox, el('span', { text: 'The tide returns (every ' + T.timer.seconds + ' s)' })]);
       var pressureTools = el('div', { class: 'tsi-pel-pressure-tools' }, [askBtn, tideRow]);
       var anywayBtn = button('Play the Absence anyway', 'absence-anyway', function () { playAbsenceAnyway(); }, 'tsi-btn tsi-pel-small-btn');
-      var dmExtras = el('div', { class: 'tsi-pel-dm-extras' }, [anywayBtn]);
+      var chalkBox = el('input', { type: 'checkbox', id: 'tsi-pel-chalk-on', 'data-test': 'chalk-on' });
+      chalkBox.checked = chalkOn;
+      var chalkRow = el('label', { class: 'tsi-pel-tide-row', for: 'tsi-pel-chalk-on' }, [chalkBox, el('span', { text: 'Chalk marks on the floor' })]);
+      var dmExtras = el('div', { class: 'tsi-pel-dm-extras' }, [anywayBtn, chalkRow]);
       var readingsBody = el('div', { class: 'tsi-pel-readings-body', id: 'tsi-pel-readings-body' }, [
         el('p', { class: 'tsi-pel-copy tsi-pel-small', text: 'Roll in the game, then press the result here.' }),
         el('ul', { class: 'tsi-pel-readings-list' }, readingRows.map(function (row) { return row.el; })),
@@ -1389,6 +1403,8 @@
           }, step);
         }());
       }
+      life.on(chalkBox, 'change', function () { chalkOn = chalkBox.checked; chalkMarks.classList.toggle('tsi-pel-hidden', !chalkOn); });
+      chalkMarks.classList.toggle('tsi-pel-hidden', !chalkOn);
       life.on(tideBox, 'change', function () { tidalState.tideOn = tideBox.checked; tidalState.tideMs = 0; });
 
       /* ---------- The wall, the readings and Stage Mode ---------- */
