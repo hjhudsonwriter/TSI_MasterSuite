@@ -121,6 +121,9 @@
       var clueText = el('p', { class: 'tsi-pel-copy', 'data-test': 'clue' });
       var trialNotes = el('p', { class: 'tsi-pel-copy' });
       var resetBtn = button('RESET CURRENT PUZZLE', 'reset', onReset, 'tsi-btn tsi-pel-reset');
+      var pvChip = el('span', { class: 'tsi-pel-pv-chip', 'data-test': 'player-view-status', role: 'status', text: 'Not open' });
+      var pvOpenBtn = button('Open Player View', 'open-player-view', function () { pvLink.open(); }, 'tsi-btn tsi-pel-small-btn');
+      var pvRow = el('div', { class: 'tsi-pel-pv-row tsi-pel-only-tidal' }, [pvOpenBtn, pvChip]);
 
       /* --- The Marker Remembers stage --- */
       var markerImage = el('img', { class: 'tsi-pel-marker-image', src: asset('images/marker-main.png'), alt: 'Pelagosi marker' });
@@ -177,40 +180,7 @@
 
       /* --- The Tidal Sequence stage --- */
       var tidalImage = el('img', { class: 'tsi-pel-tidal-image', src: asset('images/tidal-sequence.png'), alt: 'Ancient flooded Pelagosi chamber with four pillars surrounding a central basin' });
-      var basinRuneButton = el('button', { type: 'button', class: 'tsi-pel-basin-btn', 'aria-label': 'Change central basin rune', 'data-test': 'basin', disabled: true }, [
-        el('img', { src: runeSrc('anchor'), alt: '' }),
-        el('span', { text: 'Anchor' })
-      ]);
-      life.on(basinRuneButton, 'click', function () { rotateBasinRune(1); });
-      life.on(basinRuneButton, 'keydown', function (event) {
-        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-          event.preventDefault();
-          rotateBasinRune(event.key === 'ArrowRight' ? 1 : -1);
-        }
-      });
-      var basinSelector = el('div', { class: 'tsi-pel-basin tsi-pel-hidden', 'aria-label': 'Central basin rune selector' }, [el('p', { text: 'Central Basin' }), basinRuneButton]);
-      var pillarEls = {};
-      var pillarRuneButtons = {};
-      var pillarArrowButtons = {};
-      Object.keys(T.pillars).forEach(function (id) {
-        var p = T.pillars[id];
-        var runeBtn = el('button', { type: 'button', class: 'tsi-pel-pillar-rune', 'data-pillar': id, 'data-test': 'pillar-rune-' + id, 'aria-label': 'Change ' + p.label + ' pillar rune' }, [
-          el('img', { alt: '' }), el('span')
-        ]);
-        var arrowBtn = el('button', { type: 'button', class: 'tsi-pel-pillar-arrow', 'data-pillar': id, 'data-test': 'pillar-arrow-' + id, 'aria-label': 'Rotate ' + p.label + ' pillar direction' });
-        life.on(runeBtn, 'click', function () { if (ringFor === id) closeRing(true); else openRing(id); });
-        life.on(runeBtn, 'keydown', function (event) {
-          if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-            event.preventDefault();
-            stepPillarRune(id, event.key === 'ArrowRight' ? 1 : -1);
-          }
-        });
-        life.on(arrowBtn, 'click', function () { rotateTidalDirection(id); });
-        pillarRuneButtons[id] = runeBtn;
-        pillarArrowButtons[id] = arrowBtn;
-        pillarEls[id] = el('div', { class: 'tsi-pel-pillar', 'data-pillar': id, style: '--tsi-pel-x: ' + p.x + '%; --tsi-pel-y: ' + p.y + '%;' }, [runeBtn, arrowBtn]);
-      });
-      /* The rune ring: nine runes in a circle over the pillar being changed. */
+      /* The ring of nine runes that opens over a pillar. */
       var ringButtons = T.runes.map(function (rune, i) {
         var b = el('button', {
           type: 'button', class: 'tsi-pel-ring-btn', 'data-rune': rune, 'data-test': 'ring-rune-' + rune,
@@ -222,33 +192,45 @@
       });
       var ringEl = el('div', { class: 'tsi-pel-ring tsi-pel-hidden', role: 'dialog', 'aria-label': 'Choose a rune', 'data-test': 'ring' }, ringButtons);
       var ringFor = null;
-      var tidalEventTitle = el('p', { text: 'THE WATER ANSWERS' });
-      var tidalEventText = el('span', { text: 'The basin listens.' });
-      var tidalEventOverlay = el('div', { class: 'tsi-pel-event tsi-pel-hidden', 'aria-live': 'polite', 'data-test': 'event' }, [el('div', { class: 'tsi-pel-wave' }), tidalEventTitle, tidalEventText]);
-      var chalkOn = !!(T.chalk && T.chalk.enabledByDefault);
-      var chalkEls = (T.chalk ? T.chalk.marks : []).map(function (m) {
-        var base = T.pillars[m.pillar];
-        return el('span', {
-          class: 'tsi-pel-chalk tsi-pel-chalk--' + m.style, 'aria-hidden': 'true', 'data-test': 'chalk-' + m.id,
-          style: 'left:' + (base.x + m.dx) + '%;top:' + (base.y + m.dy) + '%'
-        });
+      /* The chamber's picture is drawn by chamber.js, the same code the players' window uses. */
+      var chamber = pel.chamber.build({
+        el: el, interactive: true, eventText: true, runeSrc: runeSrc,
+        imageSrc: asset('images/tidal-sequence.png'),
+        imageAlt: 'Ancient flooded Pelagosi chamber with four pillars surrounding a central basin',
+        layout: R.chamberLayout(T), extras: [ringEl]
       });
-      var chalkMarks = el('div', { class: 'tsi-pel-chalk-layer', 'aria-hidden': 'true' }, chalkEls);
-      var tidalFrame = el('div', { class: 'tsi-pel-frame tsi-pel-tidal-frame', 'aria-label': 'Tidal Sequence puzzle board', 'data-test': 'tidal-frame' }, [
-        tidalImage,
-        el('div', { class: 'tsi-pel-caustics', 'aria-hidden': 'true' }),
-        el('div', { class: 'tsi-pel-basin-aura', 'aria-hidden': 'true' }),
-        el('div', { class: 'tsi-pel-water-pressure', 'aria-hidden': 'true' }),
-        el('div', { class: 'tsi-pel-flow tsi-pel-flow--top', 'aria-hidden': 'true' }),
-        el('div', { class: 'tsi-pel-flow tsi-pel-flow--right', 'aria-hidden': 'true' }),
-        el('div', { class: 'tsi-pel-flow tsi-pel-flow--bottom', 'aria-hidden': 'true' }),
-        el('div', { class: 'tsi-pel-flow tsi-pel-flow--left', 'aria-hidden': 'true' }),
-        basinSelector,
-        pillarEls.topLeft, pillarEls.topRight, pillarEls.bottomLeft, pillarEls.bottomRight,
-        chalkMarks,
-        ringEl,
-        tidalEventOverlay
-      ]);
+      var tidalFrame = chamber.frame;
+      var basinRuneButton = chamber.basin.btn;
+      var basinSelector = chamber.basin.selector;
+      var pillarEls = {};
+      var pillarRuneButtons = {};
+      var pillarArrowButtons = {};
+      Object.keys(T.pillars).forEach(function (id) {
+        var part = chamber.pillars[id];
+        pillarEls[id] = part.box;
+        pillarRuneButtons[id] = part.rune;
+        pillarArrowButtons[id] = part.arrow;
+        life.on(part.rune, 'click', function () { if (ringFor === id) closeRing(true); else openRing(id); });
+        life.on(part.rune, 'keydown', function (event) {
+          if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+            event.preventDefault();
+            stepPillarRune(id, event.key === 'ArrowRight' ? 1 : -1);
+          }
+        });
+        life.on(part.arrow, 'click', function () { rotateTidalDirection(id); });
+      });
+      life.on(basinRuneButton, 'click', function () { rotateBasinRune(1); });
+      life.on(basinRuneButton, 'keydown', function (event) {
+        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+          event.preventDefault();
+          rotateBasinRune(event.key === 'ArrowRight' ? 1 : -1);
+        }
+      });
+      var tidalEventTitle = chamber.event.title;
+      var tidalEventText = chamber.event.text;
+      var tidalEventOverlay = chamber.event.overlay;
+      var chalkOn = !!(T.chalk && T.chalk.enabledByDefault);
+      var chalkMarks = chamber.chalk.layer;
       var tidalDescription = el('p', { class: 'tsi-pel-copy tsi-pel-small', 'data-test': 'tidal-description' });
       var tidalAttemptLabel = el('div', { class: 'tsi-pel-count', 'data-test': 'attempts' });
       var tidalPips = T.pillarOrder.map(function (id) { return el('span', { class: 'tsi-pel-tidal-pip', 'data-pillar': id, text: T.pillars[id].short }); });
@@ -357,7 +339,7 @@
             ]),
             panel('tsi-pel-later', [structureTitle, structureList, structureCopy]),
             panel('tsi-pel-later', [clueTitle, clueText]),
-            panel('tsi-pel-notes', [heading('Trial Notes'), trialNotes, resetBtn])
+            panel('tsi-pel-notes', [heading('Trial Notes'), trialNotes, resetBtn, pvRow])
           ])
         ])
       ]);
@@ -376,6 +358,7 @@
       function setStatus(stage, body) {
         stageLabel.textContent = stage;
         statusText.textContent = body;
+        pvQueue();
       }
 
       function modal(options) {
@@ -799,6 +782,7 @@
       }
 
       function updateTidalPressureUI() {
+        pvQueue();
         removeState('tidal-pressure-1', 'tidal-pressure-2', 'tidal-pressure-3', 'tidal-pressure-4');
         if (tidalState.pressure > 0) addState('tidal-pressure-' + tidalState.pressure);
         var ps = pressureState();
@@ -830,42 +814,14 @@
       }
 
       function renderTidalBasin() {
-        var rune = T.runes[tidalState.basinRuneIndex];
-        var img = basinRuneButton.querySelector('img');
-        img.src = runeSrc(rune);
-        img.alt = rune + ' rune';
-        basinRuneButton.querySelector('span').textContent = R.label(rune);
-        basinRuneButton.dataset.rune = rune;
-        var correct = R.isBasinCorrect(tidalState.basinRuneIndex);
-        basinRuneButton.classList.toggle('tsi-pel-basin-ok', (tidalState.feedbackActive && tidalState.phase === 'basin' && correct) || tidalState.solved);
-        basinRuneButton.classList.toggle('tsi-pel-basin-wrong', tidalState.feedbackActive && tidalState.phase === 'basin' && !correct);
+        pel.chamber.paint(chamber, R.chamberView(tidalState, T));
       }
 
       /* How much a check reveals: 'complete' shows whole pillars, 'partial' each rune and arrow. */
-      function reveal() {
-        return {
-          complete: tidalState.solved || (tidalState.feedbackActive && (tidalState.feedbackMode === 'complete' || tidalState.feedbackMode === 'partial')),
-          partial: tidalState.solved || (tidalState.feedbackActive && tidalState.feedbackMode === 'partial')
-        };
-      }
+      function reveal() { return R.feedbackReveal(tidalState); }
 
       function renderTidalPillars() {
-        var show = reveal();
-        Object.keys(pillarEls).forEach(function (id) {
-          var p = tidalState.pillars[id];
-          var rune = R.runeOf(p);
-          var img = pillarRuneButtons[id].querySelector('img');
-          img.src = runeSrc(rune);
-          img.alt = rune + ' rune';
-          pillarRuneButtons[id].querySelector('span').textContent = R.label(rune);
-          pillarRuneButtons[id].dataset.rune = rune;
-          pillarArrowButtons[id].textContent = T.directionSymbols[R.directionOf(p)];
-          pillarArrowButtons[id].dataset.direction = R.directionOf(p);
-          var c = R.pillarCheck(id, p);
-          pillarEls[id].classList.toggle('tsi-pel-rune-ok', show.partial && c.rune);
-          pillarEls[id].classList.toggle('tsi-pel-dir-ok', show.partial && c.direction);
-          pillarEls[id].classList.toggle('tsi-pel-complete', show.complete && c.complete);
-        });
+        pel.chamber.paint(chamber, R.chamberView(tidalState, T));
         tidalAttemptLabel.textContent = 'Attempts: ' + tidalState.attempts;
         renderTidalProgress();
         renderTidalBasin();
@@ -893,6 +849,7 @@
       function showTidalEvent(title, text, duration) {
         tidTimers.clearTimeout(tidalEventTimer);
         tidalEventTitle.textContent = title;
+        if (pvLink) pvLink.send('banner', { title: title, ms: duration || 1450 });
         tidalEventText.textContent = text;
         tidalEventOverlay.classList.remove('tsi-pel-hidden');
         tidalFrame.classList.add('tsi-pel-pulse');
@@ -1063,6 +1020,7 @@
         updateTidalPressureUI();
         play(ps.sound);
         tidalFrame.classList.add('tsi-pel-shake');
+        pvFx('shake', 540);
         tidTimers.setTimeout(function () { tidalFrame.classList.remove('tsi-pel-shake'); }, 540);
         showTidalEvent(ps.title, (reasonText ? reasonText + ' ' : '') + ps.text, 1700);
         clueText.textContent = ps.text + ' ' + ps.effect;
@@ -1073,6 +1031,7 @@
           renderTidalControls();
           play('puzzleFail');
           triggerDeepTremor(tidalFrame, tidTimers, 1100);
+          pvFx('tremor', 1100);
           tidTimers.setTimeout(function () {
             resetTidalSequenceActive(true);
             play('runePlace');
@@ -1094,6 +1053,7 @@
         play('basinWake');
         play('puzzleSolve');
         addState('screen-flash');
+        pvFx('flash', 760);
         showTidalEvent('THE OUTER CURRENT CLOSES', 'The four pillars lock. The basin wakes and waits to be named.', 1900);
         setStatus('The basin wakes', 'The outer flow is correct. Now choose the final principle that completes the sequence at the centre.');
         clueText.textContent = T.text.basinClue;
@@ -1143,6 +1103,7 @@
         renderTidalPillars();
         play('puzzleSolve');
         addState('tidal-solved', 'screen-flash');
+        pvFx('flash', 1400);
         showTidalEvent('THE CURRENT COMPLETES', 'The basin accepts the Current. Water rises upward in a perfect ring.', 1900);
         play('anchorRelease');
         setStatus('The current completes', 'The four pillars and central basin lock into a single flowing sequence.');
@@ -1155,6 +1116,7 @@
         tidTimers.setTimeout(function () {
           play('cavernOpen');
           triggerDeepTremor(tidalFrame, tidTimers, 1300);
+          pvFx('tremor', 1300);
           setStatus('The stone shifts', 'The chamber waits. Choose what happens next.');
         }, 2200);
         tidTimers.setTimeout(function () {
@@ -1190,7 +1152,38 @@
         runFinale('solve');
       }
 
-/* ---------- Sound engine: fades and the ambient bed ---------- */
+/* ---------- The players' window (Player View) ----------
+         A second window for the TV that only looks. This window is the only brain and the only clock: it sends
+         the other window the board as it is (R.playerSnapshot) after any change, at most once every 16 ms, and small
+         one-off messages for passing effects. Sound stays here. */
+      var pvQueued = false;
+      var pvLink = ctx.playerLink({
+        view: 'tidal',
+        name: 'ScarlettTidalPlayers',
+        keepOpen: true,
+        features: 'popup=yes,width=1400,height=800',
+        getState: function () { return R.playerSnapshot(tidalState, T, pvExtras()); },
+        onStatus: function (st) {
+          pvChip.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
+          pvChip.classList.toggle('tsi-pel-pv-chip--on', st === 'connected');
+        }
+      });
+      function pvExtras() {
+        var veil = 'off';
+        if (!absenceVeil.classList.contains('tsi-pel-hidden')) {
+          veil = absenceVeil.classList.contains('tsi-pel-absence--black') ? 'black' : absenceVeil.classList.contains('tsi-pel-absence--dim') ? 'dim' : 'on';
+        }
+        return { chalkOn: chalkOn, veil: veil };
+      }
+      function pvQueue() {
+        if (pvQueued || !life.alive || !pvLink || !pvLink.isConnected()) return;
+        pvQueued = true;
+        life.setTimeout(function () { pvQueued = false; pvLink.sync(); }, 16);
+      }
+      /* One passing effect (shake, tremor, flash, pulse, thump) for the players' window. */
+      function pvFx(name, ms) { if (pvLink) pvLink.send('fx', { name: name, ms: ms }); }
+
+      /* ---------- Sound engine: fades and the ambient bed ---------- */
       var fadeTokens = new Map();
       function fadeTo(el, target, ms, then) {
         if (!el) return;
@@ -1255,6 +1248,7 @@
       var snapshot = null;
       var FINALE_SOUNDS = ['absenceVoid', 'knock1', 'knock2', 'knock3', 'waterBackward'];
       function finStop() {
+        pvQueue();
         finTimers.clear();
         FINALE_SOUNDS.forEach(function (n) { if (sounds[n]) { fadeTokens.delete(sounds[n]); sounds[n].pause(); try { sounds[n].currentTime = 0; } catch (e) { /* not loaded */ } } });
         absenceVeil.classList.remove('tsi-pel-absence--on', 'tsi-pel-absence--dim', 'tsi-pel-absence--black', 'tsi-pel-absence--thump', 'tsi-pel-absence--ended');
@@ -1267,9 +1261,11 @@
         absenceVeil.classList.remove('tsi-pel-absence--thump');
         void absenceVeil.offsetWidth;
         absenceVeil.classList.add('tsi-pel-absence--thump');
+        pvFx('thump', 380);
         finTimers.setTimeout(function () { absenceVeil.classList.remove('tsi-pel-absence--thump'); }, 380);
       }
       function runFinale(source) {
+        pvQueue();
         finStop();
         tidalState.finale = 'running';
         tidalState.finaleSource = source;
@@ -1285,6 +1281,7 @@
         });
       }
       function doCue(cue) {
+        pvQueue();
         if (cue.type === 'duck') {
           bedDuck(0.2, 2400);
           absenceVeil.classList.add('tsi-pel-absence--dim');
@@ -1314,6 +1311,7 @@
       }
       var END_LABELS = { replay: 'REPLAY THE ABSENCE', return: 'RETURN TO THE PUZZLE', reset: 'RESET' };
       function showFinaleEnd() {
+        pvQueue();
         tidalState.finale = 'ended';
         absenceVeil.classList.add('tsi-pel-absence--black', 'tsi-pel-absence--ended');
         absenceNote.textContent = T.finale.endNote;
@@ -1403,13 +1401,14 @@
           }, step);
         }());
       }
-      life.on(chalkBox, 'change', function () { chalkOn = chalkBox.checked; chalkMarks.classList.toggle('tsi-pel-hidden', !chalkOn); });
+      life.on(chalkBox, 'change', function () { chalkOn = chalkBox.checked; chalkMarks.classList.toggle('tsi-pel-hidden', !chalkOn); pvQueue(); });
       chalkMarks.classList.toggle('tsi-pel-hidden', !chalkOn);
       life.on(tideBox, 'change', function () { tidalState.tideOn = tideBox.checked; tidalState.tideMs = 0; });
 
       /* ---------- The wall, the readings and Stage Mode ---------- */
       var wallShown = [];
       function renderWall() {
+        pvQueue();
         T.wall.lines.forEach(function (line, i) {
           var level = tidalState.lines[i];
           var li = wallList.children[i];
@@ -1433,6 +1432,7 @@
         renderReadings();
       }
       function renderReadings() {
+        pvQueue();
         var live = tidalState.started && tidalState.phase !== 'idle';
         var canPress = live && !tidalState.locked && !tidalState.solved && (tidalState.phase === 'outer' || tidalState.phase === 'basin');
         readingRows.forEach(function (row, i) {

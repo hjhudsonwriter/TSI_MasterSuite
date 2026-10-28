@@ -301,8 +301,16 @@ window.TSI_DATA.tools = [
       js: [
         'tools/pelagosi/data/pelagosi-data.js',
         'tools/pelagosi/rules.js',
+        'tools/pelagosi/chamber.js',
         'tools/pelagosi/tool.js'
       ]
+    },
+    /* The Player View (28 October 2026): a calm window for the TV. It draws the chamber, the pressure and the wall, nothing else. */
+    playerViews: {
+      tidal: {
+        css: ['tools/pelagosi/pelagosi.css', 'tools/pelagosi/player-view.css'],
+        js: ['tools/pelagosi/chamber.js', 'tools/pelagosi/player-view.js']
+      }
     }
   }
 ];

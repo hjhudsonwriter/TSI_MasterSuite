@@ -1115,3 +1115,9 @@
 }
 @keyframes tsi-pel-caustics { from { background-position: 0% 0%; } to { background-position: 100% 60%; } }
 @media (prefers-reduced-motion: reduce) { .tsi-tool--pelagosi .tsi-pel-caustics { animation: none; } }
+
+/* Tidal player window: the DM's "Open Player View" row */
+.tsi-tool--pelagosi .tsi-pel-pv-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.tsi-tool--pelagosi .tsi-pel-pv-chip { font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid rgba(140, 224, 255, 0.25); color: var(--tsi-text-muted); }
+.tsi-tool--pelagosi .tsi-pel-pv-chip.tsi-pel-pv-chip--on { color: #bff3ff; border-color: rgba(140, 224, 255, 0.6); }
+.tsi-tool--pelagosi .tsi-pel--stage .tsi-pel-pv-row { display: none; }

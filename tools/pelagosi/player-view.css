@@ -1,0 +1,53 @@
+/* Pelagosi Puzzle Trials: the Tidal Sequence player window. Every class starts tsi-pel-pv-.
+   The chamber itself uses the tool's own styles (pelagosi.css), so it looks exactly as the DM's board draws it.
+   A 16:9 stage that fills the window, letterboxed on any other shape; type scales with the stage (cqw). */
+body.tsi-player--tidal { background: #02070c; overflow: hidden; }
+body.tsi-player--tidal #tsi-player-root { position: fixed; inset: 0; }
+.tsi-tool--pelagosi.tsi-pel-pv { position: absolute; inset: 0; background: #02070c; pointer-events: none; user-select: none; }
+.tsi-tool--pelagosi.tsi-pel-pv.tsi-pel-pv--idle { cursor: none; }
+body.tsi-player--tidal:has(.tsi-pel-pv--idle) { cursor: none; }
+
+.tsi-tool--pelagosi .tsi-pel-pv-stage {
+  position: absolute; left: 50%; top: 50%;
+  width: min(100vw, 177.78vh); aspect-ratio: 16 / 9; transform: translate(-50%, -50%);
+  container-type: size; padding: 0;
+  display: grid; grid-template-columns: 30% minmax(0, 1fr); gap: 1.6cqw; align-items: stretch;
+  background: radial-gradient(circle at 60% 40%, rgba(12, 38, 56, 0.55), #02070c 70%);
+  overflow: hidden;
+}
+.tsi-tool--pelagosi .tsi-pel-pv-stage::after { position: absolute; }
+
+/* The wall: large and plain. */
+.tsi-tool--pelagosi .tsi-pel-pv-wall { align-self: center; gap: 1.2cqw; padding: 0 0 0 2cqw; }
+.tsi-tool--pelagosi .tsi-pel-pv-wall .tsi-pel-wall-line {
+  font-size: 1.6cqw; line-height: 1.3; padding: 1.1cqw 1.3cqw; border-radius: 0.9cqw;
+  font-family: var(--tsi-font-title);
+}
+.tsi-tool--pelagosi .tsi-pel-pv-wall .tsi-pel-wall-line--cut { color: rgba(150, 160, 168, 0.5); }
+
+/* The chamber is the hero; the pressure meter sits under it. */
+.tsi-tool--pelagosi .tsi-pel-pv-main { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 1.1cqw; min-width: 0; padding: 1.4cqw 1.6cqw 1.4cqw 0; }
+.tsi-tool--pelagosi .tsi-pel-pv-chamber { min-height: 0; }
+.tsi-tool--pelagosi .tsi-pel-pv-meter { display: grid; gap: 0.6cqw; }
+.tsi-tool--pelagosi .tsi-pel-pv-meter-label {
+  font-family: var(--tsi-font-title); font-size: 1.5cqw; letter-spacing: 0.25em; text-transform: uppercase;
+  color: #cfeefc; text-align: center;
+}
+.tsi-tool--pelagosi .tsi-pel-pv-meter .tsi-pel-pressure-track { gap: 0.8cqw; }
+.tsi-tool--pelagosi .tsi-pel-pv-meter .tsi-pel-segment { height: 1.1cqw; min-height: 8px; }
+/* The banner on the chamber: the title only, a little larger for the room. */
+.tsi-tool--pelagosi.tsi-pel-pv .tsi-pel-event p { font-size: clamp(1.4rem, 2.4cqw, 3rem); }
+
+/* The veil during the Absence: the same fades as the DM's. */
+.tsi-tool--pelagosi .tsi-pel-pv-veil { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity 1800ms ease; z-index: 60; pointer-events: none; }
+.tsi-tool--pelagosi .tsi-pel-pv-veil--on { opacity: 0.55; }
+.tsi-tool--pelagosi .tsi-pel-pv-veil--dim { opacity: 0.8; transition-duration: 2400ms; }
+.tsi-tool--pelagosi .tsi-pel-pv-veil--black { opacity: 1; transition-duration: 700ms; }
+.tsi-tool--pelagosi .tsi-pel-pv-veil--thump { animation: tsi-pel-thump 360ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .tsi-tool--pelagosi .tsi-pel-pv-veil { transition: none; }
+  .tsi-tool--pelagosi .tsi-pel-pv-veil--thump { animation: none; }
+}
+
+/* The players' arrows are plain boxes, not buttons: centre the arrow and make it easy to read from across the room. */
+.tsi-tool--pelagosi.tsi-pel-pv .tsi-pel-pillar-arrow { display: grid; place-items: center; font-size: 3.6cqw; font-weight: 700; font-family: system-ui, "Segoe UI Symbol", sans-serif; line-height: 1; width: 6.2cqw; height: 4.4cqw; }
