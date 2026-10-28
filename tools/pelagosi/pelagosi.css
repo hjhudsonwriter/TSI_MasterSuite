@@ -1161,3 +1161,11 @@
 .tsi-tool--pelagosi .tsi-pel-cut-hide { position: absolute; top: calc(var(--tsi-topbar-h, 56px) + 10px); right: 14px; pointer-events: auto; opacity: 0.45; }
 .tsi-tool--pelagosi .tsi-pel-cut-hide:hover, .tsi-tool--pelagosi .tsi-pel-cut-hide:focus-visible { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .tsi-tool--pelagosi .tsi-pel-cut, .tsi-tool--pelagosi .tsi-pel-cut-video { transition: none; } }
+
+/* The DM extras stay compact so the laptop still shows the whole right-hand column (KNOWN_ISSUES PEL-12) */
+.tsi-tool--pelagosi .tsi-pel-dm-extras { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.tsi-tool--pelagosi .tsi-pel-dm-extras .tsi-pel-small-btn { padding: 1px 6px; }
+.tsi-tool--pelagosi .tsi-pel-dm-extras { margin-top: 3px; }
+.tsi-tool--pelagosi .tsi-pel-pressure-tools { margin-top: 4px; }
+.tsi-tool--pelagosi .tsi-pel-pv-row { margin-top: 5px; }
+.tsi-tool--pelagosi .tsi-pel-readings-note:empty { display: none; }
