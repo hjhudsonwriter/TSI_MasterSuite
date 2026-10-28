@@ -284,6 +284,12 @@
       };
     },
 
+    /* The hidden-chamber cutaway, if the DM is showing it: only its picture and clip, nothing else. */
+    cleanCutaway: function (c) {
+      if (!c || typeof c !== 'object' || typeof c.image !== 'string' || !c.image) return null;
+      return { image: c.image.slice(0, 300), video: typeof c.video === 'string' ? c.video.slice(0, 300) : '' };
+    },
+
     /* The one thing sent to the players' window. `extras`: { chalkOn, veil: 'off' | 'on' | 'dim' | 'black' }.
        It holds the board as drawn, the wall lines at the level the DM has revealed (never more), the layout and
        nothing else: no solution, no hint text, no readings. */
@@ -298,6 +304,7 @@
         }),
         layout: rules.chamberLayout(cfg),
         videos: extras.videos || {},
+        cutaway: rules.cleanCutaway(extras.cutaway),
         chalkOn: extras.chalkOn !== false,
         veil: extras.veil || 'off'
       };

@@ -43,6 +43,9 @@
     var shell = el('div', { class: 'tsi-tool--pelagosi tsi-pel-pv' }, [stage, veil]);
     root.appendChild(shell);
 
+    /* The hidden chamber (Act 7), when the DM shows it: a full-bleed cutaway, kept in step with the snapshot. */
+    var cutaway = pel.cutaway.create({ parent: shell, testId: 'pv-cut' });
+
     /* The cinematic clips: muted, full-bleed, played when the DM's window says so (cinema.js). */
     var cinema = pel.cinema.create({
       parent: shell, testId: 'pv-cine',
@@ -118,6 +121,7 @@
         var key = JSON.stringify(snap.layout);
         if (key !== layoutKey) { layoutKey = key; buildChamber(snap.layout); }
         if (snap.videos) cinema.preload(snap.videos);
+        if (snap.cutaway) cutaway.show(snap.cutaway); else if (cutaway.isUp()) cutaway.hide();
         pel.chamber.paint(ch, snap.view);
         paintFlags(snap.view.flags);
         paintMeter(snap.view.pressure);
@@ -159,6 +163,7 @@
       lost: function () {
         timers.splice(0).forEach(function (id) { window.clearTimeout(id); });
         cinema.stop();
+        cutaway.hide();
         if (ch) { hideBanner(); ch.event.overlay.classList.add('tsi-pel-hidden'); }
       },
 

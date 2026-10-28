@@ -27,3 +27,7 @@ A file that is not there yet shows as **file missing** (or **no voice file**). N
 
 ## Adding or changing a card (data only)
 Open `tools/explorer/data/absent-tide-scenes.js`. Each card is one short entry (`image`, optionally `video`, `portrait`, `voice`, `line`, `dmNote`, `overlays`); the first lines of the file explain every field. Names, voice-line words and the writing laid over a picture (`overlays`: where it sits and how big, as percentages of the picture) are one-line edits.
+
+## Acts 6 and 7: the hidden chamber (Tidal Sequence)
+Solve the Tidal Sequence as usual. Before you press RELEASE THE ABSENCE, press **Show the hidden chamber** (under Readings, in the extras). The TV plays the short silent clip, then holds on the picture. Press **Hide the hidden chamber** (or Esc) to go back to the board. Pressing RELEASE THE ABSENCE hides it for you. It makes no sound and changes nothing in the finale.
+

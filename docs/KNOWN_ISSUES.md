@@ -4331,3 +4331,9 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **Missing from the repo:** `act4/market-cup.png` (the market card shows as "file missing").
 - **Needs a real TV:** the writing laid over the pictures (position and size), how the name band reads from across the room, and the voice line coming only from the laptop.
 
+### SCN-02 · Acts 6 and 7: "Show the hidden chamber" on the Tidal Sequence (28 October 2026)
+- **New:** a "Show the hidden chamber" button in the Readings panel's extras, on once the puzzle is solved and before RELEASE THE ABSENCE. It puts `hidden-chamber.png` full-bleed on black on the Tidal player view, playing `hidden-chamber.mp4` first (muted), which then fades to the still. The button becomes "Hide the hidden chamber"; Esc also hides it. With no players' window open it covers the DM window instead (with its own Hide button). RELEASE THE ABSENCE takes it away first; the button is off during the finale and after leaving or resetting.
+- **Not part of the finale:** it touches no timer, cue or sound (tested: the timers, the finale state and the sounds played are the same before and after).
+- **Decisions:** the clip follows the "Play cinematic videos" tick box and reduced motion (still only); a refreshed or reconnected players' window gets it back by itself (it is part of the snapshot, and the snapshot holds nothing of it until it is shown); the clip failing or missing leaves the still.
+- **Needs a real TV:** how the clip fades to the still.
+
