@@ -1065,3 +1065,8 @@
   .tsi-tool--pelagosi .tsi-pel-tidal-frame { width: 100%; }
   .tsi-tool--pelagosi .tsi-pel-col { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 }
+
+/* Tidal v2 phase 3: pressure tools and the solved bar */
+.tsi-tool--pelagosi .tsi-pel-pressure-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 8px; }
+.tsi-tool--pelagosi .tsi-pel-tide-row { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--tsi-text-muted); cursor: pointer; }
+.tsi-tool--pelagosi .tsi-pel-solved-bar { display: flex; flex-wrap: wrap; gap: 10px; }
