@@ -97,7 +97,7 @@ async function toSolved(page) {
 
     let before;
     await check('Show puts the cutaway on the TV full-bleed on black: the clip plays muted, then the still', async () => {
-      before = { timers: await page.evaluate(() => TSI.pelagosi.debug.timers()), plays: await page.evaluate(() => window.__plays.length), finale: (await t(page)).finale };
+      before = { timers: await page.evaluate(() => TSI.pelagosi.debug.timers()), plays: await page.evaluate(() => window.__plays.filter(f => f !== 'chamber-bed.mp3').length), finale: (await t(page)).finale };
       await page.check('[data-test=cine-on]'); /* the clip follows "Play cinematic videos" */
       await page.click('[data-test=hidden-chamber]');
       await pv.waitForFunction(() => { const r = document.querySelector('[data-test=pv-cut]'); return r && !r.hidden; }, null, { timeout: 5000 });
@@ -112,8 +112,10 @@ async function toSolved(page) {
 
     await check('it changes no timer, cue or sound', async () => {
       equal((await t(page)).finale, before.finale);
-      equal(await page.evaluate(() => TSI.pelagosi.debug.timers()), before.timers);
-      equal(await page.evaluate(() => window.__plays.length), before.plays, 'no sound played');
+      /* the bed's own loop crossfade may start any time (fade timers), so compare the puzzle's and the finale's timers only */
+      const now = await page.evaluate(() => TSI.pelagosi.debug.timers());
+      equal([now.memory, now.tidal, now.finale], [before.timers.memory, before.timers.tidal, before.timers.finale]);
+      equal(await page.evaluate(() => window.__plays.filter(f => f !== 'chamber-bed.mp3').length), before.plays, 'no sound played (the bed may loop by itself)');
       equal(await pv.$$eval('audio', a => a.length), 0);
     });
 
