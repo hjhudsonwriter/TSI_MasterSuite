@@ -4311,3 +4311,10 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **Final checks:** with every audio file blocked the puzzle and the whole finale still work in silence; Memory's sounds keep their old volume; every `ready` sound has its file.
 - **Not tested:** real-speed finale timing and sound in Edge on the laptop and the TV.
 
+### PEL-24 · The Tidal Sequence player window, part A (28 October 2026)
+- **New:** "Open Player View" (Trial Notes panel) opens a calm window for the TV: the chamber (pillars, basin, chalk marks, caustics, pressure water, shake/flash/tremor), the pressure word with its four-segment meter, the wall in large type, and banner titles only. No buttons, hints, readings or text beyond that; nothing can be clicked or focused; the cursor hides after 2 s; double-click for fullscreen. The window stays open and re-finds the DM tool by itself (same link as the Explorer and Bastion).
+- **How:** the DM's window is the only brain. It sends `R.playerSnapshot` (rules.js) after any change (at most one per 16 ms) plus small messages for passing effects. The chamber is drawn by one shared file (`chamber.js`) used by both windows. The players' window does not load the puzzle data at all, so the solution is not in its memory or its page.
+- **During the Absence the TV window fades with the DM's black veil** (the video cinematics are part B).
+- **Left alone:** Stage Mode and the DM view's look are unchanged; the Memory puzzle is untouched.
+- **Not tested:** a real second screen and real Edge; double-click fullscreen in the test browser.
+

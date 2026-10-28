@@ -227,6 +227,81 @@
       return rules.snapshotPuzzle(snapshot);
     },
 
+    /* ---------- The player window (Tidal Sequence) ----------
+       What the chamber looks like right now, as plain data: used by the DM's own screen and sent to the
+       players' window, so the two always draw the same thing. Only what is on the board right now. */
+
+    /* How much a check reveals: 'complete' shows whole pillars, 'partial' each rune and arrow. */
+    feedbackReveal: function (state) {
+      return {
+        complete: !!state.solved || (!!state.feedbackActive && (state.feedbackMode === 'complete' || state.feedbackMode === 'partial')),
+        partial: !!state.solved || (!!state.feedbackActive && state.feedbackMode === 'partial')
+      };
+    },
+
+    chamberView: function (state, cfg) {
+      var show = rules.feedbackReveal(state);
+      var pillars = {};
+      cfg.pillarOrder.forEach(function (id) {
+        var p = state.pillars[id];
+        var c = rules.pillarCheck(id, p);
+        var rune = rules.runeOf(p);
+        var direction = rules.directionOf(p);
+        pillars[id] = {
+          rune: rune, label: rules.label(rune), direction: direction, symbol: cfg.directionSymbols[direction],
+          runeOk: show.partial && c.rune, dirOk: show.partial && c.direction, complete: show.complete && c.complete
+        };
+      });
+      var basinRune = cfg.runes[state.basinRuneIndex];
+      var correct = rules.isBasinCorrect(state.basinRuneIndex);
+      var inBasin = !!state.feedbackActive && state.phase === 'basin';
+      var level = state.pressure || 0;
+      var flags = [];
+      if (state.started) flags.push('tidal-started');
+      if (state.solved) flags.push('tidal-solved');
+      if (level > 0) flags.push('tidal-pressure-' + level);
+      return {
+        pillars: pillars,
+        basin: {
+          rune: basinRune, label: rules.label(basinRune), visible: state.phase === 'basin' || !!state.solved, solved: !!state.solved,
+          ok: (inBasin && correct) || !!state.solved, wrong: inBasin && !correct
+        },
+        pressure: { level: level, label: (cfg.pressure[level] || cfg.pressure[0]).label },
+        flags: flags
+      };
+    },
+
+    /* Where things sit on the chamber picture (% across, % down): the pillars and the chalk marks. */
+    chamberLayout: function (cfg) {
+      var at = {};
+      cfg.pillarOrder.forEach(function (id) { at[id] = { x: cfg.pillars[id].x, y: cfg.pillars[id].y, label: cfg.pillars[id].label }; });
+      return {
+        order: cfg.pillarOrder.slice(),
+        pillars: at,
+        chalk: (cfg.chalk ? cfg.chalk.marks : []).map(function (m) {
+          return { id: m.id, style: m.style, x: cfg.pillars[m.pillar].x + m.dx, y: cfg.pillars[m.pillar].y + m.dy };
+        })
+      };
+    },
+
+    /* The one thing sent to the players' window. `extras`: { chalkOn, veil: 'off' | 'on' | 'dim' | 'black' }.
+       It holds the board as drawn, the wall lines at the level the DM has revealed (never more), the layout and
+       nothing else: no solution, no hint text, no readings. */
+    playerSnapshot: function (state, cfg, extras) {
+      extras = extras || {};
+      return {
+        v: 1,
+        view: rules.chamberView(state, cfg),
+        wall: cfg.wall.lines.map(function (line, i) {
+          var level = state.lines[i];
+          return { level: level, text: rules.wallLineText(line, level) };
+        }),
+        layout: rules.chamberLayout(cfg),
+        chalkOn: extras.chalkOn !== false,
+        veil: extras.veil || 'off'
+      };
+    },
+
     /* 'topLeft' → 'Top Left', 'current' → 'Current' (the old tool's labels). */
     label: function (id) {
       return id.replace(/([A-Z])/g, ' $1').replace(/^./, function (c) { return c.toUpperCase(); }).trim();

@@ -334,4 +334,67 @@
     t.ok(!/[\uD800-\uDBFF]/.test(text), 'no emoji in the new data');
     t.ok(!/knocks? (are|is|come from|were)|who (made|cut)/i.test(text), 'nothing says what the knocks are');
   });
+
+  group('Pelagosi: the players\' window (playerSnapshot)');
+
+  function freshState() {
+    return {
+      lines: D.tidal.wall.lines.map(function () { return 'cut'; }),
+      started: true, solved: false, locked: false, phase: 'outer', attempts: 0, pressure: 0,
+      feedbackActive: false, feedbackMode: 'none', basinRuneIndex: D.tidal.basinStartIndex,
+      pillars: R.startPillars()
+    };
+  }
+
+  test('a fresh puzzle sends nothing of the answer, the wall or the hints', function (t) {
+    var json = JSON.stringify(R.playerSnapshot(freshState(), D.tidal, { chalkOn: true, veil: 'off' }));
+    ['Flow follows memory', 'Memory seeks depth', 'Depth breaks upon stone', 'Stone returns the current', 'Anchor holds the water', 'Held water cannot speak',
+     'solution', 'basinSolution', 'Remove the Anchor', 'readings', 'hint', 'effect', 'DC 1', 'Maerys', 'Fragment', 'Echo Memory'].forEach(function (word) {
+      t.ok(json.toLowerCase().indexOf(word.toLowerCase()) < 0, 'the snapshot must not contain "' + word + '"');
+    });
+    t.ok(json.indexOf(JSON.stringify(D.tidal.solution)) < 0);
+    D.tidal.wall.lines.forEach(function (line) { t.ok(json.indexOf(line.whole) < 0, line.whole); });
+  });
+
+  test('the wall is sent at the level shown: blocks for cut, the fragment text for fragment, the whole line only when read', function (t) {
+    var s = freshState();
+    s.lines = ['whole', 'fragment', 'cut', 'cut', 'cut'];
+    var snap = R.playerSnapshot(s, D.tidal, {});
+    t.equal(snap.wall[0].text, 'Flow follows memory.');
+    t.equal(snap.wall[1].text, D.tidal.wall.lines[1].fragment);
+    t.ok(/^[\u2592 .,]+$/.test(snap.wall[2].text), 'a cut line is only blocks');
+    t.ok(JSON.stringify(snap).indexOf('Depth breaks upon stone') < 0);
+    t.ok(JSON.stringify(snap).indexOf('Memory seeks depth') < 0);
+  });
+
+  test('the board is sent as drawn: each pillar\'s rune and arrow, the pressure word, the chalk spots', function (t) {
+    var s = freshState();
+    s.pressure = 2;
+    var snap = R.playerSnapshot(s, D.tidal, { chalkOn: false, veil: 'dim' });
+    t.same(snap.view.pressure, { level: 2, label: D.tidal.pressure[2].label });
+    t.same(Object.keys(snap.view.pillars), D.tidal.pillarOrder);
+    t.equal(snap.view.pillars.topLeft.rune, D.tidal.runes[s.pillars.topLeft.runeIndex]);
+    t.equal(snap.chalkOn, false);
+    t.equal(snap.veil, 'dim');
+    t.equal(snap.layout.chalk.length, 2);
+    t.ok(snap.view.flags.indexOf('tidal-pressure-2') >= 0 && snap.view.flags.indexOf('tidal-started') >= 0);
+  });
+
+  test('right and wrong marks on the pillars only show after a check', function (t) {
+    var s = freshState();
+    s.pillars = SOLVED;
+    var quiet = R.playerSnapshot(s, D.tidal, {});
+    t.ok(D.tidal.pillarOrder.every(function (id) { return !quiet.view.pillars[id].runeOk && !quiet.view.pillars[id].complete; }), 'no marks before a check');
+    s.feedbackActive = true; s.feedbackMode = 'partial';
+    var checked = R.playerSnapshot(s, D.tidal, {});
+    t.ok(D.tidal.pillarOrder.every(function (id) { return checked.view.pillars[id].complete; }));
+  });
+
+  test('the basin shows nothing until the outer ring is right', function (t) {
+    var s = freshState();
+    t.equal(R.playerSnapshot(s, D.tidal, {}).view.basin.visible, false);
+    s.phase = 'basin';
+    t.equal(R.playerSnapshot(s, D.tidal, {}).view.basin.visible, true);
+    t.equal(R.playerSnapshot(s, D.tidal, {}).view.basin.ok, false, 'no green before a check');
+  });
 }());
