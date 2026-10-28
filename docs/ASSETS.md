@@ -86,7 +86,7 @@ All 18 media files from the old tool, each checked byte-for-byte after copying. 
 | `audio/puzzle-solve.wav` | `tools/pelagosi/assets/audio/puzzle-solve.wav` | 32 KB | Yes: a round won; the basin wakes; solved |
 | `audio/cavern-open.wav` | `tools/pelagosi/assets/audio/cavern-open.wav` | 52 KB | Yes: the ending of each puzzle |
 
-**Five sounds still to come (Harry's answer P2).** The old tool also named five sounds that were never supplied: `water-stir.wav`, `pressure-rise.wav`, `current-reverse.wav`, `tidal-surge.wav` and `basin-wake.wav`. Harry will provide them. Each has a ready-made place in `tools/pelagosi/data/pelagosi-data.js` and stays silent until its file is added to `tools/pelagosi/assets/audio/` and switched on there (see the note in that folder).
+**Tidal Sequence v2 sounds (supplied 27–28 October 2026, all `.mp3`, all switched on in `tools/pelagosi/data/pelagosi-data.js`).** `chamber-bed` (the ambient bed, two copies crossfaded), `water-stir`, `pressure-rise`, `current-reverse`, `tidal-surge`, `basin-wake` (pressure and basin moments), `anchor-release` (the Anchor comes out), `inscription-reveal` (a wall line becomes whole), `tide-return-toll` (the optional tide), and for the Absence: `absence-void`, `knock-1`, `knock-2`, `knock-3`, `water-backward`. `water-flow.mp3` is kept as a source file only and is not played. Each entry is `{ file, ready, volume?, loop? }`; a file that is missing is silent, never an error.
 
 The empty `.keep` placeholder files in the old repo's folders weren't copied.
 
