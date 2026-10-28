@@ -88,6 +88,24 @@ const levels = page => page.$$eval('[data-test=wall] li', l => l.map(x => x.data
     await context.close();
   }
 
+  section('The rules text keeps the answer hidden');
+  {
+    const { context, page } = await open(browser, 'laptop');
+    await check('the rules pop-up, the Sequence Rules panel and the console never give the order, the direction or the basin answer', async () => {
+      await page.click('[data-test=begin]');
+      await page.waitForSelector('.tsi-modal');
+      const popup = await page.textContent('.tsi-modal');
+      assert(/Each pillar carries a rune and a current/.test(popup), popup);
+      assert(/The chamber remembers what was cut away\./.test(popup), popup);
+      await H.clickModal(page, 'START SEQUENCE');
+      await page.waitForSelector('.tsi-modal', { state: 'detached' });
+      const all = await page.evaluate(() => document.body.textContent);
+      assert(!/Flow\s*→|clockwise|Stone returns the Current|Let no current end/i.test(all), 'a giveaway is on the page');
+      assert(/Align the four pillars until the chamber remembers/.test(all), 'panel copy missing');
+    });
+    await context.close();
+  }
+
   section('The optional tide');
   {
     const { context, page } = await open(browser, 'laptop');

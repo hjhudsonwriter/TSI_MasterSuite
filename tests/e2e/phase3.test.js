@@ -419,13 +419,13 @@ async function setBasin(page, rune) {
     const { context, page } = await newPage(browser, 'laptop');
     await openPel(page);
 
-    await check('BEGIN shows the six rules; START SEQUENCE wakes the chamber', async () => {
+    await check('BEGIN shows the four rules; START SEQUENCE wakes the chamber', async () => {
       await page.selectOption('[data-test=puzzle]', 'tidal');
       equal(await text(page, 'title'), 'The Tidal Sequence');
       await page.click('[data-test=begin]');
       await page.waitForSelector('.tsi-modal');
       equal(await modalTitle(page), 'How the Tidal Sequence works');
-      equal(await page.$$eval('.tsi-modal ol li', li => li.length), 6);
+      equal(await page.$$eval('.tsi-modal ol li', li => li.length), 4);
       await H.clickModal(page, 'START SEQUENCE');
       equal(await text(page, 'stage'), 'The chamber wakes');
       equal(await page.$$eval('.tsi-pel-pillar-rune', bs => bs.some(b => b.disabled)), false);

@@ -45,7 +45,7 @@ window.TSI_DATA.pelagosi = {
       ],
       structureTitle: 'Sequence Rules',
       structureItems: ['Phase I, close the outer current', 'Phase II, wake the central basin', 'Pressure IV, the chamber surges'],
-      structureCopy: 'First align the four pillars into Flow → Echo → Depth → Stone. Then name the central basin with the missing final principle.',
+      structureCopy: 'Align the four pillars until the chamber remembers how the water should move. Then name what belongs at the centre.',
       clueTitle: 'Chamber Response',
       notes: 'Wrong checks increase Chamber Pressure. At maximum pressure the chamber surges, resets the Tidal Sequence, and the party faces an in-world consequence.'
     }
@@ -190,14 +190,12 @@ window.TSI_DATA.pelagosi = {
       eyebrow: 'Sequence Instructions',
       title: 'How the Tidal Sequence works',
       steps: [
-        'Phase I: each outer pillar has a rune and a flow direction.',
-        'Click a rune to cycle its symbol. Click the arrow beneath it to rotate its direction.',
-        'The four arrows must form one closed clockwise current around the basin.',
-        'The outer runes must follow the old order: Flow → Echo → Depth → Stone.',
-        'When the outer current is correct, the central basin wakes. Choose the final principle that completes the sequence.',
+        'Each pillar carries a rune and a current. Both must be right.',
+        'The wall has been cut away. What the party reads and remembers will tell them what it said.',
+        'When the outer ring is correct, the central basin wakes. Decide what belongs at its centre.',
         'Wrong checks increase Chamber Pressure. At maximum pressure, the chamber surges and resets the sequence.'
       ],
-      footnote: 'Let each stone speak to the next. Let no current end. Stone returns the Current.',
+      footnote: 'The chamber remembers what was cut away.',
       cancel: 'Not Yet',
       start: 'START SEQUENCE'
     },
@@ -214,14 +212,14 @@ window.TSI_DATA.pelagosi = {
       idleClue: 'The pillars are dormant. Each one carries a rune-face and a flow notch. The central basin is dark.',
       idleDescription: 'Press BEGIN to wake the chamber. Then restore the outer current before naming the basin.',
       startClue: 'The wall is scarred. Something has been cut away here.',
-      startDescription: 'Phase I: create the clockwise current: top-left → top-right → bottom-right → bottom-left → top-left.',
+      startDescription: 'Phase I: set the rune and the current of each pillar, then check the alignment.',
       surgeClue: 'The surge vents through the chamber. The basin goes dark and the outer pillars return to their starting disorder.',
       surgeDescription: 'The Tidal Sequence has reset. Restore the outer current again before the chamber grows restless.',
       basinClue: 'Something is set in the basin that does not belong to the Current.',
       basinDescription: 'Phase II: click the central basin rune until it shows the final principle, then choose ATTUNE BASIN.',
       solvedClue: 'The basin has taken the Current.',
       solvedDescription: 'The chamber is waiting.',
-      consoleDescription: 'Rotate each pillar rune and arrow. Create a closed clockwise current around the basin.',
+      consoleDescription: 'Rotate each pillar rune and arrow until the chamber remembers how the water should move.',
       tip: 'Tip: click a rune to cycle its symbol. Click the arrow below it to rotate the flow direction.'
     },
 
