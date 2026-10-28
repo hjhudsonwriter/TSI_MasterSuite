@@ -4,6 +4,9 @@
 
 **Strip Back Overhaul (steps S01 to S17, 22 to 25 October 2026) is built and merged; S19 (art) and S20 (guide and home-screen text) and S21 (these docs) are done. S18 (removing the internal Day Log data) is done (26 October 2026, BAS-SB-83).** The war game, Clan founding, the Hall's trade system, the three Shrines, the Library, Arcane Laboratory, Clan Influence and the Day Log screens are gone or folded into the Temple, Beast Pen, Dock and Workshop. Details: `docs/STRIP-BACK-PLAN.md`, `docs/strip-back/*-built.md`, and the new "Strip Back Overhaul" section at the end of `docs/KNOWN_ISSUES.md` (BAS-SB-01 onwards).
 
+### 28 October 2026: Absent Tide scene decks, parts B and C (the decks and the DM's pop-up)
+- Four decks (Acts 1, 2, 4, 5) with the DM's card list, voice lines and missing-file handling (KNOWN_ISSUES SCN-01; docs/SHOWING-SCENES-TO-PLAYERS.md). Part D (Show the hidden chamber on the Tidal player view) is next.
+
 ### 28 October 2026: Absent Tide scene decks, part A (the Explorer's Player View shows scene cards)
 - The TV window can show one scene card full-bleed (image, clip or portrait with its name), with writing laid over the picture, crossfades and a map fade (docs/ABSENT-TIDE-SCENE-DECKS.md). The decks themselves and the DM pop-up are the next changes (parts B and C), then part D.
 - Checked against the code: a Main Campaign event opens only in the DM's window; the Explorer Player View does not show it. It does not even dim for it (the dim is only for campfire and night events), which is slightly different from the handover's "dims to about 0.92".
