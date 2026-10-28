@@ -72,29 +72,45 @@ const levels = page => page.$$eval('[data-test=wall] li', l => l.map(x => x.data
     await check('two chalk marks sit on the floor beside the top-right and bottom-left pillars, on by default', async () => {
       equal(await page.isChecked('[data-test=chalk-on]'), true);
       const marks = await page.$$eval('.tsi-pel-chalk', m => m.map(x => ({ id: x.dataset.test, v: x.getBoundingClientRect().width > 4 })));
-      equal(marks.map(m => m.id), ['chalk-tally', 'chalk-smudge']);
+      equal(marks.map(m => m.id), ['chalk-a', 'chalk-b']);
       equal(marks.every(m => m.v), true);
       const pos = await page.evaluate(() => {
         const r = s => document.querySelector(s).getBoundingClientRect();
-        const tr = r('[data-test=pillar-rune-topRight]'), ta = r('[data-test=chalk-tally]');
-        const bl = r('[data-test=pillar-rune-bottomLeft]'), sm = r('[data-test=chalk-smudge]');
-        return { tallyRight: ta.left > tr.right - 2, smudgeLeft: sm.right < bl.left + 2 };
+        const tr = r('[data-test=pillar-rune-topRight]'), ta = r('[data-test=chalk-a]');
+        const bl = r('[data-test=pillar-rune-bottomLeft]'), sm = r('[data-test=chalk-b]');
+        return { aRight: ta.left > tr.right - 2, bLeft: sm.right < bl.left + 2 };
       });
-      equal(pos, { tallyRight: true, smudgeLeft: true });
+      equal(pos, { aRight: true, bLeft: true });
       await H.shot(page, 'pelagosi-chalk-' + size);
     });
 
     await check('the DM can switch the chalk off and on; Stage Mode keeps the marks', async () => {
       await page.uncheck('[data-test=chalk-on]');
-      equal(await page.isVisible('[data-test=chalk-tally]'), false);
+      equal(await page.isVisible('[data-test=chalk-a]'), false);
       await page.check('[data-test=chalk-on]');
-      equal(await page.isVisible('[data-test=chalk-smudge]'), true);
+      equal(await page.isVisible('[data-test=chalk-b]'), true);
       await page.keyboard.press('s');
-      equal(await page.isVisible('[data-test=chalk-smudge]'), true);
+      equal(await page.isVisible('[data-test=chalk-b]'), true);
       await page.keyboard.press('s');
     });
 
-    await check('the chalk says nothing about whose it is (no words on or near it)', async () => {
+    await check('the marks never move or change with runes, checks, pressure, shuffles or Reset', async () => {
+      const snap = () => page.$$eval('.tsi-pel-chalk', m => { const f = document.querySelector('[data-test=tidal-frame]').getBoundingClientRect(); return m.map(x => { const r = x.getBoundingClientRect(); return [x.className, x.getAttribute('style'), Math.round(r.left - f.left), Math.round(r.top - f.top), x.getAttribute('title')]; }); });
+      const before = await snap();
+      await page.click('[data-test=pillar-rune-topLeft]');
+      await page.click('[data-test=ring-rune-tide]');
+      await page.waitForTimeout(700);
+      await page.click('[data-test=check]');
+      await page.waitForTimeout(700);
+      await page.click('[data-test=shuffle]');
+      await page.click('[data-test=ask]');
+      equal(await snap(), before);
+      await page.click('[data-test=reset]');
+      equal(await snap(), before);
+      await begin(page);
+    });
+
+    await check('the chalk has no text, label or tooltip', async () => {
       equal(await page.$$eval('.tsi-pel-chalk', m => m.every(x => x.textContent === '' && !x.getAttribute('title'))), true);
     });
 
