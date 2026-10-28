@@ -275,7 +275,9 @@
       /* Any DM-only events (kind 'dm', none at present) are queued from here too, never drawn at random. */
       var dmEvents = J.dmEvents(JDEFS);
       var mainSelect = el('select', { class: 'tsi-input tsi-exp-select', 'aria-label': 'Main campaign event', 'data-test': 'main-select' }, [el('option', { value: '', text: 'Force Main Campaign Event…' })].concat(
-        DATA.mainEvents.map(function (ev) { return el('option', { value: ev.id, text: ev.title }); }),
+        DATA.mainEvents.filter(function (ev) { return !ev.deck; }).map(function (ev) { return el('option', { value: ev.id, text: ev.title }); }),
+        /* The Absent Tide's scene decks (data/absent-tide-scenes.js). */
+        DATA.mainEvents.some(function (ev) { return ev.deck; }) ? [el('optgroup', { label: 'The Absent Tide' }, DATA.mainEvents.filter(function (ev) { return ev.deck; }).map(function (ev) { return el('option', { value: ev.id, text: ev.title }); }))] : [],
         dmEvents.length ? [el('optgroup', { label: 'DM events' }, dmEvents.map(function (ev) {
           return el('option', { value: 'dm:' + ev.id, text: ev.code + ' ' + ev.title });
         }))] : []
@@ -983,7 +985,209 @@
         }, label);
       }
 
+      /* ---------- Scene decks (the Absent Tide; docs/ABSENT-TIDE-SCENE-DECKS.md) ----------
+         A deck is a main event marked deck: true. The DM sees every card as a thumbnail and can show any of them on the
+         TV in any order; Hide clears the TV and leaves the deck open. A portrait's recorded voice line plays from this
+         window only (never on the TV). A file that is not there shows as "file missing" and never throws; a card
+         whose picture is missing leaves the TV as it was and says so. */
+      var AUTOPLAY_KEY = 'tsi.explorer.autoplayVoice';
+      function loadAutoplay() { try { return window.localStorage.getItem(AUTOPLAY_KEY) !== '0'; } catch (e) { return true; } }
+      function saveAutoplay(on) { try { window.localStorage.setItem(AUTOPLAY_KEY, on ? '1' : '0'); } catch (e) { /* not remembered */ } }
+      var deckVoice = null;           /* the one audio element of the open deck */
+      function openDeck(deck) {
+        var cards = R.deckCards(deck);
+        var status = cards.map(function (c) { return { media: 'checking', still: 'checking', voice: c.voice ? 'checking' : 'none' }; });
+        var probes = [];
+        var waiting = [];
+        function probeImage(src, done) {
+          var im = new Image();
+          waiting.push(new Promise(function (resolve) {
+            im.onload = function () { done('ok'); resolve(); };
+            im.onerror = function () { done('missing'); resolve(); };
+          }));
+          im.src = TSI.path(src);
+        }
+        function probeMedia(tag, src, done) {
+          var m = tag === 'video' ? document.createElement('video') : new Audio();
+          m.preload = 'metadata';
+          if (tag === 'video') m.muted = true;
+          waiting.push(new Promise(function (resolve) {
+            m.addEventListener('loadedmetadata', function () { done('ok'); resolve(); });
+            m.addEventListener('error', function () { done('missing'); resolve(); });
+          }));
+          m.src = TSI.path(src);
+          probes.push(m);
+        }
+        cards.forEach(function (c, i) {
+          if (c.image) probeImage(c.image, function (v) { status[i].still = v; if (c.kind !== 'video') status[i].media = v; refreshItem(i); });
+          else status[i].still = 'none';
+          if (c.kind === 'video') probeMedia('video', c.video, function (v) { status[i].media = v; refreshItem(i); });
+          if (c.voice) probeMedia('audio', c.voice, function (v) { status[i].voice = v; refreshItem(i); if (i === cur) renderVoice(); });
+          if (!c.image && c.kind !== 'video') status[i].media = 'missing';
+        });
+        function cardState(i) {
+          var s = status[i], c = cards[i];
+          if (c.kind === 'video') return s.media === 'missing' ? (s.still === 'ok' ? 'still' : 'missing') : 'ok';
+          return s.media === 'missing' ? 'missing' : 'ok';
+        }
+
+        var cur = -1;
+        var onTv = false;
+        var autoplay = loadAutoplay();
+        var items = [];
+        var list = el('ol', { class: 'tsi-exp-deck-list', 'data-test': 'deck-list', 'aria-label': 'Cards in this deck' });
+        cards.forEach(function (c, i) {
+          var thumb = el('span', { class: 'tsi-exp-deck-thumb' });
+          if (c.image) {
+            var im = el('img', { alt: '', draggable: 'false', src: TSI.path(c.image) });
+            im.addEventListener('error', function () { im.remove(); });
+            thumb.appendChild(im);
+          }
+          var flag = el('span', { class: 'tsi-exp-deck-flag', hidden: true, 'data-test': 'deck-flag-' + i });
+          var b = el('button', { type: 'button', class: 'tsi-exp-deck-item', 'data-test': 'deck-card-' + i, onclick: function () { showCard(i); } }, [
+            el('span', { class: 'tsi-exp-deck-num', text: String(i + 1) }), thumb,
+            el('span', { class: 'tsi-exp-deck-label' }, [el('span', { class: 'tsi-exp-deck-name', text: c.name }), el('span', { class: 'tsi-exp-deck-kind', text: c.kind === 'portrait' ? 'portrait' + (c.voice ? ' + voice' : '') : c.kind === 'video' ? 'clip' : 'picture' }), flag])
+          ]);
+          items.push({ btn: b, flag: flag, thumb: thumb });
+          list.appendChild(el('li', null, b));
+        });
+        function refreshItem(i) {
+          var st = cardState(i);
+          var it = items[i];
+          if (!it) return;
+          it.flag.hidden = st === 'ok';
+          it.flag.textContent = st === 'missing' ? 'file missing' : st === 'still' ? 'clip missing: the still will show' : '';
+          it.btn.classList.toggle('is-missing', st === 'missing');
+        }
+
+        var prevName = el('h4', { class: 'tsi-exp-deck-prevname', 'data-test': 'deck-name' });
+        var prevMedia = el('div', { class: 'tsi-exp-deck-prev', 'data-test': 'deck-preview' });
+        var prevNote = el('p', { class: 'tsi-exp-deck-note', 'data-test': 'deck-note' });
+        var prevLine = el('blockquote', { class: 'tsi-exp-deck-line', 'data-test': 'deck-line' });
+        var message = el('p', { class: 'tsi-exp-deck-msg', role: 'status', 'data-test': 'deck-msg' });
+        var tvState = el('p', { class: 'tsi-exp-deck-tv', 'data-test': 'deck-tv', role: 'status', text: 'The TV is showing the map.' });
+        var voiceBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small', 'data-test': 'deck-voice', onclick: function () { playVoice(); } }, 'Play voice line');
+        var autoBox = el('input', { type: 'checkbox', 'data-test': 'deck-autoplay', id: 'tsi-exp-deck-auto' });
+        autoBox.checked = autoplay;
+        autoBox.addEventListener('change', function () { autoplay = autoBox.checked; saveAutoplay(autoplay); });
+        var prevBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small', 'data-test': 'deck-prev', onclick: function () { step(-1); } }, 'Previous');
+        var nextBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small', 'data-test': 'deck-next', onclick: function () { step(1); } }, 'Next');
+        var hideBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small', 'data-test': 'deck-hide', onclick: function () { hideTv(); } }, 'Hide (back to the map)');
+
+        function stopVoice() { if (deckVoice) { try { deckVoice.pause(); } catch (e) { /* nothing */ } } renderVoice(); }
+        function renderVoice() {
+          var c = cards[cur];
+          if (!c || !c.voice) { voiceBtn.hidden = true; return; }
+          voiceBtn.hidden = false;
+          var st = status[cur].voice;
+          var playing = deckVoice && !deckVoice.paused && deckVoice.getAttribute('src') === TSI.path(c.voice);
+          voiceBtn.disabled = st === 'missing';
+          voiceBtn.textContent = st === 'missing' ? 'no voice file' : (playing || (deckVoice && deckVoice.getAttribute('src') === TSI.path(c.voice) && deckVoice.currentTime > 0)) ? 'Replay voice line' : 'Play voice line';
+        }
+        function playVoice() {
+          var c = cards[cur];
+          if (!c || !c.voice || status[cur].voice === 'missing') return;
+          if (!deckVoice) deckVoice = life.audio(null, { preload: 'none' });
+          var src = TSI.path(c.voice);
+          if (deckVoice.getAttribute('src') !== src) deckVoice.setAttribute('src', src);
+          try { deckVoice.currentTime = 0; } catch (e) { /* not loaded yet */ }
+          var p = deckVoice.play();
+          if (p && p.catch) p.catch(function () { /* the browser may refuse; the button still works */ });
+          deckVoice.onended = renderVoice;
+          deckVoice.onpause = renderVoice;
+          deckVoice.onplaying = renderVoice;
+        }
+
+        function renderCard() {
+          items.forEach(function (it, i) { it.btn.classList.toggle('is-current', i === cur); it.btn.setAttribute('aria-current', i === cur ? 'true' : 'false'); });
+          var c = cards[cur];
+          TSI.clear(prevMedia);
+          if (!c) { prevName.textContent = 'Choose a card'; prevNote.textContent = ''; prevLine.hidden = true; renderVoice(); return; }
+          prevName.textContent = (cur + 1) + '. ' + c.name;
+          if (c.image && status[cur].still !== 'missing') prevMedia.appendChild(el('img', { alt: '', src: TSI.path(c.image), draggable: 'false' }));
+          else prevMedia.appendChild(el('span', { class: 'tsi-exp-deck-missing', text: 'file missing' }));
+          prevNote.textContent = c.dmNote ? 'Note: ' + c.dmNote : '';
+          prevNote.hidden = !c.dmNote;
+          prevLine.textContent = c.line ? c.line : '';
+          prevLine.hidden = !c.line;
+          renderVoice();
+        }
+        function setTv(on, text) { onTv = on; tvState.textContent = text; }
+        function showCard(i) {
+          if (i < 0 || i >= cards.length) return;
+          cur = i;
+          stopVoice();
+          renderCard();
+          message.textContent = '';
+          var c = cards[i], st = cardState(i);
+          if (st === 'missing') {
+            message.textContent = 'This card’s file is missing, so the TV has not changed.';
+            return;
+          }
+          if (st === 'still') message.textContent = 'The clip file is missing, so the TV shows its still.';
+          var st2 = deck.steps[i];
+          setPvScene(R.stepScene(st2, { stillOnly: st === 'still' }));
+          setTv(true, 'On the TV now: ' + c.name);
+          /* The next card's picture or clip is sent ahead on its own, so it is ready. */
+          var nx = cards[i + 1];
+          if (nx) pvPreload(nx.kind === 'video' ? 'video' : 'image', nx.kind === 'video' ? nx.video : nx.image);
+          if (c.voice && autoplay) playVoice();
+        }
+        function step(by) {
+          if (cur < 0) return showCard(by > 0 ? 0 : cards.length - 1);
+          showCard(Math.max(0, Math.min(cards.length - 1, cur + by)));
+        }
+        function hideTv() {
+          stopVoice();
+          setPvScene(null);
+          setTv(false, 'The TV is showing the map.');
+          message.textContent = '';
+        }
+        function cleanup() {
+          setPvScene(null);
+          if (deckVoice) { try { deckVoice.pause(); } catch (e) { /* nothing */ } deckVoice.removeAttribute('src'); deckVoice.load(); deckVoice = null; }
+          probes.forEach(function (m) { try { m.removeAttribute('src'); m.load(); } catch (e) { /* nothing */ } });
+          deckDebug = null;
+        }
+        deckDebug = {
+          cur: function () { return cur; },
+          status: function () { return JSON.parse(JSON.stringify(status)); },
+          voice: function () { return deckVoice ? { src: deckVoice.getAttribute('src') || '', paused: deckVoice.paused } : null; }
+        };
+
+        var body = [
+          el('p', { class: 'tsi-exp-deck-hint', text: 'Pick any card. The TV changes at once.' }),
+          el('div', { class: 'tsi-exp-deck' }, [
+            list,
+            el('div', { class: 'tsi-exp-deck-side' }, [
+              prevName, prevMedia, prevNote, prevLine,
+              el('div', { class: 'tsi-exp-deck-row' }, [prevBtn, nextBtn, hideBtn, voiceBtn]),
+              el('label', { class: 'tsi-exp-deck-auto', for: 'tsi-exp-deck-auto' }, [autoBox, el('span', { text: 'Auto-play voice lines' })]),
+              message, tvState
+            ])
+          ])
+        ];
+        var pr = TSI.modal.open({
+          title: 'Scene deck • ' + (deck.title || 'The Absent Tide'),
+          className: 'tsi-exp-event tsi-exp-event--main tsi-exp-event--deck',
+          body: body,
+          actions: [{ label: 'Close', value: 'close' }],
+          escValue: 'close',
+          onOpen: function () {
+            cards.forEach(function (c, i) { refreshItem(i); });
+            renderCard();
+            /* Give the files a moment to say whether they are there before the first card goes up. */
+            if (deck.showFirst && cards.length) {
+              Promise.race([Promise.all(waiting), new Promise(function (r) { life.setTimeout(r, 600); })]).then(function () { if (life.alive && cur < 0) showCard(0); });
+            }
+          }
+        });
+        return pr.then(function (v) { cleanup(); return v; });
+      }
+      var deckDebug = null;
+
       function openEvent(kind, event) {
+        if (event && event.deck) return openDeck(event);
         var parts = eventParts();
         var api = null;
         var shown = 0;
@@ -2316,6 +2520,8 @@
       /* For the tests. */
       ns.debug = {
         setScene: function (card) { setPvScene(card); },
+        deck: function () { return deckDebug; },
+        scene: function () { return pvScene ? JSON.parse(JSON.stringify(pvScene)) : null; },
         preload: function (kind, src) { pvPreload(kind, src); },
         state: function () { return state; },
         outbox: function () { return TSI.clone(state.journey.outbox || []); },

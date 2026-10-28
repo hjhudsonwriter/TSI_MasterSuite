@@ -96,9 +96,12 @@
   });
 
   test('two main events with 11 pictures; four kinds of weather', function (t) {
-    t.equal(D.mainEvents.length, 2);
+    /* The Absent Tide's scene decks (data/absent-tide-scenes.js) are added after these two and are not counted here. */
+    var older = D.mainEvents.filter(function (ev) { return !ev.deck; });
+    t.equal(older.length, 2);
+    t.same(older.map(function (ev) { return ev.id; }), ['tide_remembers_prologue', 'turning_tide']);
     var pics = 0;
-    D.mainEvents.forEach(function (ev) { ev.steps.forEach(function (s) { if (s.image) pics++; }); });
+    older.forEach(function (ev) { ev.steps.forEach(function (s) { if (s.image) pics++; }); });
     t.equal(pics, 11);
     t.same(D.weather.map(function (w) { return w.kind; }), ['blizzard', 'storm', 'rain', 'sun_heat']);
     D.weather.forEach(function (w) { t.ok(D.weatherVideos[w.kind], w.kind + ' has a video'); });

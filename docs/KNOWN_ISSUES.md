@@ -4325,3 +4325,9 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **Not done:** the optional reversed clip for the 17 s backward-water moment.
 - **Needs a real TV:** the ripple and the dark layer were checked by screenshots in a test browser; how the Absence looks and feels on the TV, and the exact ripple position (centre, 82% down) against the clip, need your eyes.
 
+### SCN-01 · The Absent Tide scene decks, parts B and C (28 October 2026)
+- **New:** four decks (Act 1, 2, 4, 5) in the Force Main Campaign Event list under "The Absent Tide" (data/absent-tide-scenes.js; the two older events are untouched). The DM's pop-up lists every card with a thumbnail, jumps to any card, Previous/Next, Hide, Close/Esc; voice lines play from the DM's window with a remembered "Auto-play voice lines"; missing files never throw (the card says "file missing", the TV stays as it was).
+- **Decisions:** (1) Act 2 puts nothing on the TV when it opens (the party chooses its stops); the others put their first card up. (2) After Hide, Next carries on from the card the DM was at. (3) A clip card whose clip is missing but whose still is there shows the still. (4) The files for Ilsa Tarrow were uploaded as `isla-tarrow`; the data points at them and keeps the card name "Ilsa Tarrow". (5) Writing laid over pictures: the wall-notes line sits on the one lit note, the ledger line on the blank lower part of the right page; both are tuned in the data. (6) The queued-and-due route and the Queue button both open a deck, because both go through the same pop-up.
+- **Missing from the repo:** `act4/market-cup.png` (the market card shows as "file missing").
+- **Needs a real TV:** the writing laid over the pictures (position and size), how the name band reads from across the room, and the voice line coming only from the laptop.
+

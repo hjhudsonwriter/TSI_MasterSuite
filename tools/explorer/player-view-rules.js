@@ -48,6 +48,37 @@
   function str(v, max) { return typeof v === 'string' ? v.slice(0, max || 200) : ''; }
   function num(v, fallback) { return typeof v === 'number' && isFinite(v) ? v : fallback; }
 
+  /* The cards of a deck, in order, as the DM's pop-up lists them (a "deck" is a main event marked deck: true). */
+  R.deckCards = function (deck) {
+    return (deck && Array.isArray(deck.steps) ? deck.steps : []).map(function (st, i) {
+      var kind = st.portrait ? 'portrait' : st.video ? 'video' : 'image';
+      return {
+        index: i, id: str(st.id, 60), name: str(st.name || (st.portrait && st.portrait.name) || ('Card ' + (i + 1)), 80), kind: kind,
+        image: str(st.image, 300), video: str(st.video, 300), voice: str(st.voice, 300), line: str(st.line, 600), dmNote: str(st.dmNote, 1000)
+      };
+    });
+  };
+
+  /* What the players are shown for one card (to be cleaned by R.cleanScene in the snapshot). o.stillOnly: the clip is
+     missing, so show its still instead. The voice line is carried only as a subtitle, and only if the card says so. */
+  R.stepScene = function (step, o) {
+    if (!step || typeof step !== 'object') return null;
+    o = o || {};
+    var clip = step.video && !o.stillOnly;
+    var kind = step.portrait ? 'portrait' : clip ? 'video' : 'image';
+    var port = step.portrait && typeof step.portrait === 'object' ? step.portrait : {};
+    return {
+      kind: kind,
+      src: clip ? step.video : (step.image || ''),
+      poster: clip ? (step.image || '') : '',
+      loop: clip && step.loop === true,
+      name: port.name || '',
+      caption: port.caption || step.caption || '',
+      overlays: Array.isArray(step.overlays) ? step.overlays : [],
+      subtitle: step.subtitle === true && step.line ? String(step.line) : ''
+    };
+  };
+
   /* A scene card, cleaned: exactly the fields the players may see, each trimmed to a sane size, or null. */
   R.cleanScene = function (raw) {
     if (!raw || typeof raw !== 'object') return null;

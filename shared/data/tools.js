@@ -158,6 +158,8 @@ window.TSI_DATA.tools = [
       css: ['tools/explorer/explorer.css'],
       js: [
         'tools/explorer/data/explorer-data.js',
+        /* The Absent Tide's scene decks (28 October 2026): added to the Main Campaign list. */
+        'tools/explorer/data/absent-tide-scenes.js',
         /* Harry's new travel and campfire events (6 October 2026). The old
            601 events in data/events-data.js are switched off: kept, not loaded. */
         'tools/explorer/data/journey-events.js',

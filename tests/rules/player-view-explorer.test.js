@@ -287,4 +287,72 @@
     t.equal(odd.x, 50);
     t.equal(odd.align, 'center');
   });
+
+  group('Absent Tide scene decks (data and the cards the players are sent)');
+
+  var DECKS = D.mainEvents.filter(function (e) { return e.deck; });
+
+  test('there are four decks, ids unique and starting absent_tide_, after the two older main events', function (t) {
+    t.same(DECKS.map(function (d) { return d.id; }), ['absent_tide_act1', 'absent_tide_act2', 'absent_tide_act4', 'absent_tide_act5']);
+    var ids = D.mainEvents.map(function (e) { return e.id; });
+    t.equal(ids.length, new Set(ids).size);
+    t.same(ids.slice(0, 2), ['tide_remembers_prologue', 'turning_tide']);
+    DECKS.forEach(function (d) { t.ok(/^absent_tide_/.test(d.id), d.id); });
+  });
+
+  test('every card has a picture or a clip, and card ids are unique in their deck', function (t) {
+    DECKS.forEach(function (d) {
+      t.ok(d.steps.length > 0, d.id + ' has cards');
+      var seen = {};
+      d.steps.forEach(function (st) {
+        t.ok(!!(st.image || st.video), d.id + '/' + st.id + ' has an image or a video');
+        t.ok(!seen[st.id], d.id + '/' + st.id + ' is unique');
+        seen[st.id] = true;
+      });
+    });
+  });
+
+  test('the two older main events are exactly as they were', function (t) {
+    var a = R.mainEvent(D, 'tide_remembers_prologue'), b = R.mainEvent(D, 'turning_tide');
+    t.equal(a.title, 'The Tide Remembers - Prologue');
+    t.equal(a.steps.length, 3);
+    t.ok(!a.deck && !b.deck);
+    t.equal(b.steps.length, 8);
+    t.equal(b.steps[0].image, 'tools/explorer/assets/main_events/turning_tide_1.png');
+  });
+
+  test('Act 2 holds the three portraits (Dren, Seris, Linnet), each with its voice line, and no clips or fonts', function (t) {
+    var d = R.mainEvent(D, 'absent_tide_act2');
+    t.same(R.deckCards(d).map(function (c) { return c.name; }), ['Dren Marr', 'Captain Seris Thane', 'Linnet']);
+    t.ok(R.deckCards(d).every(function (c) { return c.kind === 'portrait' && c.voice && c.line; }));
+    t.equal(d.showFirst, false, 'the party chooses its stops, so nothing goes up by itself');
+  });
+
+  test('Act 4 has eight cards in the handover\'s order, two with writing laid over them', function (t) {
+    var d = R.mainEvent(D, 'absent_tide_act4');
+    t.same(R.deckCards(d).map(function (c) { return c.kind; }), ['image', 'video', 'portrait', 'image', 'image', 'portrait', 'image', 'image']);
+    t.same(d.steps.filter(function (s) { return s.overlays; }).map(function (s) { return s.overlays[0].text; }),
+      ['Do not trust yesterday.', 'Five visitors asked after Maerys Vell. They were frightened. Do not tell them the date.']);
+  });
+
+  test('a portrait\'s card for the TV carries its name only, never the voice line or file, even with a DM note', function (t) {
+    var d = R.mainEvent(D, 'absent_tide_act2');
+    var step = JSON.parse(JSON.stringify(d.steps[1]));
+    step.dmNote = 'ZZDMNOTE';
+    var json = JSON.stringify(R.playerSnapshot(busy(), D, { scene: R.stepScene(step) }));
+    t.ok(json.indexOf('Captain Seris Thane') >= 0);
+    ['ZZDMNOTE', 'State your business', 'seris-thane.mp3', 'voice/', 'dren-marr', 'linnet', 'dmNote'].forEach(function (w) { t.ok(json.indexOf(w) < 0, 'must not contain ' + w); });
+    step.subtitle = true;
+    t.ok(JSON.stringify(R.playerSnapshot(busy(), D, { scene: R.stepScene(step) })).indexOf('State your business') >= 0, 'only when the card switches the subtitle on');
+  });
+
+  test('a clip card sends the clip with its still as the poster; with the clip missing it sends the still alone', function (t) {
+    var step = R.mainEvent(D, 'absent_tide_act4').steps[1];
+    var sc = R.cleanScene(R.stepScene(step));
+    t.equal(sc.kind, 'video');
+    t.ok(/\.mp4$/.test(sc.src) && /\.png$/.test(sc.poster));
+    var still = R.cleanScene(R.stepScene(step, { stillOnly: true }));
+    t.equal(still.kind, 'image');
+    t.ok(/\.png$/.test(still.src) && still.poster === '');
+  });
 }());

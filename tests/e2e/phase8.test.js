@@ -914,7 +914,8 @@ function serve(dir) {
     await check('the Main Campaign list has no DM-only events (The Second Marker is removed)', async () => {
       const opts = await page.$$eval('[data-test=main-select] option', o => o.map(x => x.textContent));
       assert(!opts.some(t => /Second Marker/.test(t)), opts.join());
-      equal(await page.$('[data-test=main-select] optgroup'), null);
+      /* The only group is the Absent Tide's scene decks (28 October 2026); there is still no "DM events" group. */
+      equal(await page.$$eval('[data-test=main-select] optgroup', g => g.map(x => x.label)), ['The Absent Tide']);
     });
 
     await check('the event window fits the laptop, full screen and the TV', async () => {
