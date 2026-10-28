@@ -749,6 +749,9 @@
         mapHaze,
         labelLayer
       ]);
+      /* Harry's loop of the same painting plays over the still (map-loop.js). */
+      var mapLoopEl = TSI.paintingLoop(mapFrame, B.map.loop ? asset(B.map.loop) : '', 'tsi-bas-map__video');
+      if (mapLoopEl) life.track(mapLoopEl);
 
       /* "Day 12", or "Day 1 · the Explorer sets the day" until the Bastion has read it. */
       function dayText() {

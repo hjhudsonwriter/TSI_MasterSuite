@@ -107,6 +107,8 @@
       el('img', { class: 'tsi-bpv-map__img', src: assetUrl(B().map.base), alt: 'The Ironbow Bastion', draggable: 'false' }),
       overlayLayer, haze, labelLayer
     ]);
+    /* The loop of the same painting plays over the still (map-loop.js). */
+    TSI.paintingLoop(map, B().map.loop ? assetUrl(B().map.loop) : '', 'tsi-bpv-map__video');
     map.style.setProperty('--tsi-bpv-ratio', B().map.width + ' / ' + B().map.height);
     map.style.setProperty('--tsi-bpv-w', String(B().map.width));
     map.style.setProperty('--tsi-bpv-h', String(B().map.height));

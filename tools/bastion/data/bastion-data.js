@@ -195,6 +195,9 @@ window.TSI_DATA.bastion = {
      soon as they can be built. The originals are in bastion-new-art/. */
   map: {
     base: 'map/bastion_base.jpg',
+    /* Harry's loop of the same painting (28 October 2026): the sea, the boat and the smoke move. It plays over the still,
+       muted, on repeat; the still stays under it as the fallback. Cropped to the painting's own shape so the overlays line up. */
+    loop: 'map/bastion_base_loop.mp4',
     width: 3000,
     height: 1250,
     overlays: [

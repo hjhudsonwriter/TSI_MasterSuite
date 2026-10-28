@@ -621,3 +621,6 @@ Harry's upload of nine 2752 x 1536 JPEGs (placed in the repository's top folder,
 - `voice/` the same six names (MP3), played only from the DM's window
 - Tidal Sequence: `tools/pelagosi/assets/images/hidden-chamber.png` and `tools/pelagosi/assets/video/hidden-chamber.mp4` (used by part D, "Show the hidden chamber").
 
+## The Bastion base painting as a loop (Harry, 28 October 2026)
+`tools/bastion/assets/map/bastion_base_loop.mp4` (1280 × 532, 5 seconds, no sound) is Harry's `bastion_loop.mp4` cropped to the painting's own shape. The upload was the painting letter-boxed in a 1280 × 720 frame with black bars; the bars were cut off (crop 1280:532 from 94 down) so the facility overlays still line up. It plays over `map/bastion_base.jpg` (which stays underneath as the fallback) in the Bastion and its Player View. The untouched upload is kept in `tools/bastion/assets/extras/map/bastion_loop_original_1280x720.mp4`.
+
