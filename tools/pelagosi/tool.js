@@ -294,7 +294,13 @@
       var chalkBox = el('input', { type: 'checkbox', id: 'tsi-pel-chalk-on', 'data-test': 'chalk-on' });
       chalkBox.checked = chalkOn;
       var chalkRow = el('label', { class: 'tsi-pel-tide-row', for: 'tsi-pel-chalk-on' }, [chalkBox, el('span', { text: 'Chalk marks on the floor' })]);
-      var dmExtras = el('div', { class: 'tsi-pel-dm-extras' }, [anywayBtn, chalkRow]);
+      var cineBox = el('input', { type: 'checkbox', id: 'tsi-pel-cine-on', 'data-test': 'cine-on' });
+      cineBox.checked = D.playVideosByDefault !== false;
+      var cineRow = el('label', { class: 'tsi-pel-tide-row', for: 'tsi-pel-cine-on' }, [cineBox, el('span', { text: 'Play cinematic videos' })]);
+      var dmExtras = el('div', { class: 'tsi-pel-dm-extras' }, [anywayBtn, chalkRow, cineRow]);
+      /* Shown while a clip plays in the players' window: this window plays no video then. */
+      var cineSkipBtn = button('Skip', 'cine-note-skip', function () { cineSkip(); }, 'tsi-btn tsi-pel-small-btn');
+      var cineNote = el('p', { class: 'tsi-pel-cine-note tsi-pel-hidden', 'data-test': 'cine-note', role: 'status' }, [el('span', { text: 'Cinematic playing' }), cineSkipBtn]);
       var readingsBody = el('div', { class: 'tsi-pel-readings-body', id: 'tsi-pel-readings-body' }, [
         el('p', { class: 'tsi-pel-copy tsi-pel-small', text: 'Roll in the game, then press the result here.' }),
         el('ul', { class: 'tsi-pel-readings-list' }, readingRows.map(function (row) { return row.el; })),
@@ -332,7 +338,7 @@
           ]),
           el('div', { class: 'tsi-pel-centre' }, [memoryStage, tidalStage]),
           el('aside', { class: 'tsi-pel-col' }, [
-            panel('tsi-pel-status', [heading('Status'), stageLabel, statusText]),
+            panel('tsi-pel-status', [heading('Status'), stageLabel, statusText, cineNote]),
             panel('tsi-pel-only-tidal tsi-pel-only-readings', [
               el('div', { class: 'tsi-pel-readings-head' }, [heading('Readings (DM)'), el('div', { class: 'tsi-pel-readings-ctl' }, [stageBtn, readingsToggle])]),
               readingsBody
@@ -763,6 +769,7 @@
         tidalState.confirming = false;
         finStop();
         bedHardStop();
+        cineStop();
         closeRing(false);
         tidalEventOverlay.classList.remove('tsi-pel-active');
         tidalEventOverlay.classList.add('tsi-pel-hidden');
@@ -914,6 +921,7 @@
         showSolvedBar(false);
         startTide();
         bedStart();
+        cinePlay('arrival');
         clueText.textContent = T.text.startClue;
         tidalDescription.textContent = T.text.startDescription;
         setStatus('The chamber wakes', 'The pillars unlock. Rotate their runes and arrows, then check the alignment.');
@@ -1119,10 +1127,18 @@
           pvFx('tremor', 1300);
           setStatus('The stone shifts', 'The chamber waits. Choose what happens next.');
         }, 2200);
-        tidTimers.setTimeout(function () {
+        var barShown = false;
+        function showBar() {
+          if (barShown || !tidalState.solved) return;
+          barShown = true;
           removeState('screen-flash');
           showSolvedBar(true);
-        }, 3600);
+        }
+        /* The clip plays first, then the solved bar; with no clip the bar comes at 3.6 s as before. */
+        var solvedAt = Date.now();
+        function barAfterClip() { tidTimers.setTimeout(showBar, Math.max(0, 3600 - (Date.now() - solvedAt))); }
+        if (cinePlay('anchorLift', barAfterClip)) tidTimers.setTimeout(function () { removeState('screen-flash'); }, 3600);
+        else tidTimers.setTimeout(showBar, 3600);
       }
 
       /* Current + Attune: the table is asked once more before the Anchor comes out. */
@@ -1163,6 +1179,7 @@
         keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
         getState: function () { return R.playerSnapshot(tidalState, T, pvExtras()); },
+        onMessage: function (type) { if (type === 'cine-ended') cineDone(); },
         onStatus: function (st) {
           pvChip.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvChip.classList.toggle('tsi-pel-pv-chip--on', st === 'connected');
@@ -1173,7 +1190,7 @@
         if (!absenceVeil.classList.contains('tsi-pel-hidden')) {
           veil = absenceVeil.classList.contains('tsi-pel-absence--black') ? 'black' : absenceVeil.classList.contains('tsi-pel-absence--dim') ? 'dim' : 'on';
         }
-        return { chalkOn: chalkOn, veil: veil };
+        return { chalkOn: chalkOn, veil: veil, videos: cineVideoMap() };
       }
       function pvQueue() {
         if (pvQueued || !life.alive || !pvLink || !pvLink.isConnected()) return;
@@ -1182,6 +1199,74 @@
       }
       /* One passing effect (shake, tremor, flash, pulse, thump) for the players' window. */
       function pvFx(name, ms) { if (pvLink) pvLink.send('fx', { name: name, ms: ms }); }
+
+      /* ---------- The cinematic clips ----------
+         Muted pictures only. When the players' window is connected it plays them full-bleed and this window plays none,
+         only showing a note and a Skip button; otherwise they play here as an overlay. A missing or failing clip is
+         skipped silently and the puzzle and the sound carry on exactly as before. */
+      var dmCinema = null;
+      var cineAfter = null;       /* what to do when the clip that is playing ends (the solved bar, say) */
+      var cineActive = false;
+      var cineWatch = null;
+      function cineOn() { return cineBox.checked && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+      function cineVideoMap() {
+        var map = {};
+        if (!cineOn()) return map;
+        Object.keys(D.videos || {}).forEach(function (name) { if (D.videos[name].ready) map[name] = TSI.path(ASSETS + 'video/' + D.videos[name].file); });
+        return map;
+      }
+      function cineEnsureLocal() {
+        if (dmCinema) return;
+        dmCinema = pel.cinema.create({ parent: root, timers: life, skip: true, onEnd: function () { cineDone(); } });
+        dmCinema.preload(cineVideoMap());
+      }
+      function cineShowNote(on) { cineNote.classList.toggle('tsi-pel-hidden', !on); }
+      function cinePlay(name, then) {
+        var v = D.videos && D.videos[name];
+        if (!v || !v.ready || !cineOn()) return false;
+        cineAfter = then || null;
+        var opts = { rate: v.rate || 1, ms: v.ms, dark: v.dark || null, hold: !!v.hold };
+        if (pvLink.isConnected()) {
+          pvLink.send('cine', { action: 'play', name: name, rate: opts.rate, ms: opts.ms, dark: opts.dark, hold: opts.hold });
+          cineActive = true;
+          cineShowNote(true);
+          life.clearTimeout(cineWatch);
+          cineWatch = life.setTimeout(function () { cineDone(); }, opts.ms / opts.rate + 3000);
+          return true;
+        }
+        cineEnsureLocal();
+        cineActive = true;
+        if (!dmCinema.play(name, opts)) { cineActive = false; cineAfter = null; return false; }
+        return true;
+      }
+      /* The clip ended, was skipped or failed: do what was waiting for it, once. */
+      function cineDone() {
+        life.clearTimeout(cineWatch);
+        cineShowNote(false);
+        var fn = cineAfter;
+        cineAfter = null;
+        cineActive = false;
+        if (fn) fn();
+      }
+      function cineSkip() {
+        if (!cineActive) return;
+        if (pvLink.isConnected()) pvLink.send('cine', { action: 'skip' });
+        else if (dmCinema) dmCinema.skip();
+        cineDone();
+      }
+      function cineRipple() {
+        if (pvLink.isConnected()) pvLink.send('cine', { action: 'ripple' });
+        else if (dmCinema && cineOn()) dmCinema.ripple();
+      }
+      /* Everything off at once (Skip on the finale, Reset, leaving). Nothing waiting is done. */
+      function cineStop() {
+        life.clearTimeout(cineWatch);
+        cineAfter = null;
+        cineActive = false;
+        cineShowNote(false);
+        if (pvLink && pvLink.isConnected()) pvLink.send('cine', { action: 'stop' });
+        if (dmCinema) dmCinema.stop();
+      }
 
       /* ---------- Sound engine: fades and the ambient bed ---------- */
       var fadeTokens = new Map();
@@ -1249,6 +1334,7 @@
       var FINALE_SOUNDS = ['absenceVoid', 'knock1', 'knock2', 'knock3', 'waterBackward'];
       function finStop() {
         pvQueue();
+        if (tidalState.finale !== 'idle') cineStop();
         finTimers.clear();
         FINALE_SOUNDS.forEach(function (n) { if (sounds[n]) { fadeTokens.delete(sounds[n]); sounds[n].pause(); try { sounds[n].currentTime = 0; } catch (e) { /* not loaded */ } } });
         absenceVeil.classList.remove('tsi-pel-absence--on', 'tsi-pel-absence--dim', 'tsi-pel-absence--black', 'tsi-pel-absence--thump', 'tsi-pel-absence--ended');
@@ -1295,12 +1381,17 @@
           veilThump();
         } else if (cue.type === 'reverse') {
           if (cue.sound) play(cue.sound);
+        } else if (cue.type === 'video') {
+          cinePlay(cue.video);
+        } else if (cue.type === 'ripple') {
+          cineRipple();
         } else if (cue.type === 'end') {
           showFinaleEnd();
         }
       }
       function skipFinale() {
         if (tidalState.finale !== 'running') return;
+        cineStop();
         var source = tidalState.finaleSource;
         finTimers.clear();
         stopFades();
@@ -1312,6 +1403,7 @@
       var END_LABELS = { replay: 'REPLAY THE ABSENCE', return: 'RETURN TO THE PUZZLE', reset: 'RESET' };
       function showFinaleEnd() {
         pvQueue();
+        cineStop();
         tidalState.finale = 'ended';
         absenceVeil.classList.add('tsi-pel-absence--black', 'tsi-pel-absence--ended');
         absenceNote.textContent = T.finale.endNote;
@@ -1476,6 +1568,7 @@
       /* S toggles Stage Mode; Enter there checks the alignment or attunes the basin. Not while typing or with a pop-up open. */
       life.onKey(function (event) {
         if (mode === 'tidal' && event.key === 'Escape' && tidalState.finale === 'running') { event.preventDefault(); skipFinale(); return; }
+        if (mode === 'tidal' && event.key === 'Escape' && cineActive) { event.preventDefault(); cineSkip(); return; }
         if (mode !== 'tidal' || event.ctrlKey || event.metaKey || event.altKey || ringFor || tidalState.finale !== 'idle') return;
         if (event.key === 's' || event.key === 'S') {
           event.preventDefault();
@@ -1506,7 +1599,7 @@
         mode: function () { return mode; },
         memory: function () { return JSON.parse(JSON.stringify(memoryState)); },
         tidal: function () { return JSON.parse(JSON.stringify(tidalState)); },
-        timers: function () { return { memory: memTimers.counts(), tidal: tidTimers.counts(), finale: finTimers.counts(), fade: fadeTimers.counts(), ui: uiTimers.counts() }; },
+        timers: function () { return { memory: memTimers.counts(), tidal: tidTimers.counts(), cine: { active: cineActive }, finale: finTimers.counts(), fade: fadeTimers.counts(), ui: uiTimers.counts() }; },
         sounds: sounds,
         bedState: function () { return { a: { paused: bedA.paused, volume: bedA.volume }, b: { paused: bedB.paused, volume: bedB.volume } }; }
       };

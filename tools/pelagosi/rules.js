@@ -297,6 +297,7 @@
           return { level: level, text: rules.wallLineText(line, level) };
         }),
         layout: rules.chamberLayout(cfg),
+        videos: extras.videos || {},
         chalkOn: extras.chalkOn !== false,
         veil: extras.veil || 'off'
       };

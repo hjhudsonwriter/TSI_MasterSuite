@@ -280,9 +280,13 @@ window.TSI_DATA.pelagosi = {
       cues: [
         { at: 0, type: 'duck', sound: 'absenceVoid' },
         { at: 2600, type: 'silence' },
+        /* The clip is slowed to 0.81 and starts at 3.33 s, so its two ripples (born at about 2.65 s and 4.75 s of the
+           clip) land on the first two knocks. The third ripple is drawn on the third knock. The sound cues are unchanged. */
+        { at: 3330, type: 'video', video: 'absence' },
         { at: 6600, type: 'knock', sound: 'knock1' },
         { at: 9200, type: 'knock', sound: 'knock2' },
         { at: 12700, type: 'knock', sound: 'knock3' },
+        { at: 12700, type: 'ripple' },
         { at: 15200, type: 'hold' },
         { at: 17200, type: 'reverse', sound: 'waterBackward' },
         { at: 24000, type: 'end' }
@@ -314,6 +318,17 @@ window.TSI_DATA.pelagosi = {
       key: 'S'
     }
   },
+
+  /* ---------- Cinematic clips (Tidal Sequence) ----------
+     Muted pictures only: all sound stays in the sound engine. ready is true only for files that are in
+     assets/video/; a missing or failed clip is skipped silently. ms is the clip's length (for the safety timer
+     and the DM's note). dark fades a black layer over the Absence clip, which brightens toward its end. */
+  videos: {
+    arrival: { file: 'pov-arrival.mp4', ready: true, ms: 6000 },
+    anchorLift: { file: 'pov-anchor-lift.mp4', ready: true, ms: 6000 },
+    absence: { file: 'pov-absence.mp4', ready: true, ms: 6000, rate: 0.81, dark: [0.55, 0.88], hold: true }
+  },
+  playVideosByDefault: true,
 
   /* ---------- Sounds ----------
      ready: false means the file hasn't been supplied yet, so that moment stays

@@ -302,6 +302,7 @@ window.TSI_DATA.tools = [
         'tools/pelagosi/data/pelagosi-data.js',
         'tools/pelagosi/rules.js',
         'tools/pelagosi/chamber.js',
+        'tools/pelagosi/cinema.js',
         'tools/pelagosi/tool.js'
       ]
     },
@@ -309,7 +310,7 @@ window.TSI_DATA.tools = [
     playerViews: {
       tidal: {
         css: ['tools/pelagosi/pelagosi.css', 'tools/pelagosi/player-view.css'],
-        js: ['tools/pelagosi/chamber.js', 'tools/pelagosi/player-view.js']
+        js: ['tools/pelagosi/chamber.js', 'tools/pelagosi/cinema.js', 'tools/pelagosi/player-view.js']
       }
     }
   }
