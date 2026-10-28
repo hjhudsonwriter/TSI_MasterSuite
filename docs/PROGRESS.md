@@ -5,7 +5,7 @@
 **Strip Back Overhaul (steps S01 to S17, 22 to 25 October 2026) is built and merged; S19 (art) and S20 (guide and home-screen text) and S21 (these docs) are done. S18 (removing the internal Day Log data) is done (26 October 2026, BAS-SB-83).** The war game, Clan founding, the Hall's trade system, the three Shrines, the Library, Arcane Laboratory, Clan Influence and the Day Log screens are gone or folded into the Temple, Beast Pen, Dock and Workshop. Details: `docs/STRIP-BACK-PLAN.md`, `docs/strip-back/*-built.md`, and the new "Strip Back Overhaul" section at the end of `docs/KNOWN_ISSUES.md` (BAS-SB-01 onwards).
 
 ### 28 October 2026: Tidal Sequence v2, phases 5 and 6 done (polish and final checks)
-- Chalk marks (DM-toggleable), floor caustics, final tests (KNOWN_ISSUES PEL-23). The Tidal Sequence v2 is complete pending Harry's real-Edge/TV test. Open question: should the chalk marks be tied to the runes (see PEL-23)?
+- Chalk marks (DM-toggleable), floor caustics, final tests (KNOWN_ISSUES PEL-23). The Tidal Sequence v2 is complete pending Harry's real-Edge/TV test. Chalk marks stay fixed beside the top-right and bottom-left pillars (Harry's decision).
 
 ### 28 October 2026: Tidal Sequence v2, phase 4 done (the Absence finale and the bed)
 - The rules text no longer gives the answer away (PEL-20 closed). The finale cue runner, Skip/Esc, "Play the Absence anyway" with snapshot and return, and the two-copy crossfaded ambient bed are built (KNOWN_ISSUES PEL-22). Next: phase 5 (chalk ticks, optional extras, caustics), phase 6 (final checks and docs).

@@ -296,14 +296,14 @@ window.TSI_DATA.pelagosi = {
       noAutoFocus: true,
       reducedMotionShake: false
     },
-    /* Chalk marks on the floor beside two pillars (for the 'lamp oil and chalk' clue). Where they are
-       is data (% across, % down the chamber picture); the DM can switch them off. They are
-       ambiguous on purpose: nothing says whose they are. */
+    /* Plain smudged chalk ticks fixed on the floor beside two pillars. They never move with, change with
+       or react to the runes, pressure, checks, shuffles or Reset; only the DM tick box affects them.
+       Where they sit is data (% across, % down the chamber picture). */
     chalk: {
       enabledByDefault: true,
       marks: [
-        { id: 'tally', pillar: 'topRight', dx: 8.5, dy: 6, style: 'tally' },
-        { id: 'smudge', pillar: 'bottomLeft', dx: -8.5, dy: 5, style: 'smudge' }
+        { id: 'a', pillar: 'topRight', dx: 8.5, dy: 6, style: 'ticks' },
+        { id: 'b', pillar: 'bottomLeft', dx: -8.5, dy: 5, style: 'ticks-faint' }
       ]
     },
     /* Stage Mode (key S) for the TV: what it hides and keeps. */

@@ -1096,19 +1096,14 @@
 /* Tidal v2 phase 5: chalk marks and floor caustics */
 .tsi-tool--pelagosi .tsi-pel-chalk-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
 .tsi-tool--pelagosi .tsi-pel-chalk { position: absolute; width: 3.2%; aspect-ratio: 1; transform: translate(-50%, -50%) rotate(-8deg); opacity: 0.62; filter: blur(0.35px) drop-shadow(0 0 2px rgba(240, 236, 220, 0.25)); }
-.tsi-tool--pelagosi .tsi-pel-chalk--tally {
+.tsi-tool--pelagosi .tsi-pel-chalk--ticks,
+.tsi-tool--pelagosi .tsi-pel-chalk--ticks-faint {
   background:
     linear-gradient(80deg, transparent 18%, rgba(236, 230, 210, 0.9) 20%, rgba(236, 230, 210, 0.9) 25%, transparent 27%),
     linear-gradient(84deg, transparent 38%, rgba(236, 230, 210, 0.85) 40%, rgba(236, 230, 210, 0.85) 45%, transparent 47%),
-    linear-gradient(78deg, transparent 58%, rgba(236, 230, 210, 0.9) 60%, rgba(236, 230, 210, 0.9) 65%, transparent 67%),
-    linear-gradient(-62deg, transparent 44%, rgba(236, 230, 210, 0.8) 48%, rgba(236, 230, 210, 0.8) 53%, transparent 57%);
+    linear-gradient(78deg, transparent 58%, rgba(236, 230, 210, 0.9) 60%, rgba(236, 230, 210, 0.9) 65%, transparent 67%);
 }
-.tsi-tool--pelagosi .tsi-pel-chalk--smudge {
-  background:
-    radial-gradient(ellipse at 40% 50%, rgba(236, 230, 210, 0.5), transparent 62%),
-    linear-gradient(35deg, transparent 42%, rgba(236, 230, 210, 0.85) 46%, rgba(236, 230, 210, 0.85) 52%, transparent 56%),
-    linear-gradient(-40deg, transparent 42%, rgba(236, 230, 210, 0.7) 46%, rgba(236, 230, 210, 0.7) 52%, transparent 56%);
-}
+.tsi-tool--pelagosi .tsi-pel-chalk--ticks-faint { opacity: 0.45; transform: translate(-50%, -50%) rotate(7deg); }
 .tsi-tool--pelagosi .tsi-pel-caustics {
   position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0.16; mix-blend-mode: screen;
   background:
