@@ -24,6 +24,7 @@ async function open(browser, size) {
   await page.goto(PEL);
   await page.waitForSelector('[data-test=rune-anchor]');
   await page.selectOption('[data-test=puzzle]', 'tidal');
+  await page.uncheck('[data-test=cine-on]'); /* the clips have their own test (pelagosi-cinematics) */
   return { context, page };
 }
 async function begin(page) {

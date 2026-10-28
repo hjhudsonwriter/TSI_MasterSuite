@@ -43,6 +43,13 @@
     var shell = el('div', { class: 'tsi-tool--pelagosi tsi-pel-pv' }, [stage, veil]);
     root.appendChild(shell);
 
+    /* The cinematic clips: muted, full-bleed, played when the DM's window says so (cinema.js). */
+    var cinema = pel.cinema.create({
+      parent: shell, testId: 'pv-cine',
+      timers: { setTimeout: function (fn, ms) { return window.setTimeout(fn, ms); }, clearTimeout: function (id) { window.clearTimeout(id); } },
+      onEnd: function (name, why) { api.send('cine-ended', { name: name, why: why }); }
+    });
+
     function later(fn, ms) {
       var id = window.setTimeout(function () { var i = timers.indexOf(id); if (i >= 0) timers.splice(i, 1); fn(); }, ms);
       timers.push(id);
@@ -110,6 +117,7 @@
         if (!snap || snap.v !== 1) return;
         var key = JSON.stringify(snap.layout);
         if (key !== layoutKey) { layoutKey = key; buildChamber(snap.layout); }
+        if (snap.videos) cinema.preload(snap.videos);
         pel.chamber.paint(ch, snap.view);
         paintFlags(snap.view.flags);
         paintMeter(snap.view.pressure);
@@ -120,6 +128,13 @@
       },
 
       message: function (type, d) {
+        if (type === 'cine' && d) {
+          if (d.action === 'play') { if (!cinema.play(d.name, { rate: d.rate, ms: d.ms, dark: d.dark, hold: d.hold })) api.send('cine-ended', { name: d.name, why: 'failed' }); }
+          else if (d.action === 'ripple') cinema.ripple();
+          else if (d.action === 'skip') cinema.skip();
+          else if (d.action === 'stop') cinema.stop();
+          return;
+        }
         if (!ch || !d) return;
         if (type === 'banner') {
           window.clearTimeout(bannerTimer);
@@ -143,6 +158,7 @@
       /* The DM has gone quiet: let go of anything that was passing. */
       lost: function () {
         timers.splice(0).forEach(function (id) { window.clearTimeout(id); });
+        cinema.stop();
         if (ch) { hideBanner(); ch.event.overlay.classList.add('tsi-pel-hidden'); }
       },
 

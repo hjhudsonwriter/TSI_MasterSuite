@@ -86,6 +86,8 @@ All 18 media files from the old tool, each checked byte-for-byte after copying. 
 | `audio/puzzle-solve.wav` | `tools/pelagosi/assets/audio/puzzle-solve.wav` | 32 KB | Yes: a round won; the basin wakes; solved |
 | `audio/cavern-open.wav` | `tools/pelagosi/assets/audio/cavern-open.wav` | 52 KB | Yes: the ending of each puzzle |
 
+**Tidal Sequence cinematic clips (added by Harry, 28 October 2026; first-person, 1280 × 720, 24 fps, 6 seconds each, H.264, played muted).** `tools/pelagosi/assets/video/pov-arrival.mp4` (plays at START SEQUENCE), `pov-anchor-lift.mp4` (plays when the Anchor removal is confirmed, before the solved bar), `pov-absence.mp4` (the picture for the Absence, slowed to 0.81 and started 3.33 s in) and `pov-master.png` (the master still, not used on screen). They are listed in `tools/pelagosi/data/pelagosi-data.js` under `videos`; `ready` is true only for files in the folder, and a missing clip is skipped silently.
+
 **Tidal Sequence v2 sounds (supplied 27–28 October 2026, all `.mp3`, all switched on in `tools/pelagosi/data/pelagosi-data.js`).** `chamber-bed` (the ambient bed, two copies crossfaded), `water-stir`, `pressure-rise`, `current-reverse`, `tidal-surge`, `basin-wake` (pressure and basin moments), `anchor-release` (the Anchor comes out), `inscription-reveal` (a wall line becomes whole), `tide-return-toll` (the optional tide), and for the Absence: `absence-void`, `knock-1`, `knock-2`, `knock-3`, `water-backward`. `water-flow.mp3` is kept as a source file only and is not played. Each entry is `{ file, ready, volume?, loop? }`; a file that is missing is silent, never an error.
 
 The empty `.keep` placeholder files in the old repo's folders weren't copied.

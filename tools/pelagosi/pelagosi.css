@@ -1083,7 +1083,7 @@
 .tsi-tool--pelagosi .tsi-pel-absence--black { opacity: 1; transition-duration: 700ms; }
 .tsi-tool--pelagosi .tsi-pel-absence--thump { animation: tsi-pel-thump 360ms ease-out; }
 @keyframes tsi-pel-thump { 0% { box-shadow: inset 0 0 0 0 rgba(140, 224, 255, 0.0); } 25% { box-shadow: inset 0 0 160px 30px rgba(140, 224, 255, 0.16); } 100% { box-shadow: inset 0 0 0 0 rgba(140, 224, 255, 0); } }
-.tsi-tool--pelagosi .tsi-pel-absence-skip { position: absolute; top: 14px; right: 14px; opacity: 0.35; }
+.tsi-tool--pelagosi .tsi-pel-absence-skip { position: absolute; top: calc(var(--tsi-topbar-h, 56px) + 10px); right: 14px; opacity: 0.35; }
 .tsi-tool--pelagosi .tsi-pel-absence-skip:hover, .tsi-tool--pelagosi .tsi-pel-absence-skip:focus-visible { opacity: 1; }
 .tsi-tool--pelagosi .tsi-pel-absence-note { margin: 0; font-size: 20px; color: var(--tsi-text-muted); text-align: center; letter-spacing: 0.04em; }
 .tsi-tool--pelagosi .tsi-pel-absence-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
@@ -1121,3 +1121,30 @@
 .tsi-tool--pelagosi .tsi-pel-pv-chip { font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid rgba(140, 224, 255, 0.25); color: var(--tsi-text-muted); }
 .tsi-tool--pelagosi .tsi-pel-pv-chip.tsi-pel-pv-chip--on { color: #bff3ff; border-color: rgba(140, 224, 255, 0.6); }
 .tsi-tool--pelagosi .tsi-pel--stage .tsi-pel-pv-row { display: none; }
+
+/* Tidal cinematics: a muted clip, full-bleed, over everything but the pop-ups (both windows) */
+.tsi-tool--pelagosi .tsi-pel-cine {
+  position: fixed; inset: 0; z-index: calc(var(--tsi-z-modal, 100) - 1);
+  background: #000; opacity: 0; transition: opacity 600ms ease; pointer-events: none; overflow: hidden;
+}
+.tsi-tool--pelagosi .tsi-pel-cine--on { opacity: 1; }
+.tsi-tool--pelagosi .tsi-pel-cine[hidden] { display: none; }
+.tsi-tool--pelagosi .tsi-pel-cine-frame {
+  position: absolute; left: 50%; top: 50%; width: max(100vw, 177.78vh); aspect-ratio: 16 / 9; transform: translate(-50%, -50%);
+}
+.tsi-tool--pelagosi .tsi-pel-cine-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; background: #000; }
+.tsi-tool--pelagosi .tsi-pel-cine-video--on { display: block; }
+.tsi-tool--pelagosi .tsi-pel-cine-dark { position: absolute; inset: 0; background: #000; opacity: 0; transition-property: opacity; }
+.tsi-tool--pelagosi .tsi-pel-cine-skip { position: absolute; top: calc(var(--tsi-topbar-h, 56px) + 10px); right: 14px; pointer-events: auto; opacity: 0.4; }
+.tsi-tool--pelagosi .tsi-pel-cine-skip:hover, .tsi-tool--pelagosi .tsi-pel-cine-skip:focus-visible { opacity: 1; }
+.tsi-tool--pelagosi .tsi-pel-cine-ripple {
+  position: absolute; left: 50%; top: 82%; width: 18%; aspect-ratio: 4 / 1; border-radius: 50%;
+  border: 2px solid rgba(190, 240, 255, 0.75); transform: translate(-50%, -50%) scale(0.15); opacity: 0;
+  animation: tsi-pel-cine-ripple 2600ms ease-out forwards;
+}
+@keyframes tsi-pel-cine-ripple { 0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.15); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); } }
+@media (prefers-reduced-motion: reduce) {
+  .tsi-tool--pelagosi .tsi-pel-cine { transition: none; }
+  .tsi-tool--pelagosi .tsi-pel-cine-ripple { animation-duration: 1ms; }
+}
+.tsi-tool--pelagosi .tsi-pel-cine-note { margin: 6px 0 0; font-size: 12px; color: var(--tsi-text-muted); display: flex; align-items: center; gap: 8px; }

@@ -7,3 +7,5 @@
 5. **Sound comes from the laptop.** The TV window is silent. If the sound should come from the TV, set the laptop's sound output to the TV (HDMI).
 6. If you refresh the TV window, or reload the suite on your laptop, the two find each other again within about two seconds. No clicking needed.
 7. The mouse pointer hides itself on the TV window after two seconds.
+8. **Cinematic videos.** START SEQUENCE, the Anchor coming out and the Absence each play a short silent film on the TV window. Your laptop screen shows "Cinematic playing" with a Skip button (Esc also skips). If no TV window is open, the film plays on your laptop instead so you can test it on one screen. Untick **Play cinematic videos** in the Readings panel to turn them all off. They play silently: the sound is always from the laptop.
+

@@ -22,6 +22,7 @@ async function open(browser, size, extra) {
   await page.goto(PEL);
   await page.waitForSelector('[data-test=rune-anchor]');
   await page.selectOption('[data-test=puzzle]', 'tidal');
+  await page.uncheck('[data-test=cine-on]'); /* the clips have their own test (pelagosi-cinematics) */
   return { context, page };
 }
 
@@ -60,6 +61,7 @@ async function begin(page) {
       assert(!(await page.isVisible('[data-test=wall]')));
       assert(await page.isVisible('.tsi-pel-legend:not(.tsi-pel-rune-legend)'));
       await page.selectOption('[data-test=puzzle]', 'tidal');
+  await page.uncheck('[data-test=cine-on]'); /* the clips have their own test (pelagosi-cinematics) */
       assert(!(await page.isVisible('.tsi-pel-legend:not(.tsi-pel-rune-legend)')));
     });
 

@@ -25,6 +25,7 @@ async function open(browser, size) {
   await page.goto(PEL);
   await page.waitForSelector('[data-test=rune-anchor]');
   await page.selectOption('[data-test=puzzle]', 'tidal');
+  await page.uncheck('[data-test=cine-on]'); /* the clips have their own test (pelagosi-cinematics) */
   return { context, page };
 }
 async function begin(page) {
@@ -77,6 +78,7 @@ const buttons = page => page.$$eval('[data-test=absence-btns] button', b => b.ma
     await page.goto(PEL);
     await page.waitForSelector('[data-test=rune-anchor]');
     await page.selectOption('[data-test=puzzle]', 'tidal');
+  await page.uncheck('[data-test=cine-on]'); /* the clips have their own test (pelagosi-cinematics) */
     await page.evaluate(() => { TSI_DATA.pelagosi.tidal.finale.cues.forEach(c => { c.at = Math.round(c.at / 10); }); });
 
     await check('the puzzle and the whole finale still work in silence, with no page errors', async () => {

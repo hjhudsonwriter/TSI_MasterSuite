@@ -76,6 +76,7 @@ async function answerWrong(page) {
 
 async function startTidal(page) {
   await page.selectOption('[data-test=puzzle]', 'tidal');
+  await page.uncheck('[data-test=cine-on]'); /* the clips have their own test (pelagosi-cinematics) */
   await page.click('[data-test=begin]');
   await page.waitForSelector('.tsi-modal');
   await H.clickModal(page, 'START SEQUENCE');
@@ -383,6 +384,7 @@ async function setBasin(page, rune) {
       await answerRound(page);
       await page.waitForFunction(() => TSI.pelagosi.debug.memory().phase === 'success');
       await page.selectOption('[data-test=puzzle]', 'tidal');
+      await page.uncheck('[data-test=cine-on]'); /* the clips have their own test (pelagosi-cinematics) */
       await page.selectOption('[data-test=puzzle]', 'memory');
       await page.waitForTimeout(3000);
       const m = await mem(page);
@@ -395,6 +397,7 @@ async function setBasin(page, rune) {
       await waitMem(page, 'input');
       await answerWrong(page);
       await page.selectOption('[data-test=puzzle]', 'tidal');
+      await page.uncheck('[data-test=cine-on]'); /* the clips have their own test (pelagosi-cinematics) */
       await page.selectOption('[data-test=puzzle]', 'memory');
       await page.waitForTimeout(2600);
       equal((await mem(page)).phase, 'idle');
@@ -404,6 +407,7 @@ async function setBasin(page, rune) {
       await startMemory(page);
       await page.waitForTimeout(900);
       await page.selectOption('[data-test=puzzle]', 'tidal');
+      await page.uncheck('[data-test=cine-on]'); /* the clips have their own test (pelagosi-cinematics) */
       const t0 = await page.evaluate(() => performance.now());
       await page.waitForTimeout(3000);
       equal(await page.evaluate(t => window.__plays.filter(p => p.t > t).length, t0), 0, 'sounds after switching');
@@ -421,6 +425,7 @@ async function setBasin(page, rune) {
 
     await check('BEGIN shows the four rules; START SEQUENCE wakes the chamber', async () => {
       await page.selectOption('[data-test=puzzle]', 'tidal');
+      await page.uncheck('[data-test=cine-on]'); /* the clips have their own test (pelagosi-cinematics) */
       equal(await text(page, 'title'), 'The Tidal Sequence');
       await page.click('[data-test=begin]');
       await page.waitForSelector('.tsi-modal');
@@ -571,6 +576,7 @@ async function setBasin(page, rune) {
       await toSurge();
       await page.selectOption('[data-test=puzzle]', 'memory');
       await page.selectOption('[data-test=puzzle]', 'tidal');
+      await page.uncheck('[data-test=cine-on]'); /* the clips have their own test (pelagosi-cinematics) */
       await page.waitForTimeout(2600);
       equal((await tid(page)).phase, 'idle');
     });
@@ -720,6 +726,7 @@ async function setBasin(page, rune) {
       /* Switch the old tool to the Tidal puzzle first. */
       await old.selectOption('#puzzleSelect', 'tidal');
       await page.selectOption('[data-test=puzzle]', 'tidal');
+      await page.uncheck('[data-test=cine-on]'); /* the clips have their own test (pelagosi-cinematics) */
       for (const [name, act] of steps) {
         await act(old);
         await act(page);
