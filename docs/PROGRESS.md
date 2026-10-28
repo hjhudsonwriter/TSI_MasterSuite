@@ -4,6 +4,9 @@
 
 **Strip Back Overhaul (steps S01 to S17, 22 to 25 October 2026) is built and merged; S19 (art) and S20 (guide and home-screen text) and S21 (these docs) are done. S18 (removing the internal Day Log data) is done (26 October 2026, BAS-SB-83).** The war game, Clan founding, the Hall's trade system, the three Shrines, the Library, Arcane Laboratory, Clan Influence and the Day Log screens are gone or folded into the Temple, Beast Pen, Dock and Workshop. Details: `docs/STRIP-BACK-PLAN.md`, `docs/strip-back/*-built.md`, and the new "Strip Back Overhaul" section at the end of `docs/KNOWN_ISSUES.md` (BAS-SB-01 onwards).
 
+### 28 October 2026: Tidal Sequence v2, phase 3 done (pressure tools and the Anchor question)
+- Ask the Chamber, the optional tide timer, the Anchor / Current confirm question and the solved bar (RELEASE THE ABSENCE placeholder, Read success text). Details in KNOWN_ISSUES PEL-21. Next: phase 4, the Absence finale and the sound bed.
+
 ### 27 October 2026: Tidal Sequence v2, phase 2 done (the screen)
 
 - **Done:** scarred wall, nine-icon rune legend, rune ring, Readings (DM) panel with Hide again, Stage Mode (S, Enter checks), debug `lines` and `ui` timers. See KNOWN_ISSUES PEL-20. Test: `tests/e2e/pelagosi-tidal-v2.test.js`.

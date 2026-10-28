@@ -482,17 +482,23 @@ async function setBasin(page, rune) {
       assert(await page.isVisible('[data-test=basin]'), 'basin should show');
       await check_(page); /* Anchor: wrong */
       equal((await tid(page)).pressure, 2);
-      assert(/The basin rejects the chosen name/.test(await page.textContent('[data-test=event] span')));
+      assert(/The basin is content to hold/.test(await page.textContent('[data-test=event] span')));
     });
 
-    await check('Current attunes the basin and "The Chamber Opens"', async () => {
+    await check('Current attunes the basin: the Anchor question, then the solved bar (no pop-up by itself)', async () => {
       await setBasin(page, 'current');
       await check_(page);
+      await page.waitForSelector('.tsi-modal');
+      equal(await modalTitle(page), 'Remove the Anchor?');
+      await H.clickModal(page, 'Take it out');
       equal(await page.textContent('[data-test=event] p'), 'THE CURRENT COMPLETES');
       equal((await tid(page)).solved, true);
-      await page.waitForFunction(() => document.querySelector('[data-test=stage]').textContent === 'Stone unlocks', null, { timeout: 4000 });
+      await page.waitForFunction(() => document.querySelector('[data-test=stage]').textContent === 'The stone shifts', null, { timeout: 4000 });
       assert((await plays(page)).includes('cavern-open.wav'), 'no cavern sound');
-      await page.waitForSelector('.tsi-modal', { timeout: 3000 });
+      await page.waitForSelector('[data-test=release]:not(.tsi-pel-hidden)', { timeout: 3000 });
+      equal(await page.$('.tsi-modal'), null, 'no automatic pop-up');
+      await page.click('[data-test=read-success]');
+      await page.waitForSelector('.tsi-modal');
       equal(await modalTitle(page), 'The Anchor Lifts'); /* success title rewritten in Tidal v2 phase 1 */
       await H.shot(page, 'pelagosi-chamber-opens');
     });
@@ -577,6 +583,7 @@ async function setBasin(page, rune) {
       await check_(page);
       await setBasin(page, 'current');
       await check_(page);
+      await H.clickModal(page, 'Take it out'); /* the Anchor question (Tidal v2) */
       equal((await tid(page)).solved, true);
     }
 

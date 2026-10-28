@@ -58,7 +58,8 @@
         lines: cutLines(),
         started: false, solved: false, locked: true, phase: 'idle', attempts: 0, pressure: 0,
         feedbackActive: false, feedbackMode: 'none', runToken: 0,
-        basinRuneIndex: T.basinStartIndex, pillars: R.startPillars()
+        basinRuneIndex: T.basinStartIndex, pillars: R.startPillars(),
+        tideOn: !!(T.timer && T.timer.enabledByDefault), tideMs: 0, confirming: false
       };
       var memTimers = life.group();
       var tidTimers = life.group();
@@ -240,6 +241,10 @@
       var guardedCheck = TSI.oneAtATime(checkTidalAlignment, { minMs: CHECK_GUARD_MS });
       var checkTidalButton = button('CHECK ALIGNMENT', 'check', guardedCheck, 'tsi-btn tsi-btn--primary');
       var randomiseTidalButton = button('SHUFFLE PILLARS', 'shuffle', randomiseTidalPillars, 'tsi-btn');
+      /* Once solved: the DM chooses what happens next. Nothing pops up by itself. */
+      var releaseBtn = button('RELEASE THE ABSENCE', 'release', function () { releaseAbsence(); }, 'tsi-btn tsi-btn--primary tsi-pel-hidden');
+      var readTextBtn = button('Read success text', 'read-success', function () { openSuccess('tidal'); }, 'tsi-btn tsi-pel-hidden');
+      var solvedBar = el('div', { class: 'tsi-pel-solved-bar' }, [releaseBtn, readTextBtn]);
       var tidalStage = el('div', { class: 'tsi-pel-stage tsi-pel-stage--tidal', 'data-test': 'tidal-stage' }, [
         el('div', { class: 'tsi-pel-tidal-fit' }, tidalFrame),
         panel('tsi-pel-console tsi-pel-console--tidal', [
@@ -256,7 +261,7 @@
             ])
           ]),
           el('div', { class: 'tsi-pel-console-row tsi-pel-console-row--actions' }, [
-            el('div', { class: 'tsi-pel-actions' }, [checkTidalButton, randomiseTidalButton]),
+            el('div', { class: 'tsi-pel-actions' }, [checkTidalButton, randomiseTidalButton, solvedBar]),
             el('p', { class: 'tsi-pel-copy tsi-pel-small tsi-pel-tip', text: T.text.tip })
           ])
         ])
@@ -282,9 +287,14 @@
         };
       });
       var readingsNote = el('p', { class: 'tsi-pel-copy tsi-pel-small tsi-pel-readings-note', 'aria-live': 'polite', 'data-test': 'readings-note' });
+      var askBtn = button('Ask the Chamber', 'ask', function () { askTheChamber(); }, 'tsi-btn tsi-pel-small-btn');
+      var tideBox = el('input', { type: 'checkbox', id: 'tsi-pel-tide-on', 'data-test': 'tide-on' });
+      var tideRow = el('label', { class: 'tsi-pel-tide-row', for: 'tsi-pel-tide-on' }, [tideBox, el('span', { text: 'The tide returns (every ' + T.timer.seconds + ' s)' })]);
+      var pressureTools = el('div', { class: 'tsi-pel-pressure-tools' }, [askBtn, tideRow]);
       var readingsBody = el('div', { class: 'tsi-pel-readings-body', id: 'tsi-pel-readings-body' }, [
         el('p', { class: 'tsi-pel-copy tsi-pel-small', text: 'Roll in the game, then press the result here.' }),
         el('ul', { class: 'tsi-pel-readings-list' }, readingRows.map(function (row) { return row.el; })),
+        pressureTools,
         readingsNote
       ]);
       var readingsToggle = button('Hide', 'readings-toggle', function () {
@@ -738,6 +748,7 @@
       function tidalStop() {
         tidTimers.clear();
         tidalState.runToken += 1;
+        tidalState.confirming = false;
         closeRing(false);
         tidalEventOverlay.classList.remove('tsi-pel-active');
         tidalEventOverlay.classList.add('tsi-pel-hidden');
@@ -767,6 +778,7 @@
           seg.classList.toggle('tsi-pel-active', level <= tidalState.pressure);
           seg.classList.toggle('tsi-pel-danger', tidalState.pressure >= T.maxPressure && level <= tidalState.pressure);
         });
+        renderReadings();
       }
 
       function renderTidalControls() {
@@ -875,6 +887,7 @@
         tidalFrame.classList.remove('tsi-pel-pulse', 'tsi-pel-tremor', 'tsi-pel-shake');
         resetTidalFeedback();
         renderTidalPillars();
+        updateTidalPressureUI();
       }
 
       function resetTidalToIdle() {
@@ -891,6 +904,7 @@
         tidalState.feedbackMode = 'none';
         tidalState.basinRuneIndex = T.basinStartIndex;
         tidalState.pillars = R.startPillars();
+        showSolvedBar(false);
         removeState('tidal-started', 'tidal-solved', 'screen-flash', 'stage-solved', 'round-awake-1', 'round-awake-2', 'tidal-pressure-1', 'tidal-pressure-2', 'tidal-pressure-3', 'tidal-pressure-4');
         resetTidalFeedback();
         setTidalControlsEnabled(false);
@@ -909,6 +923,8 @@
         addState('tidal-started');
         removeState('tidal-solved');
         play('runePlace');
+        showSolvedBar(false);
+        startTide();
         clueText.textContent = T.text.startClue;
         tidalDescription.textContent = T.text.startDescription;
         setStatus('The chamber wakes', 'The pillars unlock. Rotate their runes and arrows, then check the alignment.');
@@ -1054,7 +1070,7 @@
       }
 
       function checkTidalAlignment() {
-        if (tidalState.locked || tidalState.solved) return;
+        if (tidalState.locked || tidalState.solved || tidalState.confirming) return;
         tidalState.attempts += 1;
 
         if (tidalState.phase === 'outer') {
@@ -1074,12 +1090,14 @@
         if (tidalState.phase === 'basin') {
           tidalState.feedbackActive = true;
           renderTidalBasin();
-          if (R.isBasinCorrect(tidalState.basinRuneIndex)) {
-            solveTidalSequence();
+          var outcome = R.basinOutcome(T.runes[tidalState.basinRuneIndex], T);
+          if (outcome === 'confirm') {
+            tidalState.attempts -= 1; /* a pause to ask the table is not an attempt */
+            confirmRemoveAnchor();
             return;
           }
           play('puzzleFail');
-          increaseTidalPressure('The basin rejects the chosen name.');
+          increaseTidalPressure(outcome === 'hold' ? T.basin.holdText : 'The basin rejects the chosen name.');
         }
       }
 
@@ -1094,7 +1112,8 @@
         play('puzzleSolve');
         addState('tidal-solved', 'screen-flash');
         showTidalEvent('THE CURRENT COMPLETES', 'The basin accepts the Current. Water rises upward in a perfect ring.', 1900);
-        setStatus('The current completes', 'The four pillars and central basin lock into a single flowing sequence. The chamber begins to open.');
+        play('anchorRelease');
+        setStatus('The current completes', 'The four pillars and central basin lock into a single flowing sequence.');
         clueText.textContent = T.text.solvedClue;
 
         tidTimers.setTimeout(function () {
@@ -1104,13 +1123,81 @@
         tidTimers.setTimeout(function () {
           play('cavernOpen');
           triggerDeepTremor(tidalFrame, tidTimers, 1300);
-          setStatus('Stone unlocks', 'Behind the northern arch, ancient stone shifts aside. Whatever Maerys came here to witness lies beyond.');
+          setStatus('The stone shifts', 'The chamber waits. Choose what happens next.');
         }, 2200);
         tidTimers.setTimeout(function () {
           removeState('screen-flash');
-          openSuccess('tidal');
+          showSolvedBar(true);
         }, 3600);
       }
+
+      /* Current + Attune: the table is asked once more before the Anchor comes out. */
+      function confirmRemoveAnchor() {
+        if (tidalState.confirming) return;
+        tidalState.confirming = true;
+        var token = tidalState.runToken;
+        modal({
+          eyebrow: 'The Basin', title: T.basin.confirmTitle, paragraphs: [T.basin.confirmBody], escValue: 'no',
+          actions: [{ label: T.basin.confirmNo, value: 'no' }, { label: T.basin.confirmYes, value: 'yes', primary: true }]
+        }).then(function (choice) {
+          if (token !== tidalState.runToken) return; /* reset or closed while it was open */
+          tidalState.confirming = false;
+          if (choice === 'yes' && tidalState.phase === 'basin' && !tidalState.solved) solveTidalSequence();
+          else setStatus('The Anchor stays', 'Nothing has changed. The basin waits.');
+        });
+      }
+
+      function showSolvedBar(on) {
+        releaseBtn.classList.toggle('tsi-pel-hidden', !on);
+        readTextBtn.classList.toggle('tsi-pel-hidden', !on);
+        checkTidalButton.classList.toggle('tsi-pel-hidden', !!on);
+        randomiseTidalButton.classList.toggle('tsi-pel-hidden', !!on);
+      }
+      /* The Absence itself arrives in the next update. */
+      function releaseAbsence() {
+        setStatus('The Absence', 'The finale is not built yet.');
+      }
+
+      /* ---------- Pressure tools (DM) ---------- */
+      function askTheChamber() {
+        if (!tidalState.started || tidalState.locked || tidalState.solved || (tidalState.phase !== 'outer' && tidalState.phase !== 'basin')) return;
+        if (!R.canAskChamber(tidalState.pressure, T)) { readingsNote.textContent = T.hint.refusedTip; return; }
+        var result = R.askChamber({ pressure: tidalState.pressure, lines: tidalState.lines, pillars: tidalState.pillars }, T);
+        if (!result.revealed) return;
+        tidalState.lines = result.lines;
+        renderWall();
+        increaseTidalPressure(T.hint.askedText);
+        if (result.revealed.kind === 'clue') clueText.textContent = result.revealed.text;
+        readingsNote.textContent = T.hint.askedText;
+        renderReadings();
+      }
+
+      /* The optional tide: counts live seconds while the puzzle is open; can raise pressure to Reversing, never to a surge. */
+      function tideLive() {
+        return tidalState.started && !tidalState.locked && !tidalState.solved && !tidalState.confirming && (tidalState.phase === 'outer' || tidalState.phase === 'basin');
+      }
+      var tideTick = null;
+      function startTide() {
+        if (tideTick !== null) tidTimers.clearTimeout(tideTick);
+        tideTick = null;
+        tidalState.tideMs = 0;
+        if (!tidalState.started) return;
+        var step = 1000;
+        (function next() {
+          tideTick = tidTimers.setTimeout(function () {
+            if (tideLive() && tidalState.tideOn) {
+              tidalState.tideMs += step;
+              if (R.tideReturns(tidalState.tideMs, { timer: T.timer, timerOn: true }, tidalState.pressure)) {
+                tidalState.tideMs = 0;
+                play('tideToll');
+                increaseTidalPressure('The tide returns.');
+              }
+            } else if (!tidalState.tideOn) tidalState.tideMs = 0;
+            next();
+          }, step);
+        }());
+      }
+      life.on(tideBox, 'change', function () { tidalState.tideOn = tideBox.checked; tidalState.tideMs = 0; });
 
       /* ---------- The wall, the readings and Stage Mode ---------- */
       var wallShown = [];
@@ -1149,6 +1236,7 @@
           row.buttons.hide.disabled = !live || level === 'cut';
           row.buttons.misread.disabled = !canPress;
         });
+        askBtn.disabled = !canPress || !R.canAskChamber(tidalState.pressure, T);
       }
       /* A Misread costs a step of pressure only while below Reversing, so it can never cause a surge. */
       function misread() {
