@@ -4297,3 +4297,10 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **Fixed, part of the Tidal Sequence redesign:** the Sequence Rules panel, the "How the Tidal Sequence works" pop-up and the footnote no longer show the rune order, the clockwise rule or "Stone returns the Current". The four pop-up items, the panel copy and the footnote use Harry's wording. The console and start descriptions no longer give the clockwise path either.
 - **Before/after:** before, the rules text spelled out "Flow → Echo → Depth → Stone", the closed clockwise current and the basin answer; now it says only that each pillar needs the right rune and current. The memory puzzle's text is untouched.
 
+### PEL-22 · The Tidal Sequence v2, phase 4: the Absence and the sound bed (28 October 2026)
+- **New:** RELEASE THE ABSENCE (after a solve) and "Play the Absence anyway" (Readings panel, DM extras) play the finale from the data cue list: the bed ducks as the Absence sound plays, then silence (black), three uneven knocks with a small light thump, the water running backward, then the end card ("End of session. Read the cliffhanger."). Skip button or Esc jumps straight to the end card.
+- **End card:** after a solve: REPLAY THE ABSENCE and RESET. After "anyway": REPLAY THE ABSENCE, RETURN TO THE PUZZLE and RESET. Nothing is focused by itself. RETURN restores pillars, basin rune, pressure, wall lines, attempts and phase exactly, the bed resumes and the tide timer restarts fresh.
+- **Bed:** `chamber-bed.mp3` starts at START SEQUENCE and loops by crossfading two copies in the last 2.5 seconds, so there is no gap. It stops on Reset, on switching puzzle, and on leaving the tool.
+- **Needs your ears:** the real timing of the silence and the three knocks, and the bed loop, can't be judged in a test browser. Edge on the real laptop and TV is untested.
+- **Left alone:** nice-to-have sounds (inscription reveal, tide toll when the optional tide rises) already play; chalk ticks and caustics are phase 5.
+

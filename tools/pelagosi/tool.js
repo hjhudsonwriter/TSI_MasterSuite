@@ -36,14 +36,17 @@
         if (!s.ready) return; /* not supplied yet (P2): that moment stays silent */
         sounds[name] = life.audio(asset('audio/' + s.file), { volume: D.volume * (s.volume == null ? 1 : s.volume), preload: 'auto' });
       });
+      function baseVolume(name) { return D.volume * (D.sounds[name].volume == null ? 1 : D.sounds[name].volume); }
       function play(name) {
         var s = sounds[name];
         if (!s) return;
+        s.volume = baseVolume(name); /* a fade may have left it quiet */
         s.currentTime = 0;
         var p = s.play();
         if (p && p.catch) p.catch(function () { /* the browser may refuse sound until the first click */ });
       }
       function silence() {
+        if (typeof bedHardStop === 'function') bedHardStop();
         Object.keys(sounds).forEach(function (name) {
           sounds[name].pause();
           try { sounds[name].currentTime = 0; } catch (e) { /* not loaded yet */ }
@@ -59,10 +62,13 @@
         started: false, solved: false, locked: true, phase: 'idle', attempts: 0, pressure: 0,
         feedbackActive: false, feedbackMode: 'none', runToken: 0,
         basinRuneIndex: T.basinStartIndex, pillars: R.startPillars(),
-        tideOn: !!(T.timer && T.timer.enabledByDefault), tideMs: 0, confirming: false
+        tideOn: !!(T.timer && T.timer.enabledByDefault), tideMs: 0, confirming: false,
+        finale: 'idle', finaleSource: null
       };
       var memTimers = life.group();
       var tidTimers = life.group();
+      var finTimers = life.group(); /* the Absence finale's cues; one owner, cleared by Skip, Reset, leaving and stop */
+      var fadeTimers = life.group(); /* volume fades */
       var uiTimers = life.group(); /* Stage Mode's fading exit button; never cleared by a puzzle reset */
 
       /* The old tool put its state classes on <body>; here they go on the tool's own root. */
@@ -291,10 +297,13 @@
       var tideBox = el('input', { type: 'checkbox', id: 'tsi-pel-tide-on', 'data-test': 'tide-on' });
       var tideRow = el('label', { class: 'tsi-pel-tide-row', for: 'tsi-pel-tide-on' }, [tideBox, el('span', { text: 'The tide returns (every ' + T.timer.seconds + ' s)' })]);
       var pressureTools = el('div', { class: 'tsi-pel-pressure-tools' }, [askBtn, tideRow]);
+      var anywayBtn = button('Play the Absence anyway', 'absence-anyway', function () { playAbsenceAnyway(); }, 'tsi-btn tsi-pel-small-btn');
+      var dmExtras = el('div', { class: 'tsi-pel-dm-extras' }, [anywayBtn]);
       var readingsBody = el('div', { class: 'tsi-pel-readings-body', id: 'tsi-pel-readings-body' }, [
         el('p', { class: 'tsi-pel-copy tsi-pel-small', text: 'Roll in the game, then press the result here.' }),
         el('ul', { class: 'tsi-pel-readings-list' }, readingRows.map(function (row) { return row.el; })),
         pressureTools,
+        dmExtras,
         readingsNote
       ]);
       var readingsToggle = button('Hide', 'readings-toggle', function () {
@@ -339,6 +348,12 @@
         ])
       ]);
       root.appendChild(stageExit);
+      /* The Absence: a veil over the whole tool, with a faint Skip and, at the end, the choices. */
+      var absenceSkip = button('Skip (Esc)', 'absence-skip', function () { skipFinale(); }, 'tsi-btn tsi-pel-small-btn tsi-pel-absence-skip');
+      var absenceNote = el('p', { class: 'tsi-pel-absence-note', 'data-test': 'absence-note', 'aria-live': 'polite' });
+      var absenceBtns = el('div', { class: 'tsi-pel-absence-btns', 'data-test': 'absence-btns' });
+      var absenceVeil = el('div', { class: 'tsi-pel-absence tsi-pel-hidden', 'data-test': 'absence' }, [absenceSkip, absenceNote, absenceBtns]);
+      root.appendChild(absenceVeil);
       ctx.root.appendChild(root);
 
       life.on(puzzleSelect, 'change', function () { setActivePuzzle(puzzleSelect.value); });
@@ -749,6 +764,8 @@
         tidTimers.clear();
         tidalState.runToken += 1;
         tidalState.confirming = false;
+        finStop();
+        bedHardStop();
         closeRing(false);
         tidalEventOverlay.classList.remove('tsi-pel-active');
         tidalEventOverlay.classList.add('tsi-pel-hidden');
@@ -925,6 +942,7 @@
         play('runePlace');
         showSolvedBar(false);
         startTide();
+        bedStart();
         clueText.textContent = T.text.startClue;
         tidalDescription.textContent = T.text.startDescription;
         setStatus('The chamber wakes', 'The pillars unlock. Rotate their runes and arrows, then check the alignment.');
@@ -1153,9 +1171,183 @@
         checkTidalButton.classList.toggle('tsi-pel-hidden', !!on);
         randomiseTidalButton.classList.toggle('tsi-pel-hidden', !!on);
       }
-      /* The Absence itself arrives in the next update. */
       function releaseAbsence() {
-        setStatus('The Absence', 'The finale is not built yet.');
+        if (!tidalState.solved || tidalState.finale === 'running') return;
+        runFinale('solve');
+      }
+
+/* ---------- Sound engine: fades and the ambient bed ---------- */
+      var fadeTokens = new Map();
+      function fadeTo(el, target, ms, then) {
+        if (!el) return;
+        var token = {};
+        fadeTokens.set(el, token);
+        var from = el.volume, began = null;
+        (function step() {
+          fadeTimers.setTimeout(function () {
+            if (fadeTokens.get(el) !== token) return;
+            var now = Date.now();
+            if (began === null) began = now;
+            var k = ms > 0 ? Math.min(1, (now - began) / ms) : 1;
+            el.volume = Math.max(0, Math.min(1, from + (target - from) * k));
+            if (k >= 1) { fadeTokens.delete(el); if (then) then(); } else step();
+          }, 50);
+        }());
+      }
+      function stopFades() { fadeTokens.clear(); fadeTimers.clear(); }
+
+      /* The bed: two copies of the same file, crossfaded near the end so a loop never leaves a gap. */
+      var bedMeta = D.sounds.chamberBed;
+      var bedA = sounds.chamberBed || null;
+      var bedB = bedA ? life.audio(asset('audio/' + bedMeta.file), { volume: 0, preload: 'auto' }) : null;
+      var BED_FADE_S = 2.5;
+      var bedLevel = bedA ? baseVolume('chamberBed') : 0;
+      var bedOn = false, bedCur = null, bedGain = 1, bedSwapping = false;
+      function bedStopEl(el) { if (!el) return; el.pause(); try { el.currentTime = 0; } catch (e) { /* not loaded */ } }
+      function bedHardStop() {
+        bedOn = false; bedCur = null; bedSwapping = false;
+        if (bedA) { stopFades(); bedStopEl(bedA); bedStopEl(bedB); bedA.volume = bedLevel; if (bedB) bedB.volume = 0; }
+      }
+      function bedStart() {
+        if (!bedA || bedOn) return;
+        bedOn = true; bedGain = 1; bedCur = bedA; bedSwapping = false;
+        bedA.loop = false; if (bedB) bedB.loop = false;
+        bedA.volume = 0; bedA.currentTime = 0;
+        var p = bedA.play(); if (p && p.catch) p.catch(function () { /* sound may be refused until a click */ });
+        fadeTo(bedA, bedLevel, 1800);
+      }
+      /* Quieten (or restore) the bed; 0 = silent but still running, so it can come back. */
+      function bedDuck(gain, ms) {
+        bedGain = gain;
+        if (bedOn && bedCur) fadeTo(bedCur, bedLevel * gain, ms);
+      }
+      function bedWatch(event) {
+        if (!bedOn || event.target !== bedCur || bedSwapping) return;
+        var cur = bedCur, d = cur.duration;
+        if (!(d > BED_FADE_S * 3)) { cur.loop = true; return; } /* too short or unknown: let the browser loop it */
+        if (d - cur.currentTime > BED_FADE_S + 0.3) return;
+        var other = cur === bedA ? bedB : bedA;
+        if (!other) { cur.loop = true; return; }
+        bedSwapping = true;
+        other.currentTime = 0; other.volume = 0;
+        var p = other.play(); if (p && p.catch) p.catch(function () { /* refused */ });
+        fadeTo(other, bedLevel * bedGain, BED_FADE_S * 1000);
+        fadeTo(cur, 0, BED_FADE_S * 1000, function () { cur.pause(); bedSwapping = false; });
+        bedCur = other;
+      }
+      if (bedA) { life.on(bedA, 'timeupdate', bedWatch); life.on(bedB, 'timeupdate', bedWatch); }
+
+      /* ---------- The Absence (the finale) ---------- */
+      var snapshot = null;
+      var FINALE_SOUNDS = ['absenceVoid', 'knock1', 'knock2', 'knock3', 'waterBackward'];
+      function finStop() {
+        finTimers.clear();
+        FINALE_SOUNDS.forEach(function (n) { if (sounds[n]) { fadeTokens.delete(sounds[n]); sounds[n].pause(); try { sounds[n].currentTime = 0; } catch (e) { /* not loaded */ } } });
+        absenceVeil.classList.remove('tsi-pel-absence--on', 'tsi-pel-absence--dim', 'tsi-pel-absence--black', 'tsi-pel-absence--thump', 'tsi-pel-absence--ended');
+        absenceVeil.classList.add('tsi-pel-hidden');
+        absenceBtns.textContent = '';
+        absenceNote.textContent = '';
+        tidalState.finale = 'idle';
+      }
+      function veilThump() {
+        absenceVeil.classList.remove('tsi-pel-absence--thump');
+        void absenceVeil.offsetWidth;
+        absenceVeil.classList.add('tsi-pel-absence--thump');
+        finTimers.setTimeout(function () { absenceVeil.classList.remove('tsi-pel-absence--thump'); }, 380);
+      }
+      function runFinale(source) {
+        finStop();
+        tidalState.finale = 'running';
+        tidalState.finaleSource = source;
+        closeRing(false);
+        stopFades();
+        if (bedA) { if (bedOn) bedDuck(1, 300); else bedStart(); }
+        absenceVeil.classList.remove('tsi-pel-hidden');
+        void absenceVeil.offsetWidth;
+        absenceVeil.classList.add('tsi-pel-absence--on');
+        renderReadings();
+        R.finaleCues(T).forEach(function (cue) {
+          finTimers.setTimeout(function () { doCue(cue); }, cue.at);
+        });
+      }
+      function doCue(cue) {
+        if (cue.type === 'duck') {
+          bedDuck(0.2, 2400);
+          absenceVeil.classList.add('tsi-pel-absence--dim');
+          if (cue.sound) play(cue.sound);
+        } else if (cue.type === 'silence') {
+          bedDuck(0, 700);
+          if (sounds.absenceVoid) fadeTo(sounds.absenceVoid, 0, 700);
+          absenceVeil.classList.add('tsi-pel-absence--black');
+        } else if (cue.type === 'knock') {
+          if (cue.sound) play(cue.sound);
+          veilThump();
+        } else if (cue.type === 'reverse') {
+          if (cue.sound) play(cue.sound);
+        } else if (cue.type === 'end') {
+          showFinaleEnd();
+        }
+      }
+      function skipFinale() {
+        if (tidalState.finale !== 'running') return;
+        var source = tidalState.finaleSource;
+        finTimers.clear();
+        stopFades();
+        FINALE_SOUNDS.forEach(function (n) { if (sounds[n]) sounds[n].pause(); });
+        bedHardStop();
+        tidalState.finaleSource = source;
+        showFinaleEnd();
+      }
+      var END_LABELS = { replay: 'REPLAY THE ABSENCE', return: 'RETURN TO THE PUZZLE', reset: 'RESET' };
+      function showFinaleEnd() {
+        tidalState.finale = 'ended';
+        absenceVeil.classList.add('tsi-pel-absence--black', 'tsi-pel-absence--ended');
+        absenceNote.textContent = T.finale.endNote;
+        absenceBtns.textContent = '';
+        var source = tidalState.finaleSource;
+        R.finaleEndOptions(source).forEach(function (kind) {
+          var b = button(END_LABELS[kind], 'absence-' + kind, function () { finaleChoice(kind); }, kind === 'reset' ? 'tsi-btn tsi-btn--primary' : 'tsi-btn');
+          absenceBtns.appendChild(b);
+        }); /* nothing is focused by itself (T.finale.noAutoFocus) */
+        renderReadings();
+      }
+      function finaleChoice(kind) {
+        if (kind === 'replay') runFinale(tidalState.finaleSource);
+        else if (kind === 'return') returnToPuzzle();
+        else { resetTidalToIdle(); openRules('tidal'); }
+      }
+      /* Lock the puzzle exactly as it stands, then play the Absence from wherever the table is. */
+      function playAbsenceAnyway() {
+        if (tidalState.finale !== 'idle' || tidalState.locked || tidalState.solved || tidalState.confirming) return;
+        if (tidalState.phase !== 'outer' && tidalState.phase !== 'basin') return;
+        snapshot = R.snapshotPuzzle(tidalState);
+        tidalState.locked = true;
+        renderTidalControls();
+        runFinale('anyway');
+      }
+      function returnToPuzzle() {
+        if (!snapshot) return;
+        var s = R.restorePuzzle(snapshot);
+        finStop();
+        tidalState.pillars = s.pillars;
+        tidalState.basinRuneIndex = s.basinRuneIndex;
+        tidalState.pressure = s.pressure;
+        tidalState.lines = s.lines;
+        tidalState.attempts = s.attempts;
+        tidalState.phase = s.phase;
+        tidalState.solved = s.solved;
+        tidalState.locked = false;
+        tidalState.feedbackActive = false;
+        tidalState.feedbackMode = 'none';
+        resetTidalFeedback();
+        renderWall();
+        renderTidalPillars();
+        renderReadings();
+        snapshot = null;
+        bedHardStop();
+        bedStart();
+        startTide();
+        setStatus('Back at the puzzle', 'The chamber is as it was left.');
       }
 
       /* ---------- Pressure tools (DM) ---------- */
@@ -1174,7 +1366,7 @@
 
       /* The optional tide: counts live seconds while the puzzle is open; can raise pressure to Reversing, never to a surge. */
       function tideLive() {
-        return tidalState.started && !tidalState.locked && !tidalState.solved && !tidalState.confirming && (tidalState.phase === 'outer' || tidalState.phase === 'basin');
+        return tidalState.started && !tidalState.locked && !tidalState.solved && !tidalState.confirming && tidalState.finale === 'idle' && (tidalState.phase === 'outer' || tidalState.phase === 'basin');
       }
       var tideTick = null;
       function startTide() {
@@ -1237,6 +1429,8 @@
           row.buttons.misread.disabled = !canPress;
         });
         askBtn.disabled = !canPress || !R.canAskChamber(tidalState.pressure, T);
+        anywayBtn.disabled = !(canPress && tidalState.finale === 'idle');
+        releaseBtn.disabled = tidalState.finale === 'running';
       }
       /* A Misread costs a step of pressure only while below Reversing, so it can never cause a surge. */
       function misread() {
@@ -1265,7 +1459,8 @@
       });
       /* S toggles Stage Mode; Enter there checks the alignment or attunes the basin. Not while typing or with a pop-up open. */
       life.onKey(function (event) {
-        if (mode !== 'tidal' || event.ctrlKey || event.metaKey || event.altKey || ringFor) return;
+        if (mode === 'tidal' && event.key === 'Escape' && tidalState.finale === 'running') { event.preventDefault(); skipFinale(); return; }
+        if (mode !== 'tidal' || event.ctrlKey || event.metaKey || event.altKey || ringFor || tidalState.finale !== 'idle') return;
         if (event.key === 's' || event.key === 'S') {
           event.preventDefault();
           setStage(!stageOn);
@@ -1295,8 +1490,9 @@
         mode: function () { return mode; },
         memory: function () { return JSON.parse(JSON.stringify(memoryState)); },
         tidal: function () { return JSON.parse(JSON.stringify(tidalState)); },
-        timers: function () { return { memory: memTimers.counts(), tidal: tidTimers.counts(), ui: uiTimers.counts() }; },
-        sounds: sounds
+        timers: function () { return { memory: memTimers.counts(), tidal: tidTimers.counts(), finale: finTimers.counts(), fade: fadeTimers.counts(), ui: uiTimers.counts() }; },
+        sounds: sounds,
+        bedState: function () { return { a: { paused: bedA.paused, volume: bedA.volume }, b: { paused: bedB.paused, volume: bedB.volume } }; }
       };
     },
 
