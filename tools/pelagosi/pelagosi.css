@@ -1148,3 +1148,16 @@
   .tsi-tool--pelagosi .tsi-pel-cine-ripple { animation-duration: 1ms; }
 }
 .tsi-tool--pelagosi .tsi-pel-cine-note { margin: 6px 0 0; font-size: 12px; color: var(--tsi-text-muted); display: flex; align-items: center; gap: 8px; }
+
+/* The hidden chamber cutaway (Act 7): full-bleed on black; its clip plays first, then fades to the still */
+.tsi-tool--pelagosi .tsi-pel-cut {
+  position: fixed; inset: 0; z-index: calc(var(--tsi-z-modal, 100) - 3); background: #000; opacity: 0; transition: opacity 900ms ease; pointer-events: none;
+}
+.tsi-tool--pelagosi .tsi-pel-cut[hidden] { display: none; }
+.tsi-tool--pelagosi .tsi-pel-cut--on { opacity: 1; }
+.tsi-tool--pelagosi .tsi-pel-cut-still, .tsi-tool--pelagosi .tsi-pel-cut-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+.tsi-tool--pelagosi .tsi-pel-cut-video { background: #000; opacity: 0; transition: opacity 1200ms ease; }
+.tsi-tool--pelagosi .tsi-pel-cut-video--on { opacity: 1; }
+.tsi-tool--pelagosi .tsi-pel-cut-hide { position: absolute; top: calc(var(--tsi-topbar-h, 56px) + 10px); right: 14px; pointer-events: auto; opacity: 0.45; }
+.tsi-tool--pelagosi .tsi-pel-cut-hide:hover, .tsi-tool--pelagosi .tsi-pel-cut-hide:focus-visible { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .tsi-tool--pelagosi .tsi-pel-cut, .tsi-tool--pelagosi .tsi-pel-cut-video { transition: none; } }

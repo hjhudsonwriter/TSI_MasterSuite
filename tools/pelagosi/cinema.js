@@ -136,5 +136,66 @@
     return api;
   }
 
+  /* The hidden chamber (Act 7): a picture shown full-bleed on black, with its clip played first (muted) and then
+     held on the still. It is not part of the finale and runs no timer of its own beyond the clip. A missing clip or
+     reduced motion leaves just the still.
+       var cut = TSI.pelagosi.cutaway.create({ parent, skip: false });
+       cut.show({ image: 'url', video: 'url or empty' });  cut.hide();  cut.isUp(); */
+  function createCutaway(o) {
+    var el = TSI.el;
+    var key = '';
+    var up = false;
+    var still = el('img', { class: 'tsi-pel-cut-still', alt: '', draggable: 'false', 'data-test': (o.testId || 'cut') + '-still' });
+    var video = el('video', { class: 'tsi-pel-cut-video', muted: true, playsinline: true, preload: 'auto', 'data-test': (o.testId || 'cut') + '-video' });
+    video.muted = true;
+    var hideBtn = o.hideButton ? el('button', { type: 'button', class: 'tsi-btn tsi-pel-small-btn tsi-pel-cut-hide', 'data-test': 'cut-hide', text: 'Hide (Esc)' }) : null;
+    var root = el('div', { class: 'tsi-pel-cut', 'data-test': o.testId || 'cut', 'aria-hidden': hideBtn ? null : 'true' }, [still, video, hideBtn].filter(Boolean));
+    root.hidden = true;
+    o.parent.appendChild(root);
+    if (hideBtn) hideBtn.addEventListener('click', function () { if (o.onHide) o.onHide(); else api.hide(); });
+    function reduced() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+    function dropVideo() {
+      video.onended = null; video.onerror = null;
+      try { video.pause(); } catch (e) { /* nothing */ }
+      video.classList.remove('tsi-pel-cut-video--on');
+    }
+    var api = {
+      root: root,
+      isUp: function () { return up; },
+      show: function (c) {
+        if (!c || !c.image) return false;
+        var k = c.image + '|' + (c.video || '');
+        if (up && k === key) return true;
+        key = k;
+        dropVideo();
+        still.setAttribute('src', c.image);
+        root.hidden = false;
+        void root.offsetWidth;
+        root.classList.add('tsi-pel-cut--on');
+        up = true;
+        if (c.video && !reduced()) {
+          video.onended = function () { video.classList.remove('tsi-pel-cut-video--on'); };   /* the clip fades out to the still */
+          video.onerror = video.onended;
+          video.setAttribute('src', c.video);
+          video.classList.add('tsi-pel-cut-video--on');
+          try { video.currentTime = 0; } catch (e) { /* not loaded yet */ }
+          var p = video.play();
+          if (p && p.catch) p.catch(function () { video.classList.remove('tsi-pel-cut-video--on'); });
+        }
+        return true;
+      },
+      hide: function () {
+        key = '';
+        up = false;
+        dropVideo();
+        video.removeAttribute('src');
+        root.classList.remove('tsi-pel-cut--on');
+        root.hidden = true;
+      }
+    };
+    return api;
+  }
+
   pel.cinema = { create: create };
+  pel.cutaway = { create: createCutaway };
 }());

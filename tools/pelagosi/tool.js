@@ -297,7 +297,8 @@
       var cineBox = el('input', { type: 'checkbox', id: 'tsi-pel-cine-on', 'data-test': 'cine-on' });
       cineBox.checked = D.playVideosByDefault !== false;
       var cineRow = el('label', { class: 'tsi-pel-tide-row', for: 'tsi-pel-cine-on' }, [cineBox, el('span', { text: 'Play cinematic videos' })]);
-      var dmExtras = el('div', { class: 'tsi-pel-dm-extras' }, [anywayBtn, chalkRow, cineRow]);
+      var chamberBtn = button('Show the hidden chamber', 'hidden-chamber', function () { toggleChamber(); }, 'tsi-btn tsi-pel-small-btn');
+      var dmExtras = el('div', { class: 'tsi-pel-dm-extras' }, [anywayBtn, chamberBtn, chalkRow, cineRow]);
       /* Shown while a clip plays in the players' window: this window plays no video then. */
       var cineSkipBtn = button('Skip', 'cine-note-skip', function () { cineSkip(); }, 'tsi-btn tsi-pel-small-btn');
       var cineNote = el('p', { class: 'tsi-pel-cine-note tsi-pel-hidden', 'data-test': 'cine-note', role: 'status' }, [el('span', { text: 'Cinematic playing' }), cineSkipBtn]);
@@ -770,6 +771,7 @@
         finStop();
         bedHardStop();
         cineStop();
+        hideChamber();
         closeRing(false);
         tidalEventOverlay.classList.remove('tsi-pel-active');
         tidalEventOverlay.classList.add('tsi-pel-hidden');
@@ -1165,6 +1167,7 @@
       }
       function releaseAbsence() {
         if (!tidalState.solved || tidalState.finale === 'running') return;
+        hideChamber();
         runFinale('solve');
       }
 
@@ -1183,6 +1186,7 @@
         onStatus: function (st) {
           pvChip.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvChip.classList.toggle('tsi-pel-pv-chip--on', st === 'connected');
+          if (st === 'connected' && dmCut && dmCut.isUp()) dmCut.hide(); /* the players' window takes over */
         }
       });
       function pvExtras() {
@@ -1190,7 +1194,7 @@
         if (!absenceVeil.classList.contains('tsi-pel-hidden')) {
           veil = absenceVeil.classList.contains('tsi-pel-absence--black') ? 'black' : absenceVeil.classList.contains('tsi-pel-absence--dim') ? 'dim' : 'on';
         }
-        return { chalkOn: chalkOn, veil: veil, videos: cineVideoMap() };
+        return { chalkOn: chalkOn, veil: veil, videos: cineVideoMap(), cutaway: chamberUp ? chamberFiles() : null };
       }
       function pvQueue() {
         if (pvQueued || !life.alive || !pvLink || !pvLink.isConnected()) return;
@@ -1199,6 +1203,37 @@
       }
       /* One passing effect (shake, tremor, flash, pulse, thump) for the players' window. */
       function pvFx(name, ms) { if (pvLink) pvLink.send('fx', { name: name, ms: ms }); }
+
+      /* ---------- The hidden chamber (Act 7) ----------
+         After the solve and before RELEASE THE ABSENCE the DM can show the cutaway on the players' view (or, with no
+         players' window, over this one). It is not part of the finale: no timer, cue or sound is touched. */
+      var chamberUp = false;
+      var dmCut = null;
+      function chamberFiles() {
+        var c = D.cutaways && D.cutaways.hiddenChamber;
+        if (!c || !c.ready || !c.ready.image) return null;
+        return { image: TSI.path(ASSETS + 'images/' + c.image), video: c.ready.video && cineOn() ? TSI.path(ASSETS + 'video/' + c.video) : '' };
+      }
+      function chamberAllowed() { return !!chamberFiles() && tidalState.solved && tidalState.finale === 'idle'; }
+      function showChamber() {
+        var files = chamberFiles();
+        if (!files || !chamberAllowed()) return;
+        chamberUp = true;
+        if (pvLink.isConnected()) { pvQueue(); if (dmCut) dmCut.hide(); }
+        else {
+          if (!dmCut) dmCut = pel.cutaway.create({ parent: root, testId: 'cut', hideButton: true, onHide: hideChamber });
+          dmCut.show(files);
+        }
+        renderReadings();
+      }
+      function hideChamber() {
+        var was = chamberUp;
+        chamberUp = false;
+        if (dmCut) dmCut.hide();
+        if (was) pvQueue();
+        renderReadings();
+      }
+      function toggleChamber() { if (chamberUp) hideChamber(); else showChamber(); }
 
       /* ---------- The cinematic clips ----------
          Muted pictures only. When the players' window is connected it plays them full-bleed and this window plays none,
@@ -1538,6 +1573,8 @@
         });
         askBtn.disabled = !canPress || !R.canAskChamber(tidalState.pressure, T);
         anywayBtn.disabled = !(canPress && tidalState.finale === 'idle');
+        chamberBtn.disabled = !chamberUp && !chamberAllowed();
+        chamberBtn.textContent = chamberUp ? 'Hide the hidden chamber' : 'Show the hidden chamber';
         releaseBtn.disabled = tidalState.finale === 'running';
       }
       /* A Misread costs a step of pressure only while below Reversing, so it can never cause a surge. */
@@ -1568,6 +1605,7 @@
       /* S toggles Stage Mode; Enter there checks the alignment or attunes the basin. Not while typing or with a pop-up open. */
       life.onKey(function (event) {
         if (mode === 'tidal' && event.key === 'Escape' && tidalState.finale === 'running') { event.preventDefault(); skipFinale(); return; }
+        if (mode === 'tidal' && event.key === 'Escape' && chamberUp && tidalState.finale === 'idle') { event.preventDefault(); hideChamber(); return; }
         if (mode === 'tidal' && event.key === 'Escape' && cineActive) { event.preventDefault(); cineSkip(); return; }
         if (mode !== 'tidal' || event.ctrlKey || event.metaKey || event.altKey || ringFor || tidalState.finale !== 'idle') return;
         if (event.key === 's' || event.key === 'S') {

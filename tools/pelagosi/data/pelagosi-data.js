@@ -330,6 +330,12 @@ window.TSI_DATA.pelagosi = {
   },
   playVideosByDefault: true,
 
+  /* The hidden chamber (Act 7): a picture, and its clip played first (muted), shown full-bleed on the players' view by the
+     DM's "Show the hidden chamber" button once the puzzle is solved. Not part of the finale. */
+  cutaways: {
+    hiddenChamber: { image: 'hidden-chamber.png', video: 'hidden-chamber.mp4', ready: { image: true, video: true } }
+  },
+
   /* ---------- Sounds ----------
      ready: false means the file hasn't been supplied yet, so that moment stays
      silent and nothing tries to load it. Harry will provide the five Tidal

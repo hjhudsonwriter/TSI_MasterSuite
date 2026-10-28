@@ -397,4 +397,14 @@
     t.equal(R.playerSnapshot(s, D.tidal, {}).view.basin.visible, true);
     t.equal(R.playerSnapshot(s, D.tidal, {}).view.basin.ok, false, 'no green before a check');
   });
+
+  test('the hidden chamber cutaway is in the players\' snapshot only while the DM shows it, with just its picture and clip', function (t) {
+    var fresh = JSON.stringify(R.playerSnapshot(freshState(), D.tidal, { chalkOn: true, veil: 'off' }));
+    t.ok(fresh.toLowerCase().indexOf('hidden-chamber') < 0, 'nothing of it before it is shown');
+    t.equal(R.playerSnapshot(freshState(), D.tidal, {}).cutaway, null);
+    var on = R.playerSnapshot(freshState(), D.tidal, { cutaway: { image: 'a/hidden-chamber.png', video: 'a/hidden-chamber.mp4', secret: 'ZZSECRET' } });
+    t.same(on.cutaway, { image: 'a/hidden-chamber.png', video: 'a/hidden-chamber.mp4' });
+    t.ok(JSON.stringify(on).indexOf('ZZSECRET') < 0);
+    t.equal(R.playerSnapshot(freshState(), D.tidal, { cutaway: { image: '' } }).cutaway, null);
+  });
 }());
