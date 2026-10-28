@@ -90,7 +90,7 @@
         name: 'ScarlettExplorerPlayers',
         keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
-        getState: function () { return R.playerSnapshot(state, DATA, { atlas: pvAtlas, view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, dim: pvDim(), camp: pvCamp }); },
+        getState: function () { return R.playerSnapshot(state, DATA, { atlas: pvAtlas, view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, dim: pvDim(), camp: pvCamp, scene: pvScene }); },
         onStatus: function (st) {
           pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvStatus.classList.toggle('is-connected', st === 'connected');
@@ -108,6 +108,11 @@
       var pvAtlas = false;
       var pvCamp = 0;
       var pvNightUntil = 0;
+      /* The scene card the players see (the Absent Tide decks): a plain card object, or null for the map. */
+      var pvScene = null;
+      function setPvScene(card) { pvScene = card || null; queuePlayerSync(); }
+      /* The next card's picture or clip, named on its own (never in the snapshot) so the players' window can have it ready. */
+      function pvPreload(kind, src) { if (src && pvLink.isConnected()) pvLink.send('preload', { kind: kind === 'video' ? 'video' : 'image', src: String(src) }); }
       function pvEventOpen() {
         var c = state.journey && state.journey.current;
         return !!(journeyOpen && c && (c.kind === 'camp' || c.kind === 'night'));
@@ -2310,6 +2315,8 @@
 
       /* For the tests. */
       ns.debug = {
+        setScene: function (card) { setPvScene(card); },
+        preload: function (kind, src) { pvPreload(kind, src); },
         state: function () { return state; },
         outbox: function () { return TSI.clone(state.journey.outbox || []); },
         bastionSeen: function () { return bastionSeen; },

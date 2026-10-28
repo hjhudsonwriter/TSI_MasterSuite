@@ -128,7 +128,126 @@
     atlasScroll.addEventListener('pointerup', endAtlasDrag);
     atlasScroll.addEventListener('pointercancel', endAtlasDrag);
 
-    var frame = el('div', { class: 'tsi-xpv', 'data-test': 'pv-frame' }, [row, stage, full, waiting]);
+    /* ---- Scene cards (the Absent Tide decks) ----
+       One card at a time, full-bleed on black. The map fades out (about 1.2 s) while a card is up, and back in when it goes.
+       A new card crosses over the old one (about 0.6 s). Two layers take turns. Only the current card's pictures are held. */
+    var sceneHost = el('div', { class: 'tsi-xpv-sc', 'data-test': 'pv-scene', 'aria-hidden': 'true', hidden: true });
+    var sceneLayers = [makeLayer(), makeLayer()];
+    sceneLayers.forEach(function (l) { sceneHost.appendChild(l.node); });
+    var sceneKey = '';
+    var sceneUp = false;
+    var sceneFront = 0;
+    var sceneHideTimer = null;
+    var spare = {};            /* the next card's picture or clip, loaded in advance */
+    function reducedMotion() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+    function makeLayer() {
+      var media = el('div', { class: 'tsi-xpv-sc__media' });
+      var box = el('div', { class: 'tsi-xpv-sc__box' }, media);
+      var name = el('div', { class: 'tsi-xpv-sc__name', 'data-test': 'pv-scene-name' });
+      var caption = el('div', { class: 'tsi-xpv-sc__caption', 'data-test': 'pv-scene-caption' });
+      var band = el('div', { class: 'tsi-xpv-sc__band' }, [name, caption]);
+      var sub = el('div', { class: 'tsi-xpv-sc__sub', 'data-test': 'pv-scene-subtitle' });
+      var node = el('div', { class: 'tsi-xpv-sc__card' }, [box, band, sub]);
+      return { node: node, box: box, media: media, name: name, caption: caption, band: band, sub: sub, ratio: 0, scene: null };
+    }
+    /* The picture's own shape inside the window, so overlays sit on the picture and not the black around it. */
+    function fitBox(layer) {
+      var W = sceneHost.clientWidth || 1, H = sceneHost.clientHeight || 1;
+      var r = layer.ratio || (16 / 9);
+      var w = Math.min(W, H * r), h = w / r;
+      layer.box.style.width = w + 'px';
+      layer.box.style.height = h + 'px';
+      layer.box.style.fontSize = w + 'px';
+      layer.node.classList.toggle('is-ready', !!layer.ratio);
+    }
+    function fillLayer(layer, sc) {
+      layer.scene = sc;
+      layer.ratio = 0;
+      TSI.clear(layer.media);
+      var still = sc.kind !== 'video' || reducedMotion();
+      var src = sc.kind === 'video' && still ? (sc.poster || '') : sc.src;
+      var node;
+      if (sc.kind === 'video' && !still) {
+        node = el('video', { class: 'tsi-xpv-sc__pic', muted: true, playsinline: true, preload: 'auto', 'data-test': 'pv-scene-video' });
+        node.muted = true;
+        if (sc.loop) node.loop = true;
+        if (sc.poster) node.setAttribute('poster', TSI.path(sc.poster));
+        node.addEventListener('loadedmetadata', function () { layer.ratio = node.videoWidth / node.videoHeight || 0; fitBox(layer); });
+        node.setAttribute('src', TSI.path(sc.src));
+        var p = node.play();
+        if (p && p.catch) p.catch(function () { /* it may stay on its first picture */ });
+      } else {
+        node = el('img', { class: 'tsi-xpv-sc__pic', alt: '', draggable: 'false', 'data-test': 'pv-scene-image' });
+        node.addEventListener('load', function () { layer.ratio = node.naturalWidth / node.naturalHeight || 0; fitBox(layer); });
+        if (src) node.setAttribute('src', TSI.path(src));
+      }
+      layer.media.appendChild(node);
+      /* Writing laid over the picture (the AI pictures cannot draw readable words). */
+      sc.overlays.forEach(function (o) {
+        layer.media.appendChild(el('div', {
+          class: 'tsi-xpv-sc__note', 'data-test': 'pv-scene-note',
+          style: 'left:' + o.x + '%;top:' + o.y + '%;width:' + o.w + '%;font-size:' + (o.size * 0.01) + 'em;text-align:' + o.align + ';transform:translate(-50%,-50%) rotate(' + o.rotate + 'deg)',
+          text: o.text
+        }));
+      });
+      layer.name.textContent = sc.kind === 'portrait' ? sc.name : '';
+      layer.caption.textContent = sc.caption;
+      layer.band.hidden = !(sc.kind === 'portrait' ? (sc.name || sc.caption) : sc.caption);
+      layer.sub.textContent = sc.subtitle;
+      layer.sub.hidden = !sc.subtitle;
+      fitBox(layer);
+    }
+    function emptyLayer(layer) {
+      layer.scene = null;
+      var v = layer.media.querySelector('video');
+      if (v) { try { v.pause(); } catch (e) { /* nothing to do */ } v.removeAttribute('src'); v.load(); }
+      TSI.clear(layer.media);
+      layer.name.textContent = ''; layer.caption.textContent = ''; layer.sub.textContent = '';
+    }
+    function drawScene() {
+      var sc = snap && snap.scene;
+      var key = sc ? JSON.stringify(sc) : '';
+      if (key === sceneKey) return;
+      sceneKey = key;
+      clearTimeout(sceneHideTimer);
+      sceneHost.style.transitionDuration = reducedMotion() ? '0.01s' : '1.2s';
+      if (!sc) {
+        sceneUp = false;
+        sceneHost.classList.remove('is-up');
+        sceneHideTimer = setTimeout(function () { sceneHost.hidden = true; sceneLayers.forEach(emptyLayer); sceneLayers.forEach(function (l) { l.node.classList.remove('is-front'); }); }, reducedMotion() ? 50 : 1300);
+        return;
+      }
+      sceneHost.hidden = false;
+      void sceneHost.offsetWidth;
+      var next = sceneUp ? 1 - sceneFront : sceneFront;
+      var layer = sceneLayers[next];
+      fillLayer(layer, sc);
+      layer.node.style.transitionDuration = reducedMotion() ? '0.01s' : '0.6s';
+      sceneLayers[1 - next].node.style.transitionDuration = reducedMotion() ? '0.01s' : '0.6s';
+      layer.node.classList.add('is-front');
+      if (sceneUp) {
+        var old = sceneLayers[1 - next];
+        old.node.classList.remove('is-front');
+        setTimeout(function () { if (old.scene && !old.node.classList.contains('is-front')) emptyLayer(old); }, 700);
+      }
+      sceneFront = next;
+      sceneUp = true;
+      sceneHost.classList.add('is-up');
+    }
+    window.addEventListener('resize', function () { sceneLayers.forEach(fitBox); });
+    /* The DM names the next card's picture or clip so it is ready before it is needed. */
+    function preload(kind, src) {
+      var path = TSI.path(String(src || ''));
+      if (!src || spare[path]) return;
+      var keep = Object.keys(spare);
+      if (keep.length > 2) { delete spare[keep[0]]; }
+      var n = kind === 'video' ? document.createElement('video') : new Image();
+      if (kind === 'video') { n.preload = 'auto'; n.muted = true; }
+      n.src = path;
+      spare[path] = n;
+    }
+
+    var frame = el('div', { class: 'tsi-xpv', 'data-test': 'pv-frame' }, [row, stage, full, waiting, sceneHost]);
     root.appendChild(frame);
 
     function sizeCanvas(canvas) {
@@ -302,7 +421,7 @@
       if (!snap) return;
       var nightNow = lastCamp !== null && snap.camp !== lastCamp;
       lastCamp = snap.camp;
-      if (snap.dim === 'event') {
+      if (snap.dim === 'event' && !snap.scene) {
         if (mode !== 'event') { stopTimers(); mode = 'event'; setDim(0.92, 1.5); }
         return;
       }
@@ -327,6 +446,7 @@
       /* The DM's Explorer has gone quiet: nothing stays dark, and a half-open town card closes. */
       lost: function () {
         if (mode !== 'none' || dim.style.opacity > 0) release();
+        if (sceneUp) { snap = snap && Object.assign({}, snap, { scene: null }); drawScene(); }
         pinId = null; TSI.clear(pinHost); pinHost.hidden = true;
       },
       state: function (payload) {
@@ -335,10 +455,12 @@
         drawAll();
         drawPin();
         drawDim();
+        drawScene();
         /* The DM's button overrides a click here whenever it changes (and sets the panel when this window first hears). */
         if (snap.atlas !== lastAtlas) { lastAtlas = snap.atlas; setAtlas(snap.atlas); }
       },
       message: function (type, payload) {
+        if (type === 'preload' && payload) { preload(payload.kind, payload.src); return; }
         if (type === 'map' && payload && typeof payload.dataUrl === 'string' && payload.key) {
           upload = { key: String(payload.key), dataUrl: payload.dataUrl };
           if (snap) drawAll();

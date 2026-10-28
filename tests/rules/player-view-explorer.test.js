@@ -117,7 +117,7 @@
 
   test('the snapshot has only the listed top-level fields, and survives a structured clone shape (plain JSON)', function (t) {
     var s = snap(busy());
-    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'dim', 'camp', 'atlas', 'tokens', 'v', 'view', 'weather'].sort());
+    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'dim', 'camp', 'atlas', 'scene', 'tokens', 'v', 'view', 'weather'].sort());
     t.same(JSON.parse(JSON.stringify(s)), s);
   });
 
@@ -237,5 +237,54 @@
       t.ok(near((a.x + b.x) / 2, sz[0] / 2) && near((a.y + b.y) / 2, sz[1] / 2), 'centred ' + sz.join('x'));
     });
     t.same(R.regionView({ x0: 0.6, y0: 0, x1: 0.5, y1: 1 }, 800, 600, board), R.regionView({ x0: 0, y0: 0, x1: 1, y1: 1 }, 800, 600, board));
+  });
+
+  group('Explorer Player View: scene cards (the Absent Tide)');
+
+  var CARD = {
+    kind: 'portrait', src: 'tools/explorer/assets/absent-tide/portraits/seris-thane.png', poster: '', loop: false,
+    name: 'Captain Seris Thane', caption: '', overlays: [{ text: 'Do not trust yesterday.', x: 40, y: 30, w: 30, size: 3, rotate: -4, align: 'left' }], subtitle: '',
+    dmNote: 'ZZDMNOTE', line: 'ZZVOICELINE', voice: 'tools/explorer/assets/absent-tide/voice/seris-thane.mp3', steps: ['ZZSTEPLIST'], next: 'tools/explorer/assets/absent-tide/act4/ZZOTHERCARD.png'
+  };
+
+  test('with no card the scene is null', function (t) {
+    t.equal(R.playerSnapshot(busy(), D, {}).scene, null);
+    t.equal(R.playerSnapshot(busy(), D, { scene: null }).scene, null);
+    t.equal(R.playerSnapshot(busy(), D, { scene: { kind: 'image' } }).scene, null, 'a card with no picture is nothing');
+  });
+
+  test('a card holds only src, poster, loop, name, caption, overlays and subtitle', function (t) {
+    var sc = R.playerSnapshot(busy(), D, { scene: CARD }).scene;
+    t.same(Object.keys(sc).sort(), ['caption', 'kind', 'loop', 'name', 'overlays', 'poster', 'src', 'subtitle']);
+    t.equal(sc.name, 'Captain Seris Thane');
+    t.equal(sc.kind, 'portrait');
+    t.same(Object.keys(sc.overlays[0]).sort(), ['align', 'rotate', 'size', 'text', 'w', 'x', 'y']);
+    t.equal(sc.subtitle, '', 'no subtitle unless the card switches it on');
+  });
+
+  test('the DM\'s note, the voice line and file, the other cards and the step list never reach the snapshot', function (t) {
+    var json = JSON.stringify(R.playerSnapshot(busy(), D, { scene: CARD }));
+    ['ZZDMNOTE', 'ZZVOICELINE', 'seris-thane.mp3', 'voice/', 'ZZSTEPLIST', 'ZZOTHERCARD', 'dmNote', 'steps'].forEach(function (w) {
+      t.ok(json.indexOf(w) < 0, 'the snapshot must not contain ' + w);
+    });
+    t.ok(json.indexOf('seris-thane.png') >= 0, 'the one picture on screen is there');
+  });
+
+  test('a subtitle appears only when the card carries one, and the rest of the snapshot is unchanged', function (t) {
+    var on = R.playerSnapshot(busy(), D, { scene: Object.assign({}, CARD, { subtitle: 'Said aloud.' }) });
+    t.equal(on.scene.subtitle, 'Said aloud.');
+    var off = R.playerSnapshot(busy(), D, {});
+    t.equal(off.v, 1);
+    t.equal(off.dim, 'none');
+  });
+
+  test('overlays are tidied: at most eight, text only, numbers kept sane', function (t) {
+    var many = []; for (var i = 0; i < 12; i++) many.push({ text: 'n' + i, x: 10, y: 10, w: 20, size: 2, rotate: 0, align: 'center' });
+    many.push({ text: '' });
+    var sc = R.cleanScene({ kind: 'image', src: 'a.png', overlays: many.concat([{ text: 'odd', x: 'left', align: 'weird' }]) });
+    t.equal(sc.overlays.length, 8);
+    var odd = R.cleanScene({ kind: 'image', src: 'a.png', overlays: [{ text: 'odd', x: 'left', align: 'weird' }] }).overlays[0];
+    t.equal(odd.x, 50);
+    t.equal(odd.align, 'center');
   });
 }());

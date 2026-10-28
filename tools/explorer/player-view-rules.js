@@ -31,6 +31,12 @@
      atlas: true/false,                    the DM has chosen to show the players the picture of the Scarlett Isles (their window opens its map panel)
      dim: 'none' | 'night' | 'event',     'event' while a campfire event is open in the DM's window: the map stays very dark
      camp: n                               how many times the DM has made camp; each new number fades the map out and in once
+     scene: null | { kind: 'image' | 'video' | 'portrait', src, poster, loop, name, caption, overlays, subtitle }
+                                          the one scene card the DM is showing (the Absent Tide decks): the map fades to black and the card
+                                          fills the window. Only what is on screen: never the DM's note, the voice line (unless the card
+                                          switches its subtitle on, when subtitle holds the text; otherwise it is ''), the other cards or
+                                          the step list. overlays: [{ text, x, y, w, size, rotate, align }], x, y and w in percent of the
+                                          picture, size in percent of its width.
    } */
 (function () {
   'use strict';
@@ -42,7 +48,28 @@
   function str(v, max) { return typeof v === 'string' ? v.slice(0, max || 200) : ''; }
   function num(v, fallback) { return typeof v === 'number' && isFinite(v) ? v : fallback; }
 
-  /* extras: { atlas: true to show the Scarlett Isles map panel, view: the DM's visible region ({ x0, y0, x1, y1 }) or none, pin: a marker's id or null, dim: 'none' | 'night' | 'event', camp: a whole number }. */
+  /* A scene card, cleaned: exactly the fields the players may see, each trimmed to a sane size, or null. */
+  R.cleanScene = function (raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    var kind = raw.kind === 'video' || raw.kind === 'portrait' ? raw.kind : 'image';
+    var src = str(raw.src, 300);
+    if (!src) return null;
+    var overlays = (Array.isArray(raw.overlays) ? raw.overlays : []).slice(0, 8).map(function (o) {
+      o = o && typeof o === 'object' ? o : {};
+      return {
+        text: str(o.text, 400),
+        x: num(Number(o.x), 50), y: num(Number(o.y), 50), w: num(Number(o.w), 40),
+        size: num(Number(o.size), 3), rotate: num(Number(o.rotate), 0),
+        align: o.align === 'left' || o.align === 'right' ? o.align : 'center'
+      };
+    }).filter(function (o) { return o.text; });
+    return {
+      kind: kind, src: src, poster: str(raw.poster, 300), loop: raw.loop === true,
+      name: str(raw.name, 80), caption: str(raw.caption, 200), overlays: overlays, subtitle: str(raw.subtitle, 400)
+    };
+  };
+
+  /* extras: { atlas: true to show the Scarlett Isles map panel, view: the DM's visible region ({ x0, y0, x1, y1 }) or none, pin: a marker's id or null, dim: 'none' | 'night' | 'event', camp: a whole number, scene: a scene card (see R.cleanScene) or null }. */
   R.playerSnapshot = function (s, data, extras) {
     extras = extras && typeof extras === 'object' ? extras : {};
     var limit = R.dayLimit(s);
@@ -108,7 +135,8 @@
       view: view,
       atlas: extras.atlas === true,
       dim: dim,
-      camp: camp
+      camp: camp,
+      scene: R.cleanScene(extras.scene)
     };
   };
 }());
