@@ -29,12 +29,16 @@
   container-type: inline-size;
 }
 .tsi-bpv-map__img { display: block; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
+.tsi-bpv-map__video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
+.tsi-bpv-map__video[hidden] { display: none; }
 .tsi-bpv-map__overlays { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .tsi-bpv-map__overlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
 .tsi-bpv-map__overlay--repair { filter: grayscale(.7) brightness(.55) sepia(.35); }
 .tsi-bpv-map__img,
+.tsi-bpv-map__video,
 .tsi-bpv-map__overlays { transition: filter var(--tsi-dur-slow) var(--tsi-ease); }
 .tsi-bpv:not(.is-tray-closed) .tsi-bpv-map__img,
+.tsi-bpv:not(.is-tray-closed) .tsi-bpv-map__video,
 .tsi-bpv:not(.is-tray-closed) .tsi-bpv-map__overlays { filter: saturate(.72) sepia(.18) contrast(.9) brightness(.97); }
 .tsi-bpv-map__haze {
   position: absolute;

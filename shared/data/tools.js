@@ -126,6 +126,7 @@ window.TSI_DATA.tools = [
         'tools/explorer/journey.js',
         'tools/bastion/player-view-art.js',
         'tools/bastion/player-view-rules.js',
+        'tools/bastion/map-loop.js',
         'tools/bastion/tool.js'
       ]
     },
@@ -137,6 +138,7 @@ window.TSI_DATA.tools = [
           'tools/bastion/data/bastion-data.js',
           'tools/bastion/data/player-panels-data.js',
           'tools/bastion/player-view-art.js',
+          'tools/bastion/map-loop.js',
           'tools/bastion/player-view.js'
         ]
       }

@@ -188,6 +188,8 @@
   border: 1px solid var(--tsi-line-head);
 }
 .tsi-page--bastion .tsi-bas-map__overlays { position: absolute; inset: 0; pointer-events: none; border-radius: 12px; overflow: hidden; }
+.tsi-page--bastion .tsi-bas-map__video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; border-radius: 12px; pointer-events: none; }
+.tsi-page--bastion .tsi-bas-map__video[hidden] { display: none; }
 .tsi-page--bastion .tsi-bas-map__overlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
 
 /* The Party Identity badge, inside the painting's top-right corner: the Party
@@ -455,8 +457,10 @@
    (.tsi-bas-stage.is-grid-closed) brings back the painting as it was. The
    fade uses --tsi-dur-slow, which is 0 with reduced motion. */
 .tsi-page--bastion .tsi-bas-map__img,
+.tsi-page--bastion .tsi-bas-map__video,
 .tsi-page--bastion .tsi-bas-map__overlays { transition: filter var(--tsi-dur-slow) var(--tsi-ease); }
 .tsi-page--bastion .tsi-bas-stage:not(.is-grid-closed) .tsi-bas-map__img,
+.tsi-page--bastion .tsi-bas-stage:not(.is-grid-closed) .tsi-bas-map__video,
 .tsi-page--bastion .tsi-bas-stage:not(.is-grid-closed) .tsi-bas-map__overlays { filter: saturate(.72) sepia(.18) contrast(.9) brightness(.97); }
 .tsi-page--bastion .tsi-bas-map__haze {
   position: absolute;

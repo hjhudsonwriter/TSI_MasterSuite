@@ -4337,3 +4337,8 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **Decisions:** the clip follows the "Play cinematic videos" tick box and reduced motion (still only); a refreshed or reconnected players' window gets it back by itself (it is part of the snapshot, and the snapshot holds nothing of it until it is shown); the clip failing or missing leaves the still.
 - **Needs a real TV:** how the clip fades to the still.
 
+### BAS-SB-112 · The Bastion's base painting is now a loop (28 October 2026)
+- **Before/after:** the map was a still (`bastion_base.jpg`); now Harry's 5-second loop of the same painting plays over it, muted, on repeat, in the DM's Bastion and the Player View. The still stays under it: a missing loop, a loop that cannot play, or "reduce motion" leaves the painting exactly as it was. The haze and the facility overlays, labels and clickable zones are unchanged and sit above it.
+- **Done to the file:** the upload had black bars top and bottom (the painting inside a 16:9 frame); they were cropped off so the loop is the painting's shape (2.4 : 1) and lines up with the overlays. Re-encoded (H.264, no sound), 2.9 MB.
+- **Left alone:** the loop is not seamless if its last frame differs from its first (it simply restarts); say if you see a jump and I can add a short crossfade.
+
