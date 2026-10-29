@@ -637,6 +637,9 @@
          A second window for the TV that only looks. It is sent a snapshot of what players may see (R.playerSnapshot,
          player-view-rules.js), never the save, whenever the Bastion is redrawn (at most once a frame), and a 'focus'
          message when the DM opens or closes a facility's panel. It sends nothing back. */
+      var cursorBox = el('input', { type: 'checkbox', id: 'tsi-bas-cursor-on', 'data-test': 'cursor-on' });
+      cursorBox.checked = true;
+      var cursorRow = el('label', { class: 'tsi-bas-cursorrow', for: 'tsi-bas-cursor-on', title: 'Show your pointer on the players\' screen while it is over the painting.' }, [cursorBox, el('span', { text: 'Show my cursor to players' })]);
       var pvStatus = el('span', { class: 'tsi-bas-pvstatus', 'data-test': 'player-view-status', role: 'status', text: 'Not open' });
       var pvLink = ctx.playerLink({
         view: 'bastion',
@@ -703,6 +706,7 @@
           btn('Compendium', function () { onCompendium(); }, '', 'compendium'),
           btn('Open Player View', function () { pvLink.open(); }, 'tsi-btn--ghost', 'open-player-view', { title: 'Open the players\' view of the Bastion in a new window, to drag onto the TV. It only looks.' }),
           pvStatus,
+          cursorRow,
           btn('Reset', function () { onReset(); }, 'tsi-btn--ghost', 'reset', { title: 'Clears the Bastion\'s saved data in this browser.' }),
           btn('Download Save (JSON)', function () { onDownload(); }, '', 'download-save'),
           btn('Import Save (JSON)', function () { onImport(); }, '', 'import-save')
@@ -752,6 +756,12 @@
       /* Harry's loop of the same painting plays over the still (map-loop.js). */
       var mapLoopEl = TSI.paintingLoop(mapFrame, B.map.loop ? asset(B.map.loop) : '', 'tsi-bas-map__video');
       if (mapLoopEl) life.track(mapLoopEl);
+      /* The DM's cursor on the players' painting, as a fraction of the painting (shared/js/pointer-mirror.js). */
+      var cursorMirror = TSI.pointerMirror.attach({
+        life: life, target: mapFrame, link: pvLink, enabled: function () { return cursorBox.checked; },
+        point: function (e) { var r = mapFrame.getBoundingClientRect(); return r.width > 0 && r.height > 0 ? { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height } : null; }
+      });
+      life.on(cursorBox, 'change', function () { if (!cursorBox.checked) cursorMirror.hide(); });
 
       /* "Day 12", or "Day 1 · the Explorer sets the day" until the Bastion has read it. */
       function dayText() {

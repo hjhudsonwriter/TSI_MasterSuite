@@ -107,6 +107,8 @@
       el('img', { class: 'tsi-bpv-map__img', src: assetUrl(B().map.base), alt: 'The Ironbow Bastion', draggable: 'false' }),
       overlayLayer, haze, labelLayer
     ]);
+    /* The DM's cursor on the painting (shared/js/pointer-mirror.js). */
+    var cursor = TSI.pointerMirror.cursor(map);
     /* The loop of the same painting plays over the still (map-loop.js). */
     TSI.paintingLoop(map, B().map.loop ? assetUrl(B().map.loop) : '', 'tsi-bpv-map__video');
     map.style.setProperty('--tsi-bpv-ratio', B().map.width + ' / ' + B().map.height);
@@ -646,7 +648,14 @@
         if (payload.ledger !== dmLedger) { dmLedger = payload.ledger === true; ledgerOpen = dmLedger; }
         drawAll();
       },
+      lost: function () { cursor.hide(); },
       message: function (type, payload) {
+        if (type === 'cursor') {
+          if (!payload || typeof payload.x !== 'number' || typeof payload.y !== 'number') { cursor.hide(); return; }
+          cursor.at(payload.x * 100, payload.y * 100, '%');
+          if (payload.down) cursor.press();
+          return;
+        }
         if (type === 'card') { dmCard = payload && typeof payload.card === 'string' ? payload.card : null; templeCard = dmCard; if (temple) templeDraw(); return; }
         if (type === 'ledger') { dmLedger = !!(payload && payload.open); ledgerOpen = dmLedger; ledgerApply(); return; }
         if (type === 'focus') {
@@ -665,6 +674,6 @@
     state: function (payload) { this.pv.state(payload); },
     message: function (type, payload) { this.pv.message(type, payload); },
     keepOpen: true,
-    lost: function () { /* nothing is held: the map stays as it was */ }
+    lost: function () { this.pv.lost(); }
   });
 }());

@@ -123,7 +123,10 @@
       var resetBtn = button('RESET CURRENT PUZZLE', 'reset', onReset, 'tsi-btn tsi-pel-reset');
       var pvChip = el('span', { class: 'tsi-pel-pv-chip', 'data-test': 'player-view-status', role: 'status', text: 'Not open' });
       var pvOpenBtn = button('Open Player View', 'open-player-view', function () { pvLink.open(); }, 'tsi-btn tsi-pel-small-btn');
-      var pvRow = el('div', { class: 'tsi-pel-pv-row tsi-pel-only-tidal' }, [pvOpenBtn, pvChip]);
+      var cursorBox = el('input', { type: 'checkbox', id: 'tsi-pel-cursor-on', 'data-test': 'cursor-on' });
+      cursorBox.checked = true;
+      var cursorRow = el('label', { class: 'tsi-pel-tide-row', for: 'tsi-pel-cursor-on' }, [cursorBox, el('span', { text: 'Show my cursor to players' })]);
+      var pvRow = el('div', { class: 'tsi-pel-pv-row tsi-pel-only-tidal' }, [pvOpenBtn, pvChip, cursorRow]);
 
       /* --- The Marker Remembers stage --- */
       var markerImage = el('img', { class: 'tsi-pel-marker-image', src: asset('images/marker-main.png'), alt: 'Pelagosi marker' });
@@ -1189,6 +1192,12 @@
           if (st === 'connected' && dmCut && dmCut.isUp()) dmCut.hide(); /* the players' window takes over */
         }
       });
+      /* The DM's cursor on the players' chamber, as a fraction of the chamber picture (shared/js/pointer-mirror.js). */
+      var cursorMirror = TSI.pointerMirror.attach({
+        life: life, target: tidalFrame, link: pvLink, enabled: function () { return cursorBox.checked && mode === 'tidal'; },
+        point: function (e) { var r = tidalFrame.getBoundingClientRect(); return r.width > 0 && r.height > 0 ? { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height } : null; }
+      });
+      life.on(cursorBox, 'change', function () { if (!cursorBox.checked) cursorMirror.hide(); });
       function pvExtras() {
         var veil = 'off';
         if (!absenceVeil.classList.contains('tsi-pel-hidden')) {

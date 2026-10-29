@@ -59,6 +59,7 @@
       return id;
     }
 
+    var cursor = null;
     function buildChamber(layout) {
       chamberSlot.textContent = '';
       ch = pel.chamber.build({
@@ -66,6 +67,7 @@
         imageSrc: TSI.path(ASSETS + 'images/tidal-sequence.png'), layout: layout
       });
       chamberSlot.appendChild(ch.frame);
+      cursor = TSI.pointerMirror.cursor(ch.frame);   /* the DM's pointer over the chamber (shared/js/pointer-mirror.js) */
     }
 
     function paintWall(lines) {
@@ -132,6 +134,13 @@
       },
 
       message: function (type, d) {
+        if (type === 'cursor') {
+          if (!cursor) return;
+          if (!d || typeof d.x !== 'number' || typeof d.y !== 'number') { cursor.hide(); return; }
+          cursor.at(d.x * 100, d.y * 100, '%');
+          if (d.down) cursor.press();
+          return;
+        }
         if (type === 'cine' && d) {
           if (d.action === 'play') { if (!cinema.play(d.name, { rate: d.rate, ms: d.ms, dark: d.dark, hold: d.hold })) api.send('cine-ended', { name: d.name, why: 'failed' }); }
           else if (d.action === 'ripple') cinema.ripple();
@@ -162,6 +171,7 @@
       /* The DM has gone quiet: let go of anything that was passing. */
       lost: function () {
         timers.splice(0).forEach(function (id) { window.clearTimeout(id); });
+        if (cursor) cursor.hide();
         cinema.stop();
         cutaway.hide();
         if (ch) { hideBanner(); ch.event.overlay.classList.add('tsi-pel-hidden'); }

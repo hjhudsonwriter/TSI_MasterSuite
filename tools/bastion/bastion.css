@@ -1345,3 +1345,6 @@
 .tsi-page--bastion [data-fac="workshop"] .tsi-bas-facpanel__img { width: 110px; height: 110px; }
 .tsi-page--bastion [data-fac="workshop"] .tsi-bas-facpanel__orders { padding: 6px 10px; }
 .tsi-page--bastion [data-fac="workshop"] .tsi-bas-facpanel { gap: 8px; }
+
+/* The "Show my cursor to players" tick box (shared/js/pointer-mirror.js) */
+.tsi-page--bastion .tsi-bas-cursorrow { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--tsi-text-muted); cursor: pointer; }

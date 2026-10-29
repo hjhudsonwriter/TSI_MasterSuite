@@ -88,6 +88,7 @@
     /* "The Ironbow sends word…", read only: the same words the DM's pop-up shows, while it is open. */
     var wordHost = el('div', { class: 'tsi-xpv-wordhost', 'data-test': 'pv-word-host', hidden: true });
     stage.appendChild(wordHost);
+    var cursor = TSI.pointerMirror.cursor(stage);
     var wordKey = '';
     function drawWord() {
       var w = snap && snap.word;
@@ -464,6 +465,7 @@
     return {
       /* The DM's Explorer has gone quiet: nothing stays dark, and a half-open town card closes. */
       lost: function () {
+        cursor.hide();
         if (mode !== 'none' || dim.style.opacity > 0) release();
         if (sceneUp) { snap = snap && Object.assign({}, snap, { scene: null }); drawScene(); }
         pinId = null; TSI.clear(pinHost); pinHost.hidden = true;
@@ -480,6 +482,13 @@
         if (snap.atlas !== lastAtlas) { lastAtlas = snap.atlas; setAtlas(snap.atlas); }
       },
       message: function (type, payload) {
+        if (type === 'cursor' && payload) {
+          if (typeof payload.x !== 'number' || typeof payload.y !== 'number' || !current) { cursor.hide(); return; }
+          var sp = R.toScreen(current, payload.x, payload.y);
+          cursor.at(sp.x, sp.y, 'px');
+          if (payload.down) cursor.press();
+          return;
+        }
         if (type === 'preload' && payload) { preload(payload.kind, payload.src); return; }
         if (type === 'map' && payload && typeof payload.dataUrl === 'string' && payload.key) {
           upload = { key: String(payload.key), dataUrl: payload.dataUrl };

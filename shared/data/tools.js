@@ -127,6 +127,7 @@ window.TSI_DATA.tools = [
         'tools/bastion/player-view-art.js',
         'tools/bastion/player-view-rules.js',
         'tools/bastion/map-loop.js',
+        'shared/js/pointer-mirror.js',
         'tools/bastion/tool.js'
       ]
     },
@@ -139,6 +140,7 @@ window.TSI_DATA.tools = [
           'tools/bastion/data/player-panels-data.js',
           'tools/bastion/player-view-art.js',
           'tools/bastion/map-loop.js',
+          'shared/js/pointer-mirror.js',
           'tools/bastion/player-view.js'
         ]
       }
@@ -179,6 +181,7 @@ window.TSI_DATA.tools = [
            on Import (the Explorer and the Bastion save as one campaign). */
         'tools/bastion/rules.js',
         'tools/bastion/strip-back-rules.js',
+        'shared/js/pointer-mirror.js',
         'tools/explorer/tool.js'
       ]
     },
@@ -186,7 +189,7 @@ window.TSI_DATA.tools = [
     playerViews: {
       explorer: {
         css: ['tools/explorer/player-view.css'],
-        js: ['tools/explorer/rules.js', 'tools/explorer/draw.js', 'tools/explorer/player-view.js']
+        js: ['tools/explorer/rules.js', 'tools/explorer/draw.js', 'shared/js/pointer-mirror.js', 'tools/explorer/player-view.js']
       }
     }
   },
@@ -307,6 +310,7 @@ window.TSI_DATA.tools = [
         'tools/pelagosi/rules.js',
         'tools/pelagosi/chamber.js',
         'tools/pelagosi/cinema.js',
+        'shared/js/pointer-mirror.js',
         'tools/pelagosi/tool.js'
       ]
     },
@@ -314,7 +318,7 @@ window.TSI_DATA.tools = [
     playerViews: {
       tidal: {
         css: ['tools/pelagosi/pelagosi.css', 'tools/pelagosi/player-view.css'],
-        js: ['tools/pelagosi/chamber.js', 'tools/pelagosi/cinema.js', 'tools/pelagosi/player-view.js']
+        js: ['tools/pelagosi/chamber.js', 'tools/pelagosi/cinema.js', 'shared/js/pointer-mirror.js', 'tools/pelagosi/player-view.js']
       }
     }
   }

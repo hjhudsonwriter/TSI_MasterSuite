@@ -4347,3 +4347,9 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **What goes to the TV:** only the days and the lines, exactly as the DM's pop-up shows them. The pop-up's note ("The Bastion works these out…"), the Bastion's records and the outbox stay with the DM (tested).
 - **Left alone:** the Bastion window has its own copy of this pop-up; it is not shown on the Bastion's Player View (say if you want it there too).
 
+### PLV-08 · The DM's cursor on the players' screens (29 October 2026)
+- **New:** while the DM's pointer is over the Explorer's map, the Bastion's painting or the Tidal chamber, the Player View draws a small gold arrow at the same place on the picture, and a ring when the DM clicks. It goes when the pointer leaves the picture, when the DM's window goes quiet (after 6 seconds), or when the DM clears **Show my cursor to players** (on by default; one tick box beside each Open Player View button).
+- **How:** `shared/js/pointer-mirror.js`. It sends only a position, at most about 30 times a second, and always the last one (tested: the messages arrive in order). The Explorer sends board coordinates, so the arrow is right on any screen shape and under the DM's zoom and pan; the Bastion and the Tidal chamber send a fraction of the picture. Nothing is saved; the arrow can't be clicked or focused.
+- **Not mirrored:** the pointer over the DM's side panels and pop-ups (only the picture), and over the Tidal wall and console.
+- **Needs a real TV:** how the arrow's size reads from across the room.
+

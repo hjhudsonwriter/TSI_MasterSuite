@@ -41,3 +41,16 @@ body.tsi-player {
 }
 .tsi-player-check__text { font-size: var(--tsi-fs-lead); margin: 0 0 8px; }
 .tsi-player-check__count { color: var(--tsi-text-muted); margin: 0 0 14px; }
+
+/* The DM's cursor on a players' screen (shared/js/pointer-mirror.js): a small gold arrow, and a ring when the DM clicks. */
+.tsi-pm-cursor { position: absolute; z-index: 45; width: 0; height: 0; pointer-events: none; }
+.tsi-pm-cursor[hidden] { display: none; }
+.tsi-pm-arrow { position: absolute; left: 0; top: 0; width: clamp(20px, 2.6vh, 38px); height: auto; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .8)); }
+.tsi-pm-arrow path { fill: #e6c777; stroke: #1a0d0a; stroke-width: 1.6; stroke-linejoin: round; }
+.tsi-pm-ring {
+  position: absolute; left: 0; top: 0; width: clamp(34px, 4.6vh, 64px); aspect-ratio: 1; margin: calc(clamp(34px, 4.6vh, 64px) / -2) 0 0 calc(clamp(34px, 4.6vh, 64px) / -2);
+  border-radius: 50%; border: 2px solid rgba(230, 199, 119, .9); opacity: 0; transform: scale(.4);
+}
+.tsi-pm-ring.is-on { animation: tsi-pm-press 480ms ease-out; }
+@keyframes tsi-pm-press { 0% { opacity: .95; transform: scale(.4); } 100% { opacity: 0; transform: scale(1.2); } }
+@media (prefers-reduced-motion: reduce) { .tsi-pm-ring.is-on { animation-duration: 1ms; } }
