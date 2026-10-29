@@ -4367,3 +4367,9 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **What goes to the TV:** only whole numbers (the middle hex, how many hexes out, and the picked hex): nothing else.
 - **Left alone:** the pointer must be over the map to pick a hex; there is no path preview line yet.
 
+
+
+### EXP-HEX-01 · Explorer: each map keeps its own hex size (29 October 2026)
+- Before: one hex size and position for every map, so changing map meant re-fitting the grid by hand each time.
+- After: each map (each preset map, and each uploaded picture) remembers its own hex size, nudge position and lock. A map you have never opened starts at the usual size (r 38), unlocked. "Miles across this map" sets the hex so one hex is 6 miles (the map's width in hexes = miles / 6); the box shows the current figure. "Lock hex" freezes Hex −/+, the arrows and the miles box for that map only. Older saves are filed under the map that was open.
+- Left alone: the hex size is still in pixels on a 1440-wide board, so the accepted miles range is about 23 to 499 across.

@@ -80,7 +80,8 @@
       mapAspect: null,
       snap: { enabled: false },
       travel: R.defaultTravel(),
-      grid: { enabled: true, r: 38, offsetX: 0, offsetY: 0, opacity: 0.35 },
+      grid: { enabled: true, r: 38, offsetX: 0, offsetY: 0, opacity: 0.35, locked: false },
+      gridByMap: {},
       fog: { enabled: false, revealedByMapKey: {} },
       tokens: data.heroes.map(function (h, i) {
         return {
@@ -104,6 +105,9 @@
   /* ---------- Saves ---------- */
   /* What's kept (old saveNow 1239-1251), with the map picture kept separately. */
   R.toSave = function (state) {
+    var byMap = TSI.clone(state.gridByMap || {});
+    var gk = R.mapKey(state);
+    if (gk !== 'none') byMap[gk] = { r: R.clamp(Number(state.grid.r) || 38, 10, 220), offsetX: Number(state.grid.offsetX) || 0, offsetY: Number(state.grid.offsetY) || 0, locked: !!state.grid.locked };
     return {
       version: R.SAVE_VERSION,
       freeMove: !!state.freeMove,
@@ -113,6 +117,7 @@
       snap: { enabled: !!state.snap.enabled },
       travel: TSI.clone(state.travel),
       grid: TSI.clone(state.grid),
+      gridByMap: byMap,
       fog: TSI.clone(state.fog),
       tokens: state.tokens.map(function (t) {
         return { id: t.id, name: t.name, initial: t.initial, x: t.x, y: t.y, size: t.size, groupId: t.groupId || null, milesUsed: t.milesUsed };
@@ -162,7 +167,19 @@
         if (typeof saved.grid[k] === 'number' && Number.isFinite(saved.grid[k])) state.grid[k] = saved.grid[k];
       });
       if (typeof saved.grid.enabled === 'boolean') state.grid.enabled = saved.grid.enabled;
+      if (typeof saved.grid.locked === 'boolean') state.grid.locked = saved.grid.locked;
     }
+    if (isObj(saved.gridByMap)) {
+      Object.keys(saved.gridByMap).forEach(function (key) {
+        var g = saved.gridByMap[key];
+        if (!isObj(g) || !/^(preset|upload):/.test(key)) return;
+        state.gridByMap[key] = {
+          r: R.clamp(num(g.r, 38), 10, 220), offsetX: num(g.offsetX, 0), offsetY: num(g.offsetY, 0), locked: g.locked === true
+        };
+      });
+    }
+    /* Older saves had one hex size for everything: it now belongs to the map that was open. */
+    if (R.mapKey(state) !== 'none' && !state.gridByMap[R.mapKey(state)]) R.rememberGrid(state);
     if (isObj(saved.snap) && typeof saved.snap.enabled === 'boolean') state.snap.enabled = saved.snap.enabled;
     if (typeof saved.freeMove === 'boolean') state.freeMove = saved.freeMove;
     if (typeof saved.resetId === 'string' && /^[A-Za-z0-9]{1,60}$/.test(saved.resetId)) state.resetId = saved.resetId;
@@ -422,6 +439,47 @@
     if (state.mapUploadKey) return 'upload:' + state.mapUploadKey;
     return 'none';
   };
+  /* ---------- Each map keeps its own hex size ---------- */
+  /* The grid on screen belongs to the map that is open. Its size, position and
+     lock are filed under that map, and come back when the map is opened again. */
+  R.rememberGrid = function (state) {
+    var key = R.mapKey(state);
+    if (key === 'none') return;
+    if (!isObj(state.gridByMap)) state.gridByMap = {};
+    state.gridByMap[key] = {
+      r: R.clamp(Number(state.grid.r) || 38, 10, 220),
+      offsetX: Number(state.grid.offsetX) || 0,
+      offsetY: Number(state.grid.offsetY) || 0,
+      locked: !!state.grid.locked
+    };
+  };
+  /* Call after the open map changes. A map never opened before starts at the usual size, unlocked. */
+  R.applyMapGrid = function (state) {
+    var key = R.mapKey(state);
+    if (key === 'none') return;
+    var g = isObj(state.gridByMap) ? state.gridByMap[key] : null;
+    state.grid.r = g ? g.r : 38;
+    state.grid.offsetX = g ? g.offsetX : 0;
+    state.grid.offsetY = g ? g.offsetY : 0;
+    state.grid.locked = g ? !!g.locked : false;
+  };
+  /* "The map is N miles across": one hex is 6 miles, so the hex size follows. */
+  R.hexFromMiles = function (miles) { return R.BOARD_W * R.MILES_PER_HEX / (Math.sqrt(3) * miles); };
+  R.milesAcross = function (grid) {
+    var r = R.hexSize(grid);
+    return Math.round(R.BOARD_W * R.MILES_PER_HEX / (Math.sqrt(3) * r));
+  };
+  R.milesRange = function () { return { min: Math.ceil(R.milesAcross({ r: 220 })), max: Math.floor(R.milesAcross({ r: 10 })) }; };
+  R.calibrate = function (state, miles) {
+    if (state.grid.locked) return { ok: false, reason: 'locked' };
+    var m = Number(miles);
+    var range = R.milesRange();
+    if (!Number.isFinite(m) || m < range.min || m > range.max) return { ok: false, reason: 'range', min: range.min, max: range.max };
+    state.grid.r = R.hexFromMiles(m);
+    R.rememberGrid(state);
+    return { ok: true, r: state.grid.r };
+  };
+
   R.fogStore = function (state) {
     if (!isObj(state.fog)) state.fog = { enabled: false, revealedByMapKey: {} };
     if (!isObj(state.fog.revealedByMapKey)) state.fog.revealedByMapKey = {};
@@ -881,6 +939,7 @@
     state.mapUploadKey = null;
     state.mapAspect = null;
     state.travel.provinceId = R.mapProvince(data, preset.id);
+    R.applyMapGrid(state);
     var spawned = R.spawnParty(state, data, fromId, preset.id);
     return { preset: preset, spawned: spawned };
   };

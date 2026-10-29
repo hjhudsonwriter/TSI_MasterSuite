@@ -557,3 +557,9 @@
 .tsi-tool--explorer .tsi-exp-cursorrow, .tsi-page--explorer .tsi-exp-cursorrow { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 1; color: var(--tsi-text-muted); cursor: pointer; margin-top: 0; }
 .tsi-tool--explorer .tsi-exp-zoombox .tsi-exp-cursorrow { background: rgba(10, 6, 7, .78); padding: 3px 9px; border-radius: 999px; border: 1px solid var(--tsi-line-control); color: var(--tsi-text); }
 
+
+.tsi-tool--explorer .tsi-exp-row--select > .tsi-exp-miles { flex: 1 1 auto; min-width: 0; width: 5em; }
+.tsi-tool--explorer .tsi-exp-row--tight { flex-wrap: nowrap; gap: 4px; }
+.tsi-tool--explorer .tsi-exp-row--tight > .tsi-btn { padding-left: 6px; padding-right: 6px; letter-spacing: .02em; white-space: nowrap; }
+.tsi-tool--explorer .tsi-exp-field--side { flex-direction: row; align-items: center; gap: 10px; }
+.tsi-tool--explorer .tsi-exp-field--side > input { flex: 1 1 auto; min-width: 0; }
