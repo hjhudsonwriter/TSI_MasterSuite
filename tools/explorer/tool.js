@@ -70,7 +70,7 @@
         state.mapAspect = null;
       }
       var uploadUrl = state.mapUploadKey && upload ? upload.dataUrl : null;
-      function saveNow() { ctx.store.set('save', R.toSave(state)); queuePlayerSync(); }
+      function saveNow() { R.rememberGrid(state); ctx.store.set('save', R.toSave(state)); queuePlayerSync(); }
 
       /* Not saved: selection, the hero whose miles show, drags and modes. */
       var selected = new Set();
@@ -205,6 +205,16 @@
       var btnPick = btn('Pick Marker XY: Off', togglePick, '', 'pick');
       var opacity = el('input', { type: 'range', min: '0', max: '1', step: '0.05', class: 'tsi-exp-range', 'aria-label': 'Grid opacity', 'data-test': 'opacity' });
       var readout = el('span', { class: 'tsi-exp-readout', text: 'Hex: —', 'data-test': 'readout' });
+      var milesInput = el('input', { type: 'number', class: 'tsi-exp-miles', min: '1', step: '1', placeholder: 'Miles across this map', 'aria-label': 'Miles across this map', 'data-test': 'miles-across' });
+      var btnSetMiles = btn('Set', function () { setMiles(); }, '', 'miles-set');
+      var gridBtns = [
+        btn('Hex −', function () { gridSize(-2); }, '', 'hex-down'), btn('Hex +', function () { gridSize(2); }, '', 'hex-up'),
+        btn('◀', function () { nudge(-2, 0); }, 'tsi-exp-arrow', 'nudge-left'),
+        btn('▲', function () { nudge(0, -2); }, 'tsi-exp-arrow', 'nudge-up'),
+        btn('▼', function () { nudge(0, 2); }, 'tsi-exp-arrow', 'nudge-down'),
+        btn('▶', function () { nudge(2, 0); }, 'tsi-exp-arrow', 'nudge-right')
+      ];
+      var btnLockGrid = btn('Lock hex', function () { state.grid.locked = !state.grid.locked; saveNow(); renderAll(); }, '', 'grid-lock');
       var provinceSelect = el('select', { class: 'tsi-input tsi-exp-select', 'aria-label': 'Region', 'data-test': 'region' }, DATA.provinces.map(function (p) {
         return el('option', { value: p.id, text: p.label });
       }));
@@ -227,15 +237,10 @@
         ]),
         sectionWith('View', el('span', { class: 'tsi-exp-pvbox' }, [btnPlayerView, pvStatus]), [row([btnFullscreen, btnHideUi])]),
         section('Hex grid', [
-          row([btnGrid]),
-          row([btn('Hex −', function () { gridSize(-2); }, '', 'hex-down'), btn('Hex +', function () { gridSize(2); }, '', 'hex-up')]),
-          row([
-            btn('◀', function () { nudge(-2, 0); }, 'tsi-exp-arrow', 'nudge-left'),
-            btn('▲', function () { nudge(0, -2); }, 'tsi-exp-arrow', 'nudge-up'),
-            btn('▼', function () { nudge(0, 2); }, 'tsi-exp-arrow', 'nudge-down'),
-            btn('▶', function () { nudge(2, 0); }, 'tsi-exp-arrow', 'nudge-right')
-          ]),
-          el('label', { class: 'tsi-exp-field' }, [el('span', { text: 'Grid opacity' }), opacity]),
+          row([btnGrid, btnLockGrid]),
+          row(gridBtns, 'tsi-exp-row--tight'),
+          row([milesInput, btnSetMiles], 'tsi-exp-row--select'),
+          el('label', { class: 'tsi-exp-field tsi-exp-field--side' }, [el('span', { text: 'Grid opacity' }), opacity]),
           readout
         ]),
         section('Fog and snap', [
@@ -533,6 +538,12 @@
         btnFreeMove.textContent = state.freeMove ? 'Free Move: ON' : 'Free Move: OFF';
         setOn(btnFreeMove, state.freeMove);
         readout.textContent = R.readout(state.grid);
+        milesInput.placeholder = 'Now ≈ ' + R.milesAcross(state.grid) + ' miles across';
+        var gl = !!state.grid.locked;
+        btnLockGrid.textContent = gl ? 'Unlock hex' : 'Lock hex';
+        setOn(btnLockGrid, gl);
+        gridBtns.forEach(function (b) { b.disabled = gl; });
+        btnSetMiles.disabled = gl; milesInput.disabled = gl;
         opacity.value = String(state.grid.opacity === undefined || state.grid.opacity === null ? 0.35 : state.grid.opacity);
       }
 
@@ -628,6 +639,7 @@
             state.mapUploadKey = key;
             state.mapAspect = probe.naturalWidth && probe.naturalHeight ? probe.naturalWidth / probe.naturalHeight : null;
             state.mapPresetId = null;
+            R.applyMapGrid(state);
             ctx.store.set('mapImage', { dataUrl: dataUrl, key: key, name: file.name });
             viewZoom = 1; viewCx = 0.5; viewCy = 0.5;
             saveNow();
@@ -680,12 +692,24 @@
       });
 
       /* ---------- Grid ---------- */
+      function setMiles() {
+        var res = R.calibrate(state, milesInput.value);
+        if (!res.ok) {
+          note(res.reason === 'locked' ? 'Unlock the hex size first.' : 'Type how many miles the map is across, between ' + res.min + ' and ' + res.max + '.');
+          return;
+        }
+        milesInput.value = '';
+        saveNow();
+        renderAll();
+      }
       function gridSize(delta) {
+        if (state.grid.locked) return;
         state.grid.r = R.clamp((Number(state.grid.r) || 38) + delta, 10, 220);
         saveNow();
         renderAll();
       }
       function nudge(dx, dy) {
+        if (state.grid.locked) return;
         state.grid.offsetX = (Number(state.grid.offsetX) || 0) + dx;
         state.grid.offsetY = (Number(state.grid.offsetY) || 0) + dy;
         saveNow();

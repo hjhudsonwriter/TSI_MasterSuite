@@ -1260,3 +1260,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **Keep the guide up to date:** when a tool's buttons or labels change, update `guide.html` too. `tests/e2e/guide.test.js` fails if the guide names a button that no longer exists.
 - **Harry's saves and test copies:** every copy of the suite on Harry's laptop shares one set of saves in Edge. A branch he downloads to test opens his real saves, so each pull request's checklist should start with "Back up everything first".
 - **Sound in tests:** the test browser can load the sounds but nobody hears them. The Pelagosi test records which sounds start and when; hearing them is on Harry's checklist.
+
+
+## Explorer: hex size per map (29 October 2026)
+Step 3 of 4 of click-to-move (walk, reach, hex size, terrain). Each map saves its own hex size, with "Miles across this map" and a Lock hex button. Next: the terrain painter, which needs Harry's decision on what each terrain does (slows travel, blocks it, or sets which events can happen).
