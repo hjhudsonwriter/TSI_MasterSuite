@@ -1268,3 +1268,7 @@ Step 3 of 4 of click-to-move (walk, reach, hex size, terrain). Each map saves it
 
 ## Explorer: terrain painter (29 October 2026)
 Step 4 of 4 of click-to-move (walk, reach, hex size, terrain). Edit terrain: brush palette, painted per map, saved, costs and blocking everywhere miles are counted, optional on the TV. Open for Harry: should terrain ever decide which events can happen; should the TV see terrain by default; route-finding round obstacles instead of straight lines.
+
+
+## Absent Tide Act 1: Maerys's letter (29 October 2026)
+Fourth card in the Tidepool House deck: `act1/04-letter.png` with `voice/maerys-letter.mp3` playing by itself (like the portraits), no name on the TV, no overlay ("M.V" is clear in the picture). The DM pop-up line (the letter's words) is empty until Harry pastes it from the session doc: edit `line` on the `letter` step in `tools/explorer/data/absent-tide-scenes.js`. Parked for later: route planning (see the chat notes of 29 October).
