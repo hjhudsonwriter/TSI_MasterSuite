@@ -258,12 +258,27 @@
     var info = (defs.regions && defs.regions[region]) || {};
     var mapKey = state.mapPresetId ? 'preset:' + state.mapPresetId : state.mapUploadKey ? 'upload:' + state.mapUploadKey : 'none';
     var near = J.nearAt(window.TSI_DATA && window.TSI_DATA.terrain, state.mapPresetId || null, pos || J.partyPos(state));
-    return { region: region, mapId: state.mapPresetId || null, mapKey: mapKey, god: info.god || null, isle: !!info.isle, near: near };
+    /* The terrain painted on the hex the party is standing on (29 October 2026). A map nobody has painted counts as unpainted:
+       then an event's terrain rule is ignored, so no event goes missing just because the map has no terrain yet. */
+    var R = ns.rules, terrain = 'open', painted = false;
+    if (R && R.terrainCount && window.TSI_DATA && window.TSI_DATA.explorer) {
+      painted = R.terrainCount(state) > 0;
+      var p = pos || J.partyPos(state);
+      if (painted && p && isNum(p.x) && isNum(p.y)) {
+        var b = R.board(R.aspect(state, window.TSI_DATA.explorer));
+        var hex = R.hexAt(state.grid, p.x * b.w, p.y * b.h);
+        terrain = R.terrainAt(state, hex.q, hex.r);
+      }
+    }
+    return { region: region, mapId: state.mapPresetId || null, mapKey: mapKey, god: info.god || null, isle: !!info.isle, near: near, terrain: terrain, terrainPainted: painted };
   };
 
-  J.eligible = function (ev, ctx) {
+  /* lenient: leave the terrain rule out (used when the terrain would leave nothing to draw). */
+  J.eligible = function (ev, ctx, lenient) {
     if (!ev || ev.off) return false;
     var w = ev.where || { any: true };
+    /* terrain: ['road', ...] (Harry, 29 October 2026): only on those painted kinds; 'open' is an unpainted hex. */
+    if (Array.isArray(w.terrain) && ctx.terrainPainted && !lenient && w.terrain.indexOf(ctx.terrain || 'open') === -1) return false;
     /* near: 'river' or 'coast' (T2 only near a river: Harry, 7 October 2026). */
     if (w.near && !(ctx.near && ctx.near[w.near])) return false;
     if (w.any) return true;
@@ -274,7 +289,11 @@
   };
 
   J.pool = function (defs, kind, ctx) {
-    return ((defs && defs.events) || []).filter(function (ev) { return ev.kind === kind && J.eligible(ev, ctx); });
+    var events = (defs && defs.events) || [];
+    var pool = events.filter(function (ev) { return ev.kind === kind && J.eligible(ev, ctx); });
+    /* If the terrain rules leave nothing, the terrain is ignored rather than the party getting no event. */
+    if (!pool.length && ctx && ctx.terrainPainted) pool = events.filter(function (ev) { return ev.kind === kind && J.eligible(ev, ctx, true); });
+    return pool;
   };
 
   /* Draw like a card: nothing repeats until this pool has been used up. */

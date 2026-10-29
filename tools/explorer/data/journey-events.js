@@ -15,7 +15,9 @@
      "DM events" in the Main Campaign list, to queue by hand) or 'night' (set
      up by another event's tonight outcome for that night's camp). None of
      the events uses 'dm' or 'night' at present.
-   - where: { any: true } | { gods: [...] } | { provinces: [...] } | { maps: [...] }.
+   - where: { any: true } | { gods: [...] } | { provinces: [...] } | { maps: [...] }, and optionally terrain: ['road', 'forest', ...]
+     (the kind painted on the hex the party is on: road, forest, hills, marsh, mountain_trails, mountain_climb, open for an unpainted
+     hex). It is only used once someone has painted terrain on that map, and ignored if it would leave nothing to draw.
      gods and provinces follow the Region list; maps need that map loaded.
      Any of them can add near: 'river' or 'coast': the party must be within
      2 hexes of one, as marked in data/terrain-data.js (never on an uploaded
@@ -75,7 +77,7 @@ window.TSI_DATA.journeyEvents = {
   events: [
     /* ================= Travel events: anywhere ================= */
     {
-      id: 't1', code: 'T1', kind: 'travel', title: 'The Wardens\' Toll', where: { any: true },
+      id: 't1', code: 'T1', kind: 'travel', title: 'The Wardens\' Toll', where: { any: true, terrain: ['road'] },
       line: 'Insight, then Intimidation, Stealth or Persuasion',
       steps: {
         start: {
@@ -131,7 +133,7 @@ window.TSI_DATA.journeyEvents = {
 
     {
       /* Only near a river: the ambush is "at the ford" (Harry, 7 October 2026). */
-      id: 't2', code: 'T2', kind: 'travel', title: 'The Ambush Sign', where: { any: true, near: 'river' },
+      id: 't2', code: 'T2', kind: 'travel', title: 'The Ambush Sign', where: { any: true, near: 'river', terrain: ['forest', 'road'] },
       line: 'Survival, then Stealth or Perception · may lead to a fight',
       steps: {
         start: {
@@ -175,7 +177,7 @@ window.TSI_DATA.journeyEvents = {
     },
 
     {
-      id: 't3', code: 'T3', kind: 'travel', title: 'The Overturned Wagon', where: { any: true },
+      id: 't3', code: 'T3', kind: 'travel', title: 'The Overturned Wagon', where: { any: true, terrain: ['road'] },
       line: 'Athletics, Medicine, Investigation',
       steps: {
         start: {
@@ -219,7 +221,7 @@ window.TSI_DATA.journeyEvents = {
     },
 
     {
-      id: 't4', code: 'T4', kind: 'travel', title: 'The Knight-Errant\'s Challenge', where: { any: true },
+      id: 't4', code: 'T4', kind: 'travel', title: 'The Knight-Errant\'s Challenge', where: { any: true, terrain: ['road'] },
       line: 'a best-of-three contest, or Persuasion',
       steps: {
         start: {
@@ -280,7 +282,7 @@ window.TSI_DATA.journeyEvents = {
     },
 
     {
-      id: 't6', code: 'T6', kind: 'travel', title: 'The Dying Messenger', where: { any: true },
+      id: 't6', code: 'T6', kind: 'travel', title: 'The Dying Messenger', where: { any: true, terrain: ['road'] },
       line: 'Medicine, then Sleight of Hand',
       steps: {
         start: {
@@ -321,7 +323,7 @@ window.TSI_DATA.journeyEvents = {
 
     /* ================= Travel events: Telluria's lands ================= */
     {
-      id: 't7', code: 'T7', kind: 'travel', title: 'Rootfall', where: { gods: ['telluria'] },
+      id: 't7', code: 'T7', kind: 'travel', title: 'Rootfall', where: { gods: ['telluria'], terrain: ['road', 'forest'] },
       line: 'Dexterity saves, Athletics, Religion · a blessing or a curse',
       steps: {
         start: {
@@ -368,7 +370,7 @@ window.TSI_DATA.journeyEvents = {
     },
 
     {
-      id: 't8', code: 'T8', kind: 'travel', title: 'The Waystone Riddle', where: { gods: ['telluria'] },
+      id: 't8', code: 'T8', kind: 'travel', title: 'The Waystone Riddle', where: { gods: ['telluria'], terrain: ['road', 'hills', 'open'] },
       line: 'riddle, with a Nature check for a hint',
       steps: {
         start: {
@@ -398,7 +400,7 @@ window.TSI_DATA.journeyEvents = {
 
     {
       /* Switched off (Harry, 6 October 2026): no Rootbound creature before the Heartwood finale. */
-      id: 't9', code: 'T9', kind: 'travel', off: true, title: 'The Husk in the Furrows', where: { gods: ['telluria'] },
+      id: 't9', code: 'T9', kind: 'travel', off: true, title: 'The Husk in the Furrows', where: { gods: ['telluria'], terrain: ['open'] },
       line: 'Nature or Arcana, then Survival · may lead to a fight',
       steps: {
         start: {
@@ -441,7 +443,7 @@ window.TSI_DATA.journeyEvents = {
     },
 
     {
-      id: 't10', code: 'T10', kind: 'travel', title: 'The Muster Checkpoint', where: { maps: ['eastern_province_north'] },
+      id: 't10', code: 'T10', kind: 'travel', title: 'The Muster Checkpoint', where: { maps: ['eastern_province_north'], terrain: ['road'] },
       line: 'Persuasion or Deception, Insight',
       steps: {
         start: {
@@ -502,7 +504,7 @@ window.TSI_DATA.journeyEvents = {
 
     /* ================= Travel events: Aurush's lands ================= */
     {
-      id: 't11', code: 'T11', kind: 'travel', title: 'The Light Coin', where: { maps: ['southern_province_west'] },
+      id: 't11', code: 'T11', kind: 'travel', title: 'The Light Coin', where: { maps: ['southern_province_west'], terrain: ['road'] },
       line: 'puzzle, then Insight',
       steps: {
         start: {
@@ -539,7 +541,7 @@ window.TSI_DATA.journeyEvents = {
     },
 
     {
-      id: 't12', code: 'T12', kind: 'travel', title: 'The Sunburst Shrine', where: { provinces: ['southern_province', 'western_province'] },
+      id: 't12', code: 'T12', kind: 'travel', title: 'The Sunburst Shrine', where: { provinces: ['southern_province', 'western_province'], terrain: ['hills', 'road'] },
       line: 'riddle, with a Religion check for a hint · a blessing',
       steps: {
         start: {
@@ -639,7 +641,7 @@ window.TSI_DATA.journeyEvents = {
     },
 
     {
-      id: 't14', code: 'T14', kind: 'travel', title: 'The Prospector\'s Claim', where: { provinces: ['southern_province'] },
+      id: 't14', code: 'T14', kind: 'travel', title: 'The Prospector\'s Claim', where: { provinces: ['southern_province'], terrain: ['hills', 'mountain_trails'] },
       line: 'Nature, then a gamble that pays off a week later',
       /* When the event fires, the tool secretly decides whether the vein is genuine (1 in 2) or the sample was salted. */
       secret: { key: 'vein', chance: 0.5, yes: 'genuine', no: 'salted' },
@@ -749,7 +751,7 @@ window.TSI_DATA.journeyEvents = {
     },
 
     {
-      id: 't18', code: 'T18', kind: 'travel', title: 'The Salt-Ring Recruiter', where: { maps: ['the_east_isle'] },
+      id: 't18', code: 'T18', kind: 'travel', title: 'The Salt-Ring Recruiter', where: { maps: ['the_east_isle'], terrain: ['road'] },
       line: 'Athletics, or Intimidation or Performance · a hook into the Arenas',
       steps: {
         start: {
@@ -836,7 +838,7 @@ window.TSI_DATA.journeyEvents = {
     },
 
     {
-      id: 'c2', code: 'C2', kind: 'camp', title: 'Bones by Firelight', where: { any: true },
+      id: 'c2', code: 'C2', kind: 'camp', title: 'Bones by Firelight', where: { any: true, terrain: ['road', 'open'] },
       line: 'a game of chance, Insight, Sleight of Hand · gold won or lost',
       steps: {
         start: {
@@ -998,7 +1000,7 @@ window.TSI_DATA.journeyEvents = {
     },
 
     {
-      id: 'c6', code: 'C6', kind: 'camp', title: 'Wolf-Song', where: { maps: ['northern_province_east'] },
+      id: 'c6', code: 'C6', kind: 'camp', title: 'Wolf-Song', where: { maps: ['northern_province_east'], terrain: ['forest', 'hills'] },
       line: 'Animal Handling, then Survival or Intimidation · may lead to a fight',
       steps: {
         start: {
@@ -1044,7 +1046,7 @@ window.TSI_DATA.journeyEvents = {
     },
 
     {
-      id: 'c7', code: 'C7', kind: 'camp', title: 'The Forester\'s Riddle', where: { gods: ['telluria'] },
+      id: 'c7', code: 'C7', kind: 'camp', title: 'The Forester\'s Riddle', where: { gods: ['telluria'], terrain: ['forest'] },
       line: 'riddle for a stake, with a Nature check for a hint',
       steps: {
         start: {
@@ -1112,7 +1114,7 @@ window.TSI_DATA.journeyEvents = {
     },
 
     {
-      id: 'c9', code: 'C9', kind: 'camp', title: 'The Debt Collector', where: { maps: ['southern_province_west'] },
+      id: 'c9', code: 'C9', kind: 'camp', title: 'The Debt Collector', where: { maps: ['southern_province_west'], terrain: ['road', 'open'] },
       line: 'Investigation, then Persuasion or Intimidation',
       steps: {
         start: {
@@ -1166,7 +1168,7 @@ window.TSI_DATA.journeyEvents = {
     },
 
     {
-      id: 'c10', code: 'C10', kind: 'camp', title: 'The Beacons', where: { provinces: ['western_province'] },
+      id: 'c10', code: 'C10', kind: 'camp', title: 'The Beacons', where: { provinces: ['western_province'], terrain: ['hills', 'mountain_trails'] },
       line: 'History, then a hard choice · a lost night\'s rest',
       steps: {
         start: {

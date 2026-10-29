@@ -162,4 +162,44 @@
     var c = R.reachTarget(reach, { q: 18, r: 6 }, m.s);
     t.equal(c.inReach, false); t.equal(c.blocked, false);
   });
+
+  /* ---------- Events and terrain ---------- */
+  var J = TSI.explorer.journey;
+  var E = window.TSI_DATA.journeyEvents;
+  function ids(state, kind) { return J.pool(E, kind, J.context(state, E)).map(function (ev) { return ev.id; }); }
+
+  test('events tagged with terrain: ignored on a map nobody has painted', function (t) {
+    var m = mapState();
+    var plain = ids(m.s, 'travel');
+    t.ok(plain.indexOf('t1') !== -1 && plain.indexOf('t3') !== -1, 'road events are there when nothing is painted');
+  });
+
+  test('events tagged with terrain only come up on that terrain once the map is painted', function (t) {
+    var m = mapState();
+    R.paintHexes(m.s, [{ q: 10, r: 6 }], 'road');
+    var onRoad = ids(m.s, 'travel');
+    t.ok(onRoad.indexOf('t1') !== -1 && onRoad.indexOf('t3') !== -1, 'on a road hex the road events can come');
+    t.equal(J.context(m.s, E).terrain, 'road');
+    R.paintHexes(m.s, [{ q: 10, r: 6 }], 'forest');
+    var inForest = ids(m.s, 'travel');
+    t.ok(inForest.indexOf('t1') === -1 && inForest.indexOf('t3') === -1, 'in a forest the road events do not');
+    t.ok(inForest.indexOf('t2') === -1, 'the Ambush Sign also needs a river nearby');
+    R.paintHexes(m.s, [{ q: 10, r: 6 }], 'marsh');
+    var camp = ids(m.s, 'camp');
+    t.ok(camp.indexOf('c7') === -1 && camp.indexOf('c1') !== -1, 'campfire events: the forester needs a forest, the stranger comes anywhere');
+  });
+
+  test('the party standing on an unpainted hex of a painted map counts as open land', function (t) {
+    var m = mapState();
+    R.paintHexes(m.s, [{ q: 0, r: 0 }], 'road');
+    t.equal(J.context(m.s, E).terrain, 'open');
+    t.equal(J.context(m.s, E).terrainPainted, true);
+  });
+
+  test('if the terrain rules would leave nothing to draw, the terrain is ignored rather than no event', function (t) {
+    var m = mapState();
+    R.paintHexes(m.s, [{ q: 10, r: 6 }], 'marsh');
+    var pool = J.pool({ events: [{ id: 'x', kind: 'travel', where: { any: true, terrain: ['road'] }, steps: {} }] }, 'travel', J.context(m.s, E));
+    t.equal(pool.length, 1);
+  });
 }());
