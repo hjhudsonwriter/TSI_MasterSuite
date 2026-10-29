@@ -61,8 +61,9 @@
     var gridCanvas = el('canvas', { class: 'tsi-xpv-canvas tsi-xpv-canvas--grid', 'data-test': 'pv-grid' });
     var pinLayer = el('div', { class: 'tsi-xpv-pins', 'data-test': 'pv-pins' });
     var fogCanvas = el('canvas', { class: 'tsi-xpv-canvas tsi-xpv-canvas--fog', 'data-test': 'pv-fog' });
+    var reachCanvas = el('canvas', { class: 'tsi-xpv-canvas tsi-xpv-canvas--reach', 'data-test': 'pv-reach' });
     var tokenLayer = el('div', { class: 'tsi-xpv-world tsi-xpv-world--tokens', 'data-test': 'pv-tokens' });
-    var stage = el('div', { class: 'tsi-xpv-stage', 'data-test': 'pv-stage' }, [mapLayer, video, gridCanvas, pinLayer, fogCanvas, tokenLayer]);
+    var stage = el('div', { class: 'tsi-xpv-stage', 'data-test': 'pv-stage' }, [mapLayer, video, gridCanvas, pinLayer, fogCanvas, reachCanvas, tokenLayer]);
 
     var full = el('button', { type: 'button', class: 'tsi-xpv-full', 'data-test': 'pv-fullscreen' }, 'Full screen');
     full.addEventListener('click', function () {
@@ -371,6 +372,13 @@
         var store = {};
         snap.fog.hexes.forEach(function (k) { store[k] = true; });
         D.fog(f.ctx, f.w, f.h, view, snap.grid, store);
+      }
+
+      /* Where the DM's picked party can go today, and the hex the DM is pointing at if it could go there. */
+      var rc = sizeCanvas(reachCanvas);
+      if (snap.reach) {
+        var rt = snap.reach.target;
+        D.reach(rc.ctx, rc.w, rc.h, view, snap.grid, snap.reach, rt ? { hex: { q: rt[0], r: rt[1] }, inReach: true, miles: 0 } : null, false, board);
       }
 
       TSI.clear(pinLayer);

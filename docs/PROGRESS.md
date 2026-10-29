@@ -4,6 +4,9 @@
 
 **Strip Back Overhaul (steps S01 to S17, 22 to 25 October 2026) is built and merged; S19 (art) and S20 (guide and home-screen text) and S21 (these docs) are done. S18 (removing the internal Day Log data) is done (26 October 2026, BAS-SB-83).** The war game, Clan founding, the Hall's trade system, the three Shrines, the Library, Arcane Laboratory, Clan Influence and the Day Log screens are gone or folded into the Temple, Beast Pen, Dock and Workshop. Details: `docs/STRIP-BACK-PLAN.md`, `docs/strip-back/*-built.md`, and the new "Strip Back Overhaul" section at the end of `docs/KNOWN_ISSUES.md` (BAS-SB-01 onwards).
 
+### 29 October 2026: Explorer reach highlight (step 2 of 4)
+- The reach is tinted on the DM's map and, by default, on the TV (KNOWN_ISSUES EXP-WALK-02). Next: per-map hex size (save, calibrate, lock), then terrain painting.
+
 ### 29 October 2026: Explorer click to move (step 1 of 4)
 - Click to move with the walk, event-stops-the-walk and the TV following (KNOWN_ISSUES EXP-WALK-01). Next: the reach highlight (on the TV by default), then per-map hex size, then terrain painting.
 

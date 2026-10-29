@@ -94,7 +94,7 @@
         name: 'ScarlettExplorerPlayers',
         keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
-        getState: function () { return R.playerSnapshot(state, DATA, { atlas: pvAtlas, view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, dim: pvDim(), camp: pvCamp, scene: pvScene, word: pvWord }); },
+        getState: function () { return R.playerSnapshot(state, DATA, { atlas: pvAtlas, view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, dim: pvDim(), camp: pvCamp, scene: pvScene, word: pvWord, reach: pvReach() }); },
         onStatus: function (st) {
           pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvStatus.classList.toggle('is-connected', st === 'connected');
@@ -116,6 +116,13 @@
       var pvScene = null;
       /* "The Ironbow sends word…", while its pop-up is open: the days and lines the pop-up shows (and nothing else). */
       var pvWord = null;
+      /* The reach of the heroes the DM has picked (R.reachFor): drawn on the DM's map, and sent to the TV unless the DM has
+         switched it off. The hex under the DM's pointer is picked out too when the party could go there. */
+      var reachNow = null, reachTgt = null, reachKey = '', hoverHex = null;
+      function pvReach() {
+        if (!reachNow || !reachBox || !reachBox.checked) return null;
+        return { q: reachNow.q, r: reachNow.r, n: reachNow.n, target: reachTgt && reachTgt.inReach ? [reachTgt.hex.q, reachTgt.hex.r] : null };
+      }
       function setPvScene(card) { pvScene = card || null; queuePlayerSync(); }
       /* The next card's picture or clip, named on its own (never in the snapshot) so the players' window can have it ready. */
       function pvPreload(kind, src) { if (src && pvLink.isConnected()) pvLink.send('preload', { kind: kind === 'video' ? 'video' : 'image', src: String(src) }); }
@@ -163,7 +170,7 @@
       btnPlayerView.title = 'Open the players\' view of the map in a new window, to drag onto the TV. It only looks.';
       /* Click to move (29 October 2026): with heroes picked, a click on the map sends them walking there. Not saved. */
       var clickMove = true;
-      var btnClickMove = btn('Click to move: On', function () { clickMove = !clickMove; updateButtons(); setNotice(clickMove ? 'Click to move: pick heroes, then click where they should go.' : 'Click to move is off. Dragging works as always.'); }, '', 'click-move');
+      var btnClickMove = btn('Click to move: On', function () { clickMove = !clickMove; updateButtons(); updateReach(); setNotice(clickMove ? 'Click to move: pick heroes, then click where they should go.' : 'Click to move is off. Dragging works as always.'); }, '', 'click-move');
       btnClickMove.title = 'Pick a hero or group, then click a hex: they walk there on their own, a hex at a time with Snap on, in a straight line with it off. Dragging still works.';
       var zoomBox = el('div', { class: 'tsi-exp-zoombox', role: 'group', 'aria-label': 'Zoom' });
       var btnZoomIn = btn('+', function () { zoomBy(1.4); }, 'tsi-exp-zoom', 'zoom-in');
@@ -177,6 +184,11 @@
       zoomBox.appendChild(btnZoomOut); zoomBox.appendChild(btnZoomIn); zoomBox.appendChild(btnFit);
       zoomBox.appendChild(btnClickMove);
       zoomBox.appendChild(cursorRow);
+      /* Show the players where the picked party can reach today (29 October 2026): on by default. */
+      var reachBox = el('input', { type: 'checkbox', id: 'tsi-exp-reach-on', 'data-test': 'reach-on' });
+      reachBox.checked = true;
+      var reachRow = el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-reach-on' }, [reachBox, el('span', { text: 'Show reach to players' })]);
+      zoomBox.appendChild(reachRow);
       var btnAtlas = btn('Show Scarlett Isles map to players', function () {
         pvAtlas = !pvAtlas;
         btnAtlas.textContent = pvAtlas ? 'Hide Scarlett Isles map from players' : 'Show Scarlett Isles map to players';
@@ -250,10 +262,11 @@
       var gridCanvas = el('canvas', { class: 'tsi-exp-canvas tsi-exp-canvas--grid' });
       var pinLayer = el('div', { class: 'tsi-exp-pins' });
       var fogCanvas = el('canvas', { class: 'tsi-exp-canvas tsi-exp-canvas--fog' });
+      var reachCanvas = el('canvas', { class: 'tsi-exp-canvas tsi-exp-canvas--reach', 'data-test': 'reach-canvas' });
       var tokenLayer = el('div', { class: 'tsi-exp-world tsi-exp-world--tokens' });
       var marquee = el('div', { class: 'tsi-exp-marquee', hidden: true });
       var showUi = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-showui', hidden: true, 'data-test': 'show-ui', onclick: function () { setUiHidden(false); } }, 'Show UI');
-      var stage = el('div', { class: 'tsi-exp-stage' }, [mapLayer, video, gridCanvas, pinLayer, fogCanvas, tokenLayer, marquee, showUi, zoomBox]);
+      var stage = el('div', { class: 'tsi-exp-stage' }, [mapLayer, video, gridCanvas, pinLayer, fogCanvas, reachCanvas, tokenLayer, marquee, showUi, zoomBox]);
 
       /* The travel panel. */
       var dayLabel = el('strong', { class: 'tsi-exp-day', text: 'Day 1', 'data-test': 'day' });
@@ -383,6 +396,37 @@
       /* Fog: the whole map area dark, with the uncovered hexes cut out. Only
          plain fills are drawn here, never a picture (tools/explorer/draw.js,
          which the Player View draws with too). */
+      function drawReach() {
+        var s = sizeCanvas(reachCanvas);
+        if (reachNow) ns.draw.reach(s.ctx, s.w, s.h, view, state.grid, reachNow, reachTgt, true, board);
+      }
+      function currentReach() {
+        if (!clickMove || walking || drag || !selected.size) return null;
+        var ids = Array.from(selected).filter(function (id) { return !!R.token(state, id); });
+        if (!ids.length) return null;
+        return R.reachFor(state, board, ids, ids.indexOf(focusId) >= 0 ? focusId : ids[0]);
+      }
+      function updateReach() {
+        var reach = currentReach();
+        var tgt = reach && hoverHex ? R.reachTarget(reach, hoverHex) : null;
+        var key = reach ? [reach.q, reach.r, reach.n, tgt ? tgt.hex.q + ',' + tgt.hex.r + ',' + tgt.inReach : ''].join('|') : '';
+        reachNow = reach;
+        reachTgt = tgt;
+        if (key === reachKey) return;
+        reachKey = key;
+        drawReach();
+        queuePlayerSync();
+      }
+      life.on(stage, 'pointermove', function (e) {
+        if (!reachNow && !selected.size) return;
+        var p = pointerOnBoard(e);
+        var h = R.hexAt(state.grid, p.x, p.y);
+        if (hoverHex && hoverHex.q === h.q && hoverHex.r === h.r) return;
+        hoverHex = h;
+        updateReach();
+      });
+      life.on(stage, 'pointerleave', function () { hoverHex = null; updateReach(); });
+      life.on(reachBox, 'change', function () { queuePlayerSync(); });
       function drawFog() {
         var s = sizeCanvas(fogCanvas);
         if (!state.fog.enabled) return;
@@ -410,6 +454,7 @@
       var tokenEls = {};
       function renderTokens() {
         queuePlayerSync();
+        updateReach();
         var spots = R.layoutTokens(state, board, drag ? drag.anchorId : (walking ? walking.drag.anchorId : null));
         state.tokens.forEach(function (t) {
           var node = tokenEls[t.id];
@@ -428,6 +473,7 @@
       }
 
       function updateTravelUI() {
+        updateReach();
         queuePlayerSync();
         var focus = R.focusToken(state, focusId);
         var limit = R.dayLimit(state);
@@ -530,6 +576,7 @@
         layout();
         drawGrid();
         drawFog();
+        drawReach();
         renderPins();
         renderTokens();
       }
@@ -2637,6 +2684,7 @@
       /* For the tests. */
       ns.debug = {
         walking: function () { return !!walking; },
+        reach: function () { return { reach: reachNow ? JSON.parse(JSON.stringify(reachNow)) : null, target: reachTgt ? JSON.parse(JSON.stringify(reachTgt)) : null, tv: pvReach() }; },
         setScene: function (card) { setPvScene(card); },
         showWord: function (news) { return showEvents([{ kind: 'word', news: news }]); },
         deck: function () { return deckDebug; },

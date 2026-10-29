@@ -4360,3 +4360,10 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **Esc now puts the heroes down** (clears the pick) when nothing else is going on, because a click on empty map is a move order while Click to move is on. With it off, a click on empty map clears the pick as before.
 - **Left alone:** no terrain (a straight line can cross sea and mountains, as dragging can); the reach highlight (next change).
 
+### EXP-WALK-02 · Explorer: the reach, where the picked party can go today (29 October 2026)
+- **New:** with heroes picked and Click to move on, the hexes the party can still reach today are tinted green on the DM's map, and the hex under the DM's pointer is picked out in gold with its cost ("18 mi") when the party could go there, or outlined red ("too far") when it could not. **The TV shows the same tint and the picked hex by default**; the **Show reach to players** tick box in the map's toolbar switches the TV's copy off (the DM's map keeps its own).
+- **What it is:** every hex within n of the party's hex, where n is the miles the most-travelled picked hero has left, over 6 (`R.reachFor`; the same limit a drag or a walk is held to). Exactly the furthest hex in reach can be walked to, and one more is "too far" (tested). Hexes off the map picture are left out. It is drawn above the fog, so the DM and the players see the reach even over unexplored ground (no terrain is shown).
+- **It goes** while the party walks (and comes back round the new hex when it arrives), when the heroes are put down (Esc), with Free Move on, with Click to move off, for a tired hero, and when less than one hex is left.
+- **What goes to the TV:** only whole numbers (the middle hex, how many hexes out, and the picked hex): nothing else.
+- **Left alone:** the pointer must be over the map to pick a hex; there is no path preview line yet.
+
