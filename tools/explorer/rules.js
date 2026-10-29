@@ -82,6 +82,7 @@
       travel: R.defaultTravel(),
       grid: { enabled: true, r: 38, offsetX: 0, offsetY: 0, opacity: 0.35, locked: false },
       gridByMap: {},
+      terrainByMap: {},
       fog: { enabled: false, revealedByMapKey: {} },
       tokens: data.heroes.map(function (h, i) {
         return {
@@ -118,6 +119,7 @@
       travel: TSI.clone(state.travel),
       grid: TSI.clone(state.grid),
       gridByMap: byMap,
+      terrainByMap: TSI.clone(state.terrainByMap || {}),
       fog: TSI.clone(state.fog),
       tokens: state.tokens.map(function (t) {
         return { id: t.id, name: t.name, initial: t.initial, x: t.x, y: t.y, size: t.size, groupId: t.groupId || null, milesUsed: t.milesUsed };
@@ -176,6 +178,17 @@
         state.gridByMap[key] = {
           r: R.clamp(num(g.r, 38), 10, 220), offsetX: num(g.offsetX, 0), offsetY: num(g.offsetY, 0), locked: g.locked === true
         };
+      });
+    }
+    if (isObj(saved.terrainByMap)) {
+      Object.keys(saved.terrainByMap).forEach(function (key) {
+        var cells = saved.terrainByMap[key];
+        if (!isObj(cells) || !/^(preset|upload):/.test(key)) return;
+        var clean = {}, n = 0;
+        Object.keys(cells).forEach(function (c) {
+          if (n < 20000 && /^-?\d{1,4},-?\d{1,4}$/.test(c) && typeof cells[c] === 'string' && /^[a-z_]{1,30}$/.test(cells[c]) && cells[c] !== 'open') { clean[c] = cells[c]; n++; }
+        });
+        if (n) state.terrainByMap[key] = clean;
       });
     }
     /* Older saves had one hex size for everything: it now belongs to the map that was open. */
@@ -480,6 +493,87 @@
     return { ok: true, r: state.grid.r };
   };
 
+  /* ---------- Terrain painted on the hexes (29 October 2026) ---------- */
+  /* Each map has its own painted hexes, filed by the hex's place on the grid ("q,r"), so the grid's size and position are locked
+     while painting (a locked hex size is what keeps the painting lined up with the picture). A hex with nothing painted is open
+     land: 6 miles. data/hex-terrain-data.js lists the kinds, each with a cost multiplier, or null for "cannot be crossed". */
+  R.terrainKinds = function () { return (window.TSI_DATA && window.TSI_DATA.hexTerrain && window.TSI_DATA.hexTerrain.kinds) || []; };
+  R.terrainKind = function (id) {
+    var k = R.terrainKinds();
+    for (var i = 0; i < k.length; i++) if (k[i].id === id) return k[i];
+    return null;
+  };
+  R.terrainStore = function (state, create) {
+    var key = R.mapKey(state);
+    if (key === 'none') return null;
+    if (!isObj(state.terrainByMap)) state.terrainByMap = {};
+    if (!state.terrainByMap[key]) { if (!create) return null; state.terrainByMap[key] = {}; }
+    return state.terrainByMap[key];
+  };
+  R.terrainAt = function (state, q, r) {
+    var st = R.terrainStore(state, false);
+    return (st && st[q + ',' + r]) || 'open';
+  };
+  R.terrainCount = function (state) {
+    var st = R.terrainStore(state, false);
+    return st ? Object.keys(st).length : 0;
+  };
+  /* Painting needs a map and a locked hex size. */
+  R.canPaint = function (state) { return R.mapKey(state) !== 'none' && !!state.grid.locked; };
+  /* Paint hexes with a kind ('open' wipes them). Returns how many changed. */
+  R.paintHexes = function (state, hexes, kindId) {
+    if (!R.canPaint(state)) return 0;
+    if (kindId !== 'open' && !R.terrainKind(kindId)) return 0;
+    var st = R.terrainStore(state, true);
+    var changed = 0;
+    hexes.forEach(function (h) {
+      var key = h.q + ',' + h.r;
+      if (kindId === 'open') { if (key in st) { delete st[key]; changed++; } }
+      else if (st[key] !== kindId) { st[key] = kindId; changed++; }
+    });
+    if (!Object.keys(st).length) delete state.terrainByMap[R.mapKey(state)];
+    return changed;
+  };
+  R.clearTerrain = function (state) {
+    if (isObj(state.terrainByMap)) delete state.terrainByMap[R.mapKey(state)];
+  };
+  /* The painted hexes as [q, r, kind] triples (what the TV is sent). */
+  R.terrainCells = function (state) {
+    var st = R.terrainStore(state, false);
+    return st ? Object.keys(st).map(function (k) { var p = k.split(','); return [Number(p[0]), Number(p[1]), st[k]]; }) : [];
+  };
+  /* Miles to walk into one hex: 6 for open land, 6 times the kind's multiplier, Infinity where nobody can go. */
+  R.hexMiles = function (state, q, r) {
+    var kind = R.terrainKind(R.terrainAt(state, q, r));
+    if (!kind) return R.MILES_PER_HEX;
+    if (kind.cost === null) return Infinity;
+    return R.MILES_PER_HEX * kind.cost;
+  };
+  /* The straight line from hex a to hex b (the way a walk goes): { steps: [{ q, r, miles }], miles, blockedAt: { q, r, kind } | null }.
+     ignoreTerrain (Free Move) charges 6 a hex and blocks nothing, as it always has. */
+  R.routeMiles = function (state, a, b, ignoreTerrain) {
+    var line = R.hexLine(a, b).slice(1);
+    var steps = [], miles = 0, blockedAt = null;
+    line.forEach(function (h) {
+      var m = ignoreTerrain ? R.MILES_PER_HEX : R.hexMiles(state, h.q, h.r);
+      if (m === Infinity) { if (!blockedAt) blockedAt = { q: h.q, r: h.r, kind: R.terrainAt(state, h.q, h.r) }; m = R.MILES_PER_HEX; }
+      steps.push({ q: h.q, r: h.r, miles: m });
+      miles += m;
+    });
+    return { steps: steps, miles: miles, blockedAt: blockedAt };
+  };
+  /* The cheapest a single hex can cost on this map (for how far to look when working out the reach). */
+  R.cheapestHexMiles = function (state) {
+    var cheapest = R.MILES_PER_HEX;
+    var st = R.terrainStore(state, false);
+    if (!st) return cheapest;
+    Object.keys(st).forEach(function (k) {
+      var kind = R.terrainKind(st[k]);
+      if (kind && kind.cost !== null) cheapest = Math.min(cheapest, R.MILES_PER_HEX * kind.cost);
+    });
+    return cheapest;
+  };
+
   R.fogStore = function (state) {
     if (!isObj(state.fog)) state.fog = { enabled: false, revealedByMapKey: {} };
     if (!isObj(state.fog.revealedByMapKey)) state.fog.revealedByMapKey = {};
@@ -700,7 +794,9 @@
     var destAx = R.hexAt(state.grid, dest.x, dest.y);
     var total = R.hexDistance(drag.startAxial, destAx);
     if (total === 0) return { ok: false, reason: 'here', miles: 0 };
-    var miles = total * R.MILES_PER_HEX;
+    var route = R.routeMiles(state, drag.startAxial, destAx, !!state.freeMove);
+    if (route.blockedAt && !state.freeMove) return { ok: false, reason: 'blocked', miles: 0, at: route.blockedAt };
+    var miles = route.miles;
     var cut = null;
     if (!state.freeMove) {
       var limit = R.dayLimit(state);
@@ -716,8 +812,10 @@
       var base = journeyRules().baseLimit(state);
       var startMiles = Number(anchor.milesUsed) || 0;
       if (travel.travelEventDay !== dayNow && !busy && startMiles < base) {
+        var cum = 0;
         for (var k = 1; k <= total; k++) {
-          if (Math.min(startMiles + k * R.MILES_PER_HEX, base) >= travel.nextTravelEventAtMiles) { cut = k; break; }
+          cum += route.steps[k - 1].miles;
+          if (Math.min(startMiles + cum, base) >= travel.nextTravelEventAtMiles) { cut = k; break; }
         }
       }
     }
@@ -733,7 +831,7 @@
       end = cut === null ? { x: dest.x, y: dest.y } : R.pointAfterHexes(state, board, drag, from, dest, hexes);
       path = [from, end];
     }
-    return { ok: true, snap: snap, from: from, path: path, end: end, endAx: endAx, hexes: hexes, cutAt: cut, miles: hexes * R.MILES_PER_HEX };
+    return { ok: true, snap: snap, from: from, path: path, end: end, endAx: endAx, hexes: hexes, cutAt: cut, miles: route.steps.slice(0, hexes).reduce(function (sum, st) { return sum + st.miles; }, 0) };
   };
 
   /* How far along a path of points a walker is after travelling `dist` (board units); the end once it has gone the lot. */
@@ -771,10 +869,21 @@
       var t = R.token(state, id);
       if (t) used = Math.max(used, Number(t.milesUsed) || 0);
     });
-    var n = Math.floor((R.dayLimit(state) - used) / R.MILES_PER_HEX);
+    var remaining = R.dayLimit(state) - used;
+    var n = Math.floor(remaining / R.cheapestHexMiles(state));
     if (!(n >= 1)) return null;
     var hex = R.tokenHex(state, board, anchor);
-    return { q: hex.q, r: hex.r, n: Math.min(n, 12) };
+    var reach = { q: hex.q, r: hex.r, n: Math.min(n, 12) };
+    /* With terrain painted, the reach is the hexes the straight line to which costs no more than what is left. */
+    if (R.terrainCount(state)) {
+      reach.cells = [];
+      R.hexesWithin(hex.q, hex.r, reach.n).forEach(function (h) {
+        var rt = R.routeMiles(state, hex, h, false);
+        if (!rt.blockedAt && rt.miles <= remaining) reach.cells.push({ q: h.q, r: h.r, miles: rt.miles });
+      });
+      if (!reach.cells.length) return null;
+    }
+    return reach;
   };
   /* Every hex within n of (q, r), the middle one left out. */
   R.hexesWithin = function (q, r, n) {
@@ -788,9 +897,21 @@
     return out;
   };
   /* Is this hex somewhere the reach goes, and what would it cost? */
-  R.reachTarget = function (reach, hex) {
+  R.reachTarget = function (reach, hex, state) {
     if (!reach || !hex) return null;
     var d = R.hexDistance({ q: reach.q, r: reach.r }, hex);
+    if (reach.cells) {
+      for (var i = 0; i < reach.cells.length; i++) {
+        var c = reach.cells[i];
+        if (c.q === hex.q && c.r === hex.r) return { hex: { q: hex.q, r: hex.r }, hexes: d, miles: c.miles, inReach: true, blocked: false };
+      }
+      var out = { hex: { q: hex.q, r: hex.r }, hexes: d, miles: d * R.MILES_PER_HEX, inReach: false, blocked: false };
+      if (state) {
+        var rt = R.routeMiles(state, { q: reach.q, r: reach.r }, hex, false);
+        out.miles = rt.miles; out.blocked = !!rt.blockedAt;
+      }
+      return out;
+    }
     return { hex: { q: hex.q, r: hex.r }, hexes: d, miles: d * R.MILES_PER_HEX, inReach: d >= 1 && d <= reach.n };
   };
 
@@ -855,8 +976,10 @@
     var anchor = R.token(state, drag.anchorId);
     if (!anchor || !drag.startAxial) return { result: 'none', miles: 0, open: null };
     var endAx = R.tokenHex(state, board, anchor);
-    var miles = Math.round(R.hexDistance(drag.startAxial, endAx) * R.MILES_PER_HEX);
+    var route = R.routeMiles(state, drag.startAxial, endAx, !!state.freeMove);
+    var miles = Math.round(route.miles);
     if (state.freeMove) return { result: 'free', miles: miles, open: null };
+    if (route.blockedAt) return { result: 'blocked', miles: 0, open: null, at: route.blockedAt };
 
     var limit = R.dayLimit(state);
     /* Where the grabbed hero started: the day's road roll only counts a

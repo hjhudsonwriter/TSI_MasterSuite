@@ -94,7 +94,7 @@
         name: 'ScarlettExplorerPlayers',
         keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
-        getState: function () { return R.playerSnapshot(state, DATA, { atlas: pvAtlas, view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, dim: pvDim(), camp: pvCamp, scene: pvScene, word: pvWord, reach: pvReach() }); },
+        getState: function () { return R.playerSnapshot(state, DATA, { atlas: pvAtlas, view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, dim: pvDim(), camp: pvCamp, scene: pvScene, word: pvWord, reach: pvReach(), terrain: pvTerrain() }); },
         onStatus: function (st) {
           pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvStatus.classList.toggle('is-connected', st === 'connected');
@@ -121,8 +121,9 @@
       var reachNow = null, reachTgt = null, reachKey = '', hoverHex = null;
       function pvReach() {
         if (!reachNow || !reachBox || !reachBox.checked) return null;
-        return { q: reachNow.q, r: reachNow.r, n: reachNow.n, target: reachTgt && reachTgt.inReach ? [reachTgt.hex.q, reachTgt.hex.r] : null };
+        return { q: reachNow.q, r: reachNow.r, n: reachNow.n, cells: reachNow.cells, target: reachTgt && reachTgt.inReach ? [reachTgt.hex.q, reachTgt.hex.r] : null };
       }
+      function pvTerrain() { return terrainBox.checked ? R.terrainCells(state) : null; }
       function setPvScene(card) { pvScene = card || null; queuePlayerSync(); }
       /* The next card's picture or clip, named on its own (never in the snapshot) so the players' window can have it ready. */
       function pvPreload(kind, src) { if (src && pvLink.isConnected()) pvLink.send('preload', { kind: kind === 'video' ? 'video' : 'image', src: String(src) }); }
@@ -189,6 +190,15 @@
       reachBox.checked = true;
       var reachRow = el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-reach-on' }, [reachBox, el('span', { text: 'Show reach to players' })]);
       zoomBox.appendChild(reachRow);
+      /* Terrain painted on the hexes (29 October 2026): costs miles, can block the way. Seen by the players only if ticked. */
+      var terrainEdit = false, terrainBrush = 'forest', terrainStroke = null;
+      var btnTerrain = btn('Edit terrain: Off', function () { toggleTerrainEdit(); }, 'tsi-exp-zoom', 'terrain-edit');
+      btnTerrain.title = 'Paint forests, hills, roads and so on onto the hexes. They change what a hex costs to cross, and some stop the party.';
+      var terrainBox = el('input', { type: 'checkbox', id: 'tsi-exp-terrain-on', 'data-test': 'terrain-show' });
+      var terrainRow = el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-terrain-on' }, [terrainBox, el('span', { text: 'Show terrain to players' })]);
+      zoomBox.appendChild(btnTerrain);
+      zoomBox.appendChild(terrainRow);
+      var terrainPanel = el('div', { class: 'tsi-exp-terrainpanel', hidden: true, 'data-test': 'terrain-panel' });
       var btnAtlas = btn('Show Scarlett Isles map to players', function () {
         pvAtlas = !pvAtlas;
         btnAtlas.textContent = pvAtlas ? 'Hide Scarlett Isles map from players' : 'Show Scarlett Isles map to players';
@@ -214,7 +224,18 @@
         btn('▼', function () { nudge(0, 2); }, 'tsi-exp-arrow', 'nudge-down'),
         btn('▶', function () { nudge(2, 0); }, 'tsi-exp-arrow', 'nudge-right')
       ];
-      var btnLockGrid = btn('Lock hex', function () { state.grid.locked = !state.grid.locked; saveNow(); renderAll(); }, '', 'grid-lock');
+      var btnLockGrid = btn('Lock hex', function () {
+        if (state.grid.locked && R.terrainCount(state)) {
+          ask('This map has painted terrain. If you change the hex size or move the grid, the terrain will no longer line up with the picture. Unlock anyway?', 'Unlock').then(function (ok) {
+            if (!ok) return;
+            setTerrainEdit(false);
+            state.grid.locked = false; saveNow(); renderAll();
+          });
+          return;
+        }
+        if (state.grid.locked) setTerrainEdit(false);
+        state.grid.locked = !state.grid.locked; saveNow(); renderAll();
+      }, '', 'grid-lock');
       var provinceSelect = el('select', { class: 'tsi-input tsi-exp-select', 'aria-label': 'Region', 'data-test': 'region' }, DATA.provinces.map(function (p) {
         return el('option', { value: p.id, text: p.label });
       }));
@@ -267,11 +288,12 @@
       var gridCanvas = el('canvas', { class: 'tsi-exp-canvas tsi-exp-canvas--grid' });
       var pinLayer = el('div', { class: 'tsi-exp-pins' });
       var fogCanvas = el('canvas', { class: 'tsi-exp-canvas tsi-exp-canvas--fog' });
+      var terrainCanvas = el('canvas', { class: 'tsi-exp-canvas tsi-exp-canvas--terrain', 'data-test': 'terrain-canvas' });
       var reachCanvas = el('canvas', { class: 'tsi-exp-canvas tsi-exp-canvas--reach', 'data-test': 'reach-canvas' });
       var tokenLayer = el('div', { class: 'tsi-exp-world tsi-exp-world--tokens' });
       var marquee = el('div', { class: 'tsi-exp-marquee', hidden: true });
       var showUi = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-showui', hidden: true, 'data-test': 'show-ui', onclick: function () { setUiHidden(false); } }, 'Show UI');
-      var stage = el('div', { class: 'tsi-exp-stage' }, [mapLayer, video, gridCanvas, pinLayer, fogCanvas, reachCanvas, tokenLayer, marquee, showUi, zoomBox]);
+      var stage = el('div', { class: 'tsi-exp-stage' }, [mapLayer, video, gridCanvas, terrainCanvas, pinLayer, fogCanvas, reachCanvas, tokenLayer, marquee, showUi, zoomBox, terrainPanel]);
 
       /* The travel panel. */
       var dayLabel = el('strong', { class: 'tsi-exp-day', text: 'Day 1', 'data-test': 'day' });
@@ -401,6 +423,10 @@
       /* Fog: the whole map area dark, with the uncovered hexes cut out. Only
          plain fills are drawn here, never a picture (tools/explorer/draw.js,
          which the Player View draws with too). */
+      function drawTerrain() {
+        var s = sizeCanvas(terrainCanvas);
+        ns.draw.terrain(s.ctx, s.w, s.h, view, state.grid, R.terrainCells(state), board);
+      }
       function drawReach() {
         var s = sizeCanvas(reachCanvas);
         if (reachNow) ns.draw.reach(s.ctx, s.w, s.h, view, state.grid, reachNow, reachTgt, true, board);
@@ -413,8 +439,8 @@
       }
       function updateReach() {
         var reach = currentReach();
-        var tgt = reach && hoverHex ? R.reachTarget(reach, hoverHex) : null;
-        var key = reach ? [reach.q, reach.r, reach.n, tgt ? tgt.hex.q + ',' + tgt.hex.r + ',' + tgt.inReach : ''].join('|') : '';
+        var tgt = reach && hoverHex ? R.reachTarget(reach, hoverHex, state) : null;
+        var key = reach ? [reach.q, reach.r, reach.n, tgt ? tgt.hex.q + ',' + tgt.hex.r + ',' + tgt.inReach + ',' + tgt.miles : '', reach.cells ? reach.cells.length : '-'].join('|') : '';
         reachNow = reach;
         reachTgt = tgt;
         if (key === reachKey) return;
@@ -432,6 +458,7 @@
       });
       life.on(stage, 'pointerleave', function () { hoverHex = null; updateReach(); });
       life.on(reachBox, 'change', function () { queuePlayerSync(); });
+      life.on(terrainBox, 'change', function () { queuePlayerSync(); });
       function drawFog() {
         var s = sizeCanvas(fogCanvas);
         if (!state.fog.enabled) return;
@@ -586,6 +613,7 @@
         queuePlayerSync();
         layout();
         drawGrid();
+        drawTerrain();
         drawFog();
         drawReach();
         renderPins();
@@ -606,6 +634,7 @@
         if (!id) { note('Pick a map from the dropdown first.'); return; }
         var res = R.loadPreset(state, DATA, id);
         if (!res) { note('Preset map not found.'); return; }
+        setTerrainEdit(false);
         dropUpload();
         zoomFit();
         layout();
@@ -640,6 +669,7 @@
             state.mapAspect = probe.naturalWidth && probe.naturalHeight ? probe.naturalWidth / probe.naturalHeight : null;
             state.mapPresetId = null;
             R.applyMapGrid(state);
+            setTerrainEdit(false);
             ctx.store.set('mapImage', { dataUrl: dataUrl, key: key, name: file.name });
             viewZoom = 1; viewCx = 0.5; viewCy = 0.5;
             saveNow();
@@ -836,9 +866,95 @@
       var box = null;
       var pan = null;
       var prevSelection = new Set();   /* who was picked before this click, so a click that is a move order does not lose them */
+      /* ---------- Painting terrain ---------- */
+      function buildTerrainPanel() {
+        TSI.clear(terrainPanel);
+        terrainPanel.appendChild(el('div', { class: 'tsi-exp-terrainpanel__title', text: 'Terrain brush' }));
+        R.terrainKinds().forEach(function (k) {
+          var b = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-terrainbtn', 'data-test': 'terrain-brush-' + k.id, 'aria-pressed': terrainBrush === k.id ? 'true' : 'false',
+            onclick: function () { terrainBrush = k.id; buildTerrainPanel(); } }, [
+            el('span', { class: 'tsi-exp-terrainchip', style: 'background:' + k.colour }),
+            el('span', { text: k.label }),
+            el('span', { class: 'tsi-exp-terraincost', text: k.cost === null ? 'blocked' : '×' + k.cost })
+          ]);
+          if (terrainBrush === k.id) b.classList.add('is-on');
+          terrainPanel.appendChild(b);
+        });
+        var erase = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-terrainbtn' + (terrainBrush === 'open' ? ' is-on' : ''), 'data-test': 'terrain-brush-open', 'aria-pressed': terrainBrush === 'open' ? 'true' : 'false',
+          onclick: function () { terrainBrush = 'open'; buildTerrainPanel(); } }, [el('span', { class: 'tsi-exp-terrainchip tsi-exp-terrainchip--erase' }), el('span', { text: 'Erase (open land)' }), el('span', { class: 'tsi-exp-terraincost', text: '×1' })]);
+        terrainPanel.appendChild(erase);
+        terrainPanel.appendChild(row([
+          btn('Clear all terrain', function () {
+            if (!R.terrainCount(state)) return;
+            ask('Remove every painted hex from this map?', 'Clear').then(function (ok) {
+              if (!ok) return;
+              R.clearTerrain(state); saveNow(); drawTerrain(); updateReach();
+            });
+          }, '', 'terrain-clear'),
+          btn('Done', function () { setTerrainEdit(false); }, 'tsi-btn--primary', 'terrain-done')
+        ]));
+        terrainPanel.appendChild(el('div', { class: 'tsi-exp-terrainpanel__hint', text: 'Click or drag over the hexes. Mountains and water cannot be crossed.' }));
+      }
+      function setTerrainEdit(on) {
+        on = !!on;
+        if (terrainEdit === on) return;
+        terrainEdit = on;
+        terrainStroke = null;
+        terrainPanel.hidden = !on;
+        stage.classList.toggle('tsi-exp-stage--painting', on);
+        btnTerrain.textContent = 'Edit terrain: ' + (on ? 'On' : 'Off');
+        setOn(btnTerrain, on);
+        if (on) { selected.clear(); buildTerrainPanel(); renderTokens(); updateTravelUI(); }
+        updateReach();
+      }
+      function toggleTerrainEdit() {
+        if (terrainEdit) { setTerrainEdit(false); return; }
+        if (R.mapKey(state) === 'none') { note('Load a map first, then paint its terrain.'); return; }
+        if (walking || drag) return;
+        if (!state.grid.locked) {
+          ask('Painted terrain is tied to the hex grid, so the hex size has to be locked first, otherwise the painting would slide off the picture. Lock the hex size now?', 'Lock and paint').then(function (ok) {
+            if (!ok) return;
+            state.grid.locked = true; saveNow(); renderAll(); setTerrainEdit(true);
+          });
+          return;
+        }
+        setTerrainEdit(true);
+      }
+      function paintAt(e) {
+        var p = pointerOnBoard(e);
+        var h = R.hexAt(state.grid, p.x, p.y);
+        var from = terrainStroke && terrainStroke.last;
+        var line = from ? R.hexLine(from, h) : [h];
+        var changed = R.paintHexes(state, line.filter(function (x) {
+          var b = R.axialToPixel(state.grid, x.q, x.r);
+          return b.x >= 0 && b.x <= board.w && b.y >= 0 && b.y <= board.h;
+        }), terrainBrush);
+        if (terrainStroke) terrainStroke.last = h;
+        if (changed) { terrainStroke.changed = true; drawTerrain(); }
+      }
+      life.on(stage, 'pointerdown', function (e) {
+        if (!terrainEdit || e.button !== 0) return;
+        if (e.target.closest('.tsi-exp-showui') || e.target.closest('.tsi-exp-zoombox') || e.target.closest('.tsi-exp-terrainpanel')) return;
+        e.stopImmediatePropagation();
+        try { stage.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+        terrainStroke = { last: null, changed: false };
+        paintAt(e);
+      }, true);
+      life.on(stage, 'pointermove', function (e) {
+        if (terrainStroke && (e.buttons & 1)) paintAt(e);
+      }, true);
+      function endTerrainStroke() {
+        if (!terrainStroke) return;
+        var changed = terrainStroke.changed;
+        terrainStroke = null;
+        if (changed) { saveNow(); updateReach(); }
+      }
+      life.on(stage, 'pointerup', endTerrainStroke);
+      life.on(stage, 'pointercancel', endTerrainStroke);
+
       life.on(stage, 'pointerdown', function (e) {
         if (e.button !== 0) return;
-        if (e.target.closest('.tsi-exp-token') || e.target.closest('.tsi-exp-pin') || e.target.closest('.tsi-exp-showui') || e.target.closest('.tsi-exp-zoombox')) return;
+        if (e.target.closest('.tsi-exp-token') || e.target.closest('.tsi-exp-pin') || e.target.closest('.tsi-exp-showui') || e.target.closest('.tsi-exp-zoombox') || e.target.closest('.tsi-exp-terrainpanel')) return;
         if (pickXY) { pickAt(e); return; }
         if (walking) { stopWalk(); return; }
         prevSelection = new Set(selected);
@@ -954,6 +1070,10 @@
         if (state.fog.enabled) { R.revealAroundFocus(state, board, focusId); drawFog(); }
       });
 
+      function blockedText(at) {
+        var kind = at && R.terrainKind(at.kind);
+        return 'The way is blocked: ' + (kind ? kind.label.replace(/ \(impassable\)/, '').toLowerCase() : 'impassable ground') + ' in the path. The party can\'t cross it.';
+      }
       function endDrag() {
         if (!drag) return;
         var d = drag;
@@ -973,6 +1093,12 @@
           /* Nobody moves; the fog it uncovered stays uncovered (E13). */
           R.undoDrag(state, d);
           setNotice('Too far. One or more heroes would exceed ' + R.dayLimit(state) + ' miles. Make Camp to reset.');
+          renderAll();
+          return;
+        }
+        if (res.result === 'blocked') {
+          R.undoDrag(state, d);
+          setNotice(blockedText(res.at));
           renderAll();
           return;
         }
@@ -1002,6 +1128,7 @@
         var plan = R.walkPlan(state, board, d, point, rand);
         if (!plan.ok) {
           if (plan.reason === 'tooFar') setNotice('Too far. That is ' + plan.miles + ' miles, and one or more heroes would exceed ' + R.dayLimit(state) + ' miles. Make Camp to reset.');
+          else if (plan.reason === 'blocked') setNotice(blockedText(plan.at));
           else if (plan.reason === 'tired') setNotice(R.token(state, anchorId).initial + ' has reached ' + R.dayLimit(state) + ' miles. Make Camp to reset.');
           return false;
         }
@@ -2708,6 +2835,7 @@
       /* For the tests. */
       ns.debug = {
         walking: function () { return !!walking; },
+        terrain: function () { return { editing: terrainEdit, brush: terrainBrush, count: R.terrainCount(state), tv: pvTerrain(), pixels: (function () { var c = terrainCanvas.getContext('2d'); var g = c.getImageData(0, 0, terrainCanvas.width, terrainCanvas.height).data; var n = 0; for (var i = 3; i < g.length; i += 4) if (g[i] > 8) n++; return n; }()) }; },
         reach: function () { return { reach: reachNow ? JSON.parse(JSON.stringify(reachNow)) : null, target: reachTgt ? JSON.parse(JSON.stringify(reachTgt)) : null, tv: pvReach() }; },
         setScene: function (card) { setPvScene(card); },
         showWord: function (news) { return showEvents([{ kind: 'word', news: news }]); },
@@ -2743,6 +2871,12 @@
         selected: function () { return Array.from(selected); },
         toScreen: function (bx, by) {
           var p = R.toScreen(view, bx, by);
+          var rect = stage.getBoundingClientRect();
+          return { x: rect.left + p.x, y: rect.top + p.y };
+        },
+        hexScreen: function (q, r) {
+          var b = R.axialToPixel(state.grid, q, r);
+          var p = R.toScreen(view, b.x, b.y);
           var rect = stage.getBoundingClientRect();
           return { x: rect.left + p.x, y: rect.top + p.y };
         },

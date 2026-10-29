@@ -169,6 +169,8 @@ window.TSI_DATA.tools = [
         'tools/explorer/data/journey-events.js',
         'tools/explorer/data/fights-data.js',
         'tools/explorer/data/terrain-data.js',
+        /* The terrain the DM can paint on the hexes (29 October 2026). */
+        'tools/explorer/data/hex-terrain-data.js',
         /* The Bastion's creatures (pull request 7): the kinds the DM can
            grant in the Explorer, and their names. */
         'tools/bastion/data/creatures-data.js',
@@ -189,7 +191,7 @@ window.TSI_DATA.tools = [
     playerViews: {
       explorer: {
         css: ['tools/explorer/player-view.css'],
-        js: ['tools/explorer/rules.js', 'tools/explorer/draw.js', 'shared/js/pointer-mirror.js', 'tools/explorer/player-view.js']
+        js: ['tools/explorer/data/hex-terrain-data.js', 'tools/explorer/rules.js', 'tools/explorer/draw.js', 'shared/js/pointer-mirror.js', 'tools/explorer/player-view.js']
       }
     }
   },

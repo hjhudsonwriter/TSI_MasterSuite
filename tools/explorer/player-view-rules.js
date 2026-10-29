@@ -91,7 +91,24 @@
     var q = Math.round(num(Number(raw.q), NaN)), r = Math.round(num(Number(raw.r), NaN)), n = Math.round(num(Number(raw.n), 0));
     if (!isFinite(q) || !isFinite(r) || !(n >= 1)) return null;
     var t = Array.isArray(raw.target) && raw.target.length === 2 && isFinite(Number(raw.target[0])) && isFinite(Number(raw.target[1])) ? [Math.round(Number(raw.target[0])), Math.round(Number(raw.target[1]))] : null;
-    return { q: q, r: r, n: Math.min(n, 12), target: t };
+    var out = { q: q, r: r, n: Math.min(n, 12), target: t };
+    /* With terrain painted the reach is a list of hexes, not a circle. */
+    if (Array.isArray(raw.cells)) {
+      out.cells = raw.cells.slice(0, 600).filter(function (c) { return c && isFinite(Number(c.q)) && isFinite(Number(c.r)); }).map(function (c) { return { q: Math.round(Number(c.q)), r: Math.round(Number(c.r)), miles: 0 }; });
+    }
+    return out;
+  };
+
+  /* The painted terrain, cleaned: at most 4000 hexes, each a whole-number place and a kind the data file knows. null when none. */
+  R.cleanTerrain = function (raw) {
+    if (!Array.isArray(raw) || !raw.length) return null;
+    var out = [];
+    for (var i = 0; i < raw.length && out.length < 4000; i++) {
+      var c = raw[i];
+      if (!Array.isArray(c) || c.length !== 3 || !isFinite(Number(c[0])) || !isFinite(Number(c[1])) || !R.terrainKind(String(c[2]))) continue;
+      out.push([Math.round(Number(c[0])), Math.round(Number(c[1])), String(c[2])]);
+    }
+    return out.length ? out : null;
   };
 
   /* "The Ironbow sends word…", cleaned: at most six days of at most twelve lines each, text only. */
@@ -125,7 +142,7 @@
     };
   };
 
-  /* extras: { atlas: true to show the Scarlett Isles map panel, view: the DM's visible region ({ x0, y0, x1, y1 }) or none, pin: a marker's id or null, dim: 'none' | 'night' | 'event', camp: a whole number, scene: a scene card (see R.cleanScene) or null, word: the Ironbow's word (see R.cleanWord) or null, reach: the party's reach (see R.cleanReach) or null }. */
+  /* extras: { atlas: true to show the Scarlett Isles map panel, view: the DM's visible region ({ x0, y0, x1, y1 }) or none, pin: a marker's id or null, dim: 'none' | 'night' | 'event', camp: a whole number, scene: a scene card (see R.cleanScene) or null, word: the Ironbow's word (see R.cleanWord) or null, reach: the party's reach (see R.cleanReach) or null, terrain: painted hexes as [q, r, kind] to show or null }. */
   R.playerSnapshot = function (s, data, extras) {
     extras = extras && typeof extras === 'object' ? extras : {};
     var limit = R.dayLimit(s);
@@ -194,7 +211,8 @@
       camp: camp,
       scene: R.cleanScene(extras.scene),
       word: R.cleanWord(extras.word),
-      reach: R.cleanReach(extras.reach)
+      reach: R.cleanReach(extras.reach),
+      terrain: R.cleanTerrain(extras.terrain)
     };
   };
 }());

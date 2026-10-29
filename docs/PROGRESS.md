@@ -1264,3 +1264,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 
 ## Explorer: hex size per map (29 October 2026)
 Step 3 of 4 of click-to-move (walk, reach, hex size, terrain). Each map saves its own hex size, with "Miles across this map" and a Lock hex button. Next: the terrain painter, which needs Harry's decision on what each terrain does (slows travel, blocks it, or sets which events can happen).
+
+
+## Explorer: terrain painter (29 October 2026)
+Step 4 of 4 of click-to-move (walk, reach, hex size, terrain). Edit terrain: brush palette, painted per map, saved, costs and blocking everywhere miles are counted, optional on the TV. Open for Harry: should terrain ever decide which events can happen; should the TV see terrain by default; route-finding round obstacles instead of straight lines.

@@ -117,7 +117,7 @@
 
   test('the snapshot has only the listed top-level fields, and survives a structured clone shape (plain JSON)', function (t) {
     var s = snap(busy());
-    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'dim', 'camp', 'atlas', 'reach', 'scene', 'tokens', 'word', 'v', 'view', 'weather'].sort());
+    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'dim', 'camp', 'atlas', 'reach', 'terrain', 'scene', 'tokens', 'word', 'v', 'view', 'weather'].sort());
     t.same(JSON.parse(JSON.stringify(s)), s);
   });
 
@@ -394,5 +394,19 @@
     t.equal(R.cleanReach({ q: 'x', r: 1, n: 3 }), null);
     t.equal(R.cleanReach('nope'), null);
     t.equal(R.cleanReach({ q: 1, r: 1, n: 99 }).n, 12);
+  });
+}());
+
+(function () {
+  var R = TSI.explorer.rules;
+  test('the TV\'s terrain and reach cells are cleaned: whole numbers, known kinds, a size limit', function (t) {
+    t.equal(R.cleanTerrain(null), null);
+    t.equal(R.cleanTerrain([]), null);
+    t.same(R.cleanTerrain([[1, 2, 'forest'], [3, 'x', 'forest'], [4, 5, 'lava'], 'junk', [6.4, 7.6, 'road']]), [[1, 2, 'forest'], [6, 8, 'road']]);
+    var many = []; for (var i = 0; i < 5000; i++) many.push([i, 0, 'forest']);
+    t.equal(R.cleanTerrain(many).length, 4000);
+    var c = R.cleanReach({ q: 1, r: 2, n: 5, cells: [{ q: 2, r: 2 }, { q: 'a', r: 1 }, null], target: null });
+    t.equal(c.cells.length, 1);
+    t.equal(R.cleanReach({ q: 1, r: 2, n: 5 }).cells, undefined);
   });
 }());
