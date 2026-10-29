@@ -31,6 +31,9 @@
      atlas: true/false,                    the DM has chosen to show the players the picture of the Scarlett Isles (their window opens its map panel)
      dim: 'none' | 'night' | 'event',     'event' while a campfire event is open in the DM's window: the map stays very dark
      camp: n                               how many times the DM has made camp; each new number fades the map out and in once
+     reach: null | { q, r, n, target: [q, r] | null }
+                                          where the party the DM has picked can go today (the hexes within n of hex q, r), and the hex the DM's
+                                          pointer is over if the party could reach it; shown tinted on the map (plain numbers only)
      word: null | [{ day, lines: [text, ...] }]
                                           "The Ironbow sends word…" while the DM has it open: the days and the lines exactly as the DM's window shows them
                                           (the DM's note under them, the Bastion's records and the parcels themselves stay with the DM)
@@ -82,6 +85,15 @@
     };
   };
 
+  /* The reach, cleaned: whole numbers only, or null. */
+  R.cleanReach = function (raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    var q = Math.round(num(Number(raw.q), NaN)), r = Math.round(num(Number(raw.r), NaN)), n = Math.round(num(Number(raw.n), 0));
+    if (!isFinite(q) || !isFinite(r) || !(n >= 1)) return null;
+    var t = Array.isArray(raw.target) && raw.target.length === 2 && isFinite(Number(raw.target[0])) && isFinite(Number(raw.target[1])) ? [Math.round(Number(raw.target[0])), Math.round(Number(raw.target[1]))] : null;
+    return { q: q, r: r, n: Math.min(n, 12), target: t };
+  };
+
   /* "The Ironbow sends word…", cleaned: at most six days of at most twelve lines each, text only. */
   R.cleanWord = function (raw) {
     if (!Array.isArray(raw) || !raw.length) return null;
@@ -113,7 +125,7 @@
     };
   };
 
-  /* extras: { atlas: true to show the Scarlett Isles map panel, view: the DM's visible region ({ x0, y0, x1, y1 }) or none, pin: a marker's id or null, dim: 'none' | 'night' | 'event', camp: a whole number, scene: a scene card (see R.cleanScene) or null, word: the Ironbow's word (see R.cleanWord) or null }. */
+  /* extras: { atlas: true to show the Scarlett Isles map panel, view: the DM's visible region ({ x0, y0, x1, y1 }) or none, pin: a marker's id or null, dim: 'none' | 'night' | 'event', camp: a whole number, scene: a scene card (see R.cleanScene) or null, word: the Ironbow's word (see R.cleanWord) or null, reach: the party's reach (see R.cleanReach) or null }. */
   R.playerSnapshot = function (s, data, extras) {
     extras = extras && typeof extras === 'object' ? extras : {};
     var limit = R.dayLimit(s);
@@ -181,7 +193,8 @@
       dim: dim,
       camp: camp,
       scene: R.cleanScene(extras.scene),
-      word: R.cleanWord(extras.word)
+      word: R.cleanWord(extras.word),
+      reach: R.cleanReach(extras.reach)
     };
   };
 }());

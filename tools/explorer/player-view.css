@@ -49,6 +49,7 @@
 .tsi-xpv-canvas--grid { z-index: 3; }
 .tsi-xpv-pins { position: absolute; inset: 0; z-index: 14; pointer-events: none; }
 .tsi-xpv-canvas--fog { z-index: 16; }
+.tsi-xpv-canvas--reach { z-index: 17; }
 .tsi-xpv-world--tokens { z-index: 18; }
 
 .tsi-xpv-pin { position: absolute; transform: translate(-50%, -100%); }

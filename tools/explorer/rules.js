@@ -700,6 +700,42 @@
   /* A walk is at a fixed pace: one hex in this many milliseconds, snapped or not. */
   R.WALK_MS_PER_HEX = 260;
 
+  /* ---------- Reach: where the picked party can go today (29 October 2026) ---------- */
+  /* The hexes the picked heroes can still reach today: every hex within n of the grabbed hero's hex, where n is the miles the
+     most-travelled of them has left, over 6 (the same limit a drag or a walk is held to). null when there is no limit (Free Move),
+     the grabbed hero is tired, or there is not a whole hex left. */
+  R.reachFor = function (state, board, ids, anchorId) {
+    if (state.freeMove) return null;
+    var anchor = R.token(state, anchorId);
+    if (!anchor || !R.canDrag(state, anchorId)) return null;
+    var used = 0;
+    (ids && ids.length ? ids : [anchorId]).forEach(function (id) {
+      var t = R.token(state, id);
+      if (t) used = Math.max(used, Number(t.milesUsed) || 0);
+    });
+    var n = Math.floor((R.dayLimit(state) - used) / R.MILES_PER_HEX);
+    if (!(n >= 1)) return null;
+    var hex = R.tokenHex(state, board, anchor);
+    return { q: hex.q, r: hex.r, n: Math.min(n, 12) };
+  };
+  /* Every hex within n of (q, r), the middle one left out. */
+  R.hexesWithin = function (q, r, n) {
+    var out = [];
+    for (var dq = -n; dq <= n; dq++) {
+      for (var dr = Math.max(-n, -dq - n); dr <= Math.min(n, -dq + n); dr++) {
+        if (dq === 0 && dr === 0) continue;
+        out.push({ q: q + dq, r: r + dr });
+      }
+    }
+    return out;
+  };
+  /* Is this hex somewhere the reach goes, and what would it cost? */
+  R.reachTarget = function (reach, hex) {
+    if (!reach || !hex) return null;
+    var d = R.hexDistance({ q: reach.q, r: reach.r }, hex);
+    return { hex: { q: hex.q, r: hex.r }, hexes: d, miles: d * R.MILES_PER_HEX, inReach: d >= 1 && d <= reach.n };
+  };
+
   /* A free drag: every dragged hero moves by the pointer's movement (board units). */
   R.dragFree = function (state, board, drag, dx, dy) {
     drag.starts.forEach(function (st) {

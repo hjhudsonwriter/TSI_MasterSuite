@@ -177,4 +177,63 @@
     t.same(R.tokenHex(p.s, p.b, R.token(p.s, a)), { q: 13, r: 7 });
     t.same(R.tokenHex(p.s, p.b, R.token(p.s, c)), { q: 14, r: 7 });
   });
+
+  group('Explorer: the reach (where the picked party can go today)');
+
+  function reach(p, ids) { return R.reachFor(p.s, p.b, ids || [p.s.tokens[0].id], (ids || [p.s.tokens[0].id])[0]); }
+
+  test('a fresh day reaches 5 hexes (30 miles at 6 a hex), from the hero\'s own hex', function (t) {
+    var p = party();
+    var r = reach(p);
+    t.same(r, { q: 10, r: 6, n: 5 });
+  });
+
+  test('the miles the most-travelled picked hero has used come off the reach', function (t) {
+    var p = party();
+    p.s.tokens[1].milesUsed = 13;       /* 17 left: two hexes (12) and a bit */
+    var ids = [p.s.tokens[0].id, p.s.tokens[1].id];
+    t.equal(reach(p, ids).n, 2);
+    t.equal(reach(p, [p.s.tokens[0].id]).n, 5, 'the others are not held back by one who has gone further');
+  });
+
+  test('no reach with Free Move, a tired hero, or less than a hex left', function (t) {
+    var p = party();
+    p.s.freeMove = true;
+    t.equal(reach(p), null);
+    var q = party();
+    q.s.tokens[0].milesUsed = R.dayLimit(q.s);
+    t.equal(reach(q), null);
+    var w = party();
+    w.s.tokens[0].milesUsed = R.dayLimit(w.s) - 5;
+    t.equal(reach(w), null);
+  });
+
+  test('the hexes within n number 3n(n+1), the middle one left out, and each is within reach', function (t) {
+    [1, 2, 5].forEach(function (n) {
+      var list = R.hexesWithin(4, -2, n);
+      t.equal(list.length, 3 * n * (n + 1));
+      t.ok(list.every(function (h) { var d = R.hexDistance({ q: 4, r: -2 }, h); return d >= 1 && d <= n; }));
+    });
+  });
+
+  test('a target hex says whether the party could go there and what it would cost', function (t) {
+    var rc = { q: 10, r: 6, n: 3 };
+    var near = R.reachTarget(rc, { q: 12, r: 6 });
+    t.equal(near.inReach, true);
+    t.equal(near.miles, 12);
+    t.equal(R.reachTarget(rc, { q: 14, r: 6 }).inReach, false);
+    t.equal(R.reachTarget(rc, { q: 10, r: 6 }).inReach, false, 'the hex the party is on is not a move');
+    t.equal(R.reachTarget(null, { q: 1, r: 1 }), null);
+  });
+
+  test('the reach matches what a walk allows: the furthest hex in reach is allowed, one more is too far', function (t) {
+    var p = party();
+    p.s.travel.travelEventDay = p.s.travel.day;
+    var r = reach(p);
+    var edge = plan(p, [10 + r.n, 6]).plan;
+    t.ok(edge.ok);
+    var beyond = plan(p, [10 + r.n + 1, 6]).plan;
+    t.equal(beyond.ok, false);
+    t.equal(beyond.reason, 'tooFar');
+  });
 }());

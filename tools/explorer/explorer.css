@@ -160,6 +160,7 @@
 .tsi-tool--explorer .tsi-exp-canvas--grid { z-index: 3; }
 .tsi-tool--explorer .tsi-exp-pins { position: absolute; inset: 0; z-index: 14; pointer-events: none; }
 .tsi-tool--explorer .tsi-exp-canvas--fog { z-index: 16; }
+.tsi-tool--explorer .tsi-exp-canvas--reach { z-index: 17; }
 .tsi-tool--explorer .tsi-exp-world--tokens { z-index: 18; }
 
 /* Town pins: the tip of the pin sits on the town. */

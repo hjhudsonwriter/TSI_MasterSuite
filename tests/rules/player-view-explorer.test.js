@@ -117,7 +117,7 @@
 
   test('the snapshot has only the listed top-level fields, and survives a structured clone shape (plain JSON)', function (t) {
     var s = snap(busy());
-    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'dim', 'camp', 'atlas', 'scene', 'tokens', 'word', 'v', 'view', 'weather'].sort());
+    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'dim', 'camp', 'atlas', 'reach', 'scene', 'tokens', 'word', 'v', 'view', 'weather'].sort());
     t.same(JSON.parse(JSON.stringify(s)), s);
   });
 
@@ -376,5 +376,23 @@
     var w = R.cleanWord(days);
     t.equal(w.length, 6);
     t.equal(w[0].lines.length, 12);
+  });
+
+  group('Explorer Player View: the reach');
+
+  test('with no reach the snapshot has none; with one, only whole numbers', function (t) {
+    t.equal(R.playerSnapshot(busy(), D, {}).reach, null);
+    var r = R.playerSnapshot(busy(), D, { reach: { q: 3, r: -1, n: 4, target: [5, 0], secret: 'ZZSECRET' } }).reach;
+    t.same(r, { q: 3, r: -1, n: 4, target: [5, 0] });
+    t.ok(JSON.stringify(R.playerSnapshot(busy(), D, { reach: { q: 3, r: -1, n: 4, secret: 'ZZSECRET' } })).indexOf('ZZSECRET') < 0);
+    t.same(R.playerSnapshot(busy(), D, { reach: { q: 3, r: -1, n: 4 } }).reach, { q: 3, r: -1, n: 4, target: null });
+  });
+
+  test('a reach with nowhere to go, or rubbish, is nothing', function (t) {
+    ['n', 'q'].forEach(function (k) { });
+    t.equal(R.cleanReach({ q: 1, r: 1, n: 0 }), null);
+    t.equal(R.cleanReach({ q: 'x', r: 1, n: 3 }), null);
+    t.equal(R.cleanReach('nope'), null);
+    t.equal(R.cleanReach({ q: 1, r: 1, n: 99 }).n, 12);
   });
 }());
