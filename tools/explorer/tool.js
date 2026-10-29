@@ -84,6 +84,10 @@
          (R.playerSnapshot, player-view-rules.js), never the save, whenever the Explorer changes (at most once a frame).
          The map picture, when the DM has uploaded one, is sent once in a message of its own (a data URL string, as
          the Explorer stores it) and the window keeps it; it is sent again only when the picture changes. */
+      /* The DM's cursor on the players' map (shared/js/pointer-mirror.js): on unless this box is cleared. */
+      var cursorBox = el('input', { type: 'checkbox', id: 'tsi-exp-cursor-on', 'data-test': 'cursor-on' });
+      cursorBox.checked = true;
+      var cursorRow = el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-cursor-on' }, [cursorBox, el('span', { text: 'Show my cursor to players' })]);
       var pvStatus = el('span', { class: 'tsi-exp-pvstatus', 'data-test': 'player-view-status', role: 'status', text: 'Not open' });
       var pvLink = ctx.playerLink({
         view: 'explorer',
@@ -203,7 +207,7 @@
           row([mapSelect, btn('Load', onLoadPreset, '', 'load')], 'tsi-exp-row--select'),
           row([uploadLabel, btn('Clear map', onClearMap, '', 'clear-map')])
         ]),
-        sectionWith('View', el('span', { class: 'tsi-exp-pvbox' }, [btnPlayerView, pvStatus]), [row([btnFullscreen, btnHideUi])]),
+        sectionWith('View', el('span', { class: 'tsi-exp-pvbox' }, [btnPlayerView, pvStatus]), [row([btnFullscreen, btnHideUi]), cursorRow]),
         section('Hex grid', [
           row([btnGrid]),
           row([btn('Hex −', function () { gridSize(-2); }, '', 'hex-down'), btn('Hex +', function () { gridSize(2); }, '', 'hex-up')]),
@@ -362,6 +366,8 @@
         var p = pointerOnStage(e);
         return R.toBoard(view, p.x, p.y);
       }
+      var cursorMirror = TSI.pointerMirror.attach({ life: life, target: stage, link: pvLink, enabled: function () { return cursorBox.checked; }, point: pointerOnBoard });
+      life.on(cursorBox, 'change', function () { if (!cursorBox.checked) cursorMirror.hide(); });
       /* ---------- Drawing ---------- */
       function drawGrid() {
         var s = sizeCanvas(gridCanvas);

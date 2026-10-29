@@ -551,3 +551,6 @@
 .tsi-page--explorer .tsi-exp-deck-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .tsi-page--explorer .tsi-exp-deck-auto { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--tsi-text-muted); cursor: pointer; }
 @media (max-width: 760px) { .tsi-page--explorer .tsi-exp-deck { grid-template-columns: 1fr; } }
+
+/* The "Show my cursor to players" tick box (shared/js/pointer-mirror.js) */
+.tsi-tool--explorer .tsi-exp-cursorrow, .tsi-page--explorer .tsi-exp-cursorrow { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--tsi-text-muted); cursor: pointer; margin-top: 4px; }
