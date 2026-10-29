@@ -134,7 +134,7 @@ async function closeDeck(page) {
       equal(await tvScene(page), null);
     });
 
-    await check('Act 1 puts its first card up when it opens, and Next walks the three stills in order', async () => {
+    await check('Act 1 puts its first card up when it opens, and Next walks the first three stills in order', async () => {
       await queue(page, 'absent_tide_act1');
       await pv.waitForSelector('[data-test=pv-scene].is-up', { timeout: 6000 });
       await pv.waitForFunction(() => document.querySelector('.tsi-xpv-sc__card.is-front [data-test=pv-scene-image][src*="01-outside"]'));
@@ -143,6 +143,19 @@ async function closeDeck(page) {
       await page.click('[data-test=deck-next]');
       await pv.waitForFunction(() => document.querySelector('.tsi-xpv-sc__card.is-front [data-test=pv-scene-image][src*="03-chambers"]'));
       await page.click('[data-test=deck-close]').catch(() => {});
+      await closeDeck(page).catch(() => {});
+    });
+
+    await check('Act 1\'s fourth card is Maerys\'s letter: no name on the TV, and her voice plays by itself from the DM window', async () => {
+      await page.check('[data-test=deck-autoplay]').catch(() => {});
+      await queue(page, 'absent_tide_act1');
+      await pv.waitForSelector('[data-test=pv-scene].is-up', { timeout: 6000 });
+      await page.click('[data-test=deck-card-3]');
+      await pv.waitForFunction(() => { const i = document.querySelector('.tsi-xpv-sc__card.is-front [data-test=pv-scene-image][src*="04-letter"]'); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 6000 });
+      equal(await sceneText(pv), '', 'no name band, no writing');
+      await page.waitForFunction(() => { const d = TSI.explorer.debug.deck(); return d && d.voice() && /voice\/maerys-letter\.mp3$/.test(d.voice().src) && !d.voice().paused; }, null, { timeout: 5000 });
+      equal(await pv.$$eval('audio', n => n.length), 0, 'no sound in the TV window');
+      equal((await page.$$eval('[data-test^=deck-card-]', n => n.length)), 4);
       await closeDeck(page).catch(() => {});
     });
 

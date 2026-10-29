@@ -44,7 +44,10 @@
       steps: [
         { id: 'outside', name: 'Tidepool House', image: A + 'act1/01-outside.png', dmNote: '' },
         { id: 'inside', name: 'Inside', image: A + 'act1/02-inside.png', dmNote: '' },
-        { id: 'chambers', name: 'The chambers', image: A + 'act1/03-chambers.png', dmNote: '' }
+        { id: 'chambers', name: 'The chambers', image: A + 'act1/03-chambers.png', dmNote: '' },
+        /* Maerys's letter: no name on the TV (it is not a portrait). Her voice plays by itself, as a portrait's does. The "M.V" is
+           clear in the picture, so there is no overlay for it; if it ever needs one, add overlays: [{ text: 'M.V', x: ..., y: ..., w: ..., size: ..., rotate: ..., align: 'right' }]. */
+        { id: 'letter', name: 'Maerys\u2019s letter', image: A + 'act1/04-letter.png', voice: A + 'voice/maerys-letter.mp3', line: '', subtitle: false, dmNote: '' }
       ]
     },
     {
