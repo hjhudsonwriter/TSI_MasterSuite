@@ -296,7 +296,7 @@ function serve(dir) {
     });
 
     await check('Group needs two heroes selected; Ungroup splits them', async () => {
-      await page.mouse.click(700, 500);   /* empty map: clears the selection */
+      await page.keyboard.press('Escape');   /* Esc puts the heroes down (a click on the map is a move order since 29 October 2026) */
       await pause(page);
       await page.click('[data-test=group]');
       assert(/Select 2\+ tokens first/.test(await H.modalText(page)));

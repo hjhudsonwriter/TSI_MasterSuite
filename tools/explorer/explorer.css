@@ -553,4 +553,6 @@
 @media (max-width: 760px) { .tsi-page--explorer .tsi-exp-deck { grid-template-columns: 1fr; } }
 
 /* The "Show my cursor to players" tick box (shared/js/pointer-mirror.js) */
-.tsi-tool--explorer .tsi-exp-cursorrow, .tsi-page--explorer .tsi-exp-cursorrow { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--tsi-text-muted); cursor: pointer; margin-top: 4px; }
+.tsi-tool--explorer .tsi-exp-cursorrow, .tsi-page--explorer .tsi-exp-cursorrow { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 1; color: var(--tsi-text-muted); cursor: pointer; margin-top: 0; }
+.tsi-tool--explorer .tsi-exp-zoombox .tsi-exp-cursorrow { background: rgba(10, 6, 7, .78); padding: 3px 9px; border-radius: 999px; border: 1px solid var(--tsi-line-control); color: var(--tsi-text); }
+

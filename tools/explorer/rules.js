@@ -584,6 +584,13 @@
     var target = R.hexAt(state.grid, tx, ty);
     if (drag.lastTargetAx && drag.lastTargetAx.q === target.q && drag.lastTargetAx.r === target.r) return null;
     drag.lastTargetAx = target;
+    R.snapTo(state, board, drag, target);
+    return target;
+  };
+
+  /* Put every dragged hero exactly in the hex `target`, each the same number of hexes from where it started as the grabbed one
+     (what a snapped drag does, and where a snapped walk ends). */
+  R.snapTo = function (state, board, drag, target) {
     var dq = target.q - drag.startAxial.q;
     var dr = target.r - drag.startAxial.r;
     drag.ids.forEach(function (id) {
@@ -593,8 +600,105 @@
       var p = R.axialToPixel(state.grid, start.q + dq, start.r + dr);
       R.place(board, t, p.x, p.y);
     });
-    return target;
   };
+
+  /* ---------- Click to move: the party walks to a hex (29 October 2026) ---------- */
+  /* The hexes in a straight line from a to b, both included (the way a snapped walk goes, one hex at a time). */
+  R.hexLine = function (a, b) {
+    var n = R.hexDistance(a, b);
+    var out = [];
+    if (n === 0) return [{ q: a.q, r: a.r }];
+    for (var i = 0; i <= n; i++) {
+      var t = i / n;
+      /* A hair off the exact line, so a tie between two hexes always goes the same way. */
+      out.push(R.axialRound({ q: a.q + (b.q - a.q) * t + 1e-6, r: a.r + (b.r - a.r) * t + 2e-6 }));
+    }
+    return out;
+  };
+
+  /* Where a free (unsnapped) walk stops when something happens after `hexes` hexes: the first point on the straight line
+     from the grabbed hero to the destination that is that many hexes from where it started. */
+  R.pointAfterHexes = function (state, board, drag, from, to, hexes) {
+    var steps = 600;
+    for (var i = 1; i <= steps; i++) {
+      var t = i / steps;
+      var x = from.x + (to.x - from.x) * t, y = from.y + (to.y - from.y) * t;
+      if (R.hexDistance(drag.startAxial, R.hexAt(state.grid, x, y)) >= hexes) return { x: x, y: y };
+    }
+    return { x: to.x, y: to.y };
+  };
+
+  /* Plan a walk for the dragged heroes (R.startDrag) to the point `dest` (board units): the rules are the ones a dragged move
+     has always had (6 miles a hex, the day's limit for every hero, the day's travel roll once the party has gone its random
+     6 to 24 miles), worked out BEFORE anyone moves. Where the roll would trigger part-way, the walk is cut short at that
+     hex so the event happens where it does (and the DM clicks again to carry on).
+     Returns { ok: false, reason: 'here' | 'tooFar' | 'tired', miles } or
+     { ok: true, snap, from, path: [points], end: point, endAx: hex (snapped walks), hexes, cutAt: number or null, miles }. */
+  R.walkPlan = function (state, board, drag, dest, rand) {
+    var anchor = R.token(state, drag.anchorId);
+    if (!anchor || !drag.startAxial) return { ok: false, reason: 'here', miles: 0 };
+    if (!R.canDrag(state, drag.anchorId)) return { ok: false, reason: 'tired', miles: 0 };
+    var snap = !!(state.snap && state.snap.enabled);
+    var destAx = R.hexAt(state.grid, dest.x, dest.y);
+    var total = R.hexDistance(drag.startAxial, destAx);
+    if (total === 0) return { ok: false, reason: 'here', miles: 0 };
+    var miles = total * R.MILES_PER_HEX;
+    var cut = null;
+    if (!state.freeMove) {
+      var limit = R.dayLimit(state);
+      var moved = drag.ids.length ? drag.ids : [anchor.id];
+      for (var i = 0; i < moved.length; i++) {
+        var t = R.token(state, moved[i]);
+        if (t && (Number(t.milesUsed) || 0) + miles > limit) return { ok: false, reason: 'tooFar', miles: miles };
+      }
+      var travel = state.travel;
+      if (!travel.nextTravelEventAtMiles || travel.nextTravelEventAtMiles <= 0) travel.nextTravelEventAtMiles = 6 + Math.floor((rand || Math.random)() * 19);
+      var dayNow = Number(travel.day) || 1;
+      var busy = !!(state.journey && state.journey.current);
+      var base = journeyRules().baseLimit(state);
+      var startMiles = Number(anchor.milesUsed) || 0;
+      if (travel.travelEventDay !== dayNow && !busy && startMiles < base) {
+        for (var k = 1; k <= total; k++) {
+          if (Math.min(startMiles + k * R.MILES_PER_HEX, base) >= travel.nextTravelEventAtMiles) { cut = k; break; }
+        }
+      }
+    }
+    var hexes = cut === null ? total : cut;
+    var from = R.centre(board, anchor);
+    var line = R.hexLine(drag.startAxial, destAx);
+    var path, end, endAx = null;
+    if (snap) {
+      endAx = line[hexes];
+      path = [from].concat(line.slice(1, hexes + 1).map(function (a) { return R.axialToPixel(state.grid, a.q, a.r); }));
+      end = path[path.length - 1];
+    } else {
+      end = cut === null ? { x: dest.x, y: dest.y } : R.pointAfterHexes(state, board, drag, from, dest, hexes);
+      path = [from, end];
+    }
+    return { ok: true, snap: snap, from: from, path: path, end: end, endAx: endAx, hexes: hexes, cutAt: cut, miles: hexes * R.MILES_PER_HEX };
+  };
+
+  /* How far along a path of points a walker is after travelling `dist` (board units); the end once it has gone the lot. */
+  R.pointAlong = function (path, dist) {
+    var left = Math.max(0, dist);
+    for (var i = 1; i < path.length; i++) {
+      var dx = path[i].x - path[i - 1].x, dy = path[i].y - path[i - 1].y;
+      var len = Math.sqrt(dx * dx + dy * dy);
+      if (left <= len || i === path.length - 1) {
+        var f = len > 0 ? Math.min(1, left / len) : 1;
+        return { x: path[i - 1].x + dx * f, y: path[i - 1].y + dy * f, done: i === path.length - 1 && left >= len };
+      }
+      left -= len;
+    }
+    return { x: path[0].x, y: path[0].y, done: true };
+  };
+  R.pathLength = function (path) {
+    var sum = 0;
+    for (var i = 1; i < path.length; i++) sum += Math.sqrt(Math.pow(path[i].x - path[i - 1].x, 2) + Math.pow(path[i].y - path[i - 1].y, 2));
+    return sum;
+  };
+  /* A walk is at a fixed pace: one hex in this many milliseconds, snapped or not. */
+  R.WALK_MS_PER_HEX = 260;
 
   /* A free drag: every dragged hero moves by the pointer's movement (board units). */
   R.dragFree = function (state, board, drag, dx, dy) {

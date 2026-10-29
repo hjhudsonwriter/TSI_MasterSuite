@@ -4353,3 +4353,10 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **Not mirrored:** the pointer over the DM's side panels and pop-ups (only the picture), and over the Tidal wall and console.
 - **Needs a real TV:** how the arrow's size reads from across the room.
 
+### EXP-WALK-01 · Explorer: click to move, the party walks (29 October 2026)
+- **New:** with heroes picked, a click on the map sends them walking there on their own: a hex at a time along the line of hexes with Snap on, in a straight line with it off, at a fixed pace (one hex in 0.26 s either way). The fog clears as they pass, and the TV window shows them moving. Dragging works as it always did. The **Click to move: On/Off** button and the **Show my cursor to players** tick box are in the toolbar along the bottom of the map (the left column was full).
+- **Rules are the drag's rules, worked out before anyone moves** (`R.walkPlan`): 6 miles a hex measured start to destination, the day's limit for every picked hero (a walk that would be too far is refused with the usual notice and nobody moves), Free Move walks anywhere free. **Where the day's travel roll falls part-way, the walk stops at that hex** (Harry's choice, 29 October 2026): the miles are charged to that point, the roll is made there and the event opens there, and a click carries on afterwards.
+- **Stopping:** Esc, or a click while walking, stops where the party is and charges only the hexes walked. Make Camp stops a walk first. Leaving the Explorer mid-walk puts everyone back where they started.
+- **Esc now puts the heroes down** (clears the pick) when nothing else is going on, because a click on empty map is a move order while Click to move is on. With it off, a click on empty map clears the pick as before.
+- **Left alone:** no terrain (a straight line can cross sea and mountains, as dragging can); the reach highlight (next change).
+
