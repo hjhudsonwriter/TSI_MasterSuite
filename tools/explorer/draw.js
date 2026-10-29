@@ -50,7 +50,7 @@
     if (!reach) return;
     var r = R.hexSize(grid) * view.fit;
     function at(hex) { var b = R.axialToPixel(grid, hex.q, hex.r); return R.toScreen(view, b.x, b.y); }
-    R.hexesWithin(reach.q, reach.r, reach.n).forEach(function (hex) {
+    (reach.cells || R.hexesWithin(reach.q, reach.r, reach.n)).forEach(function (hex) {
       /* Only hexes on the map picture: none out in the dark beyond its edge. */
       var b = R.axialToPixel(grid, hex.q, hex.r);
       if (board && (b.x < 0 || b.x > board.w || b.y < 0 || b.y > board.h)) return;
@@ -77,8 +77,8 @@
         c.strokeStyle = 'rgba(232, 110, 100, 0.85)';
         c.stroke();
       }
-      if (label && (target.inReach || target.miles > 0)) {
-        var text = target.inReach ? target.miles + ' mi' : 'too far';
+      if (label && (target.inReach || target.miles > 0 || target.blocked)) {
+        var text = target.inReach ? target.miles + ' mi' : target.blocked ? 'blocked' : 'too far';
         c.font = '600 ' + Math.max(11, Math.round(r * 0.5)) + 'px sans-serif';
         c.textAlign = 'center';
         c.textBaseline = 'middle';
@@ -89,6 +89,32 @@
         c.fillText(text, p.x, p.y);
       }
     }
+  };
+
+  /* The terrain painted on the hexes (data/hex-terrain-data.js): a tint on each painted hex. cells are [q, r, kind id]; board is
+     { w, h } so hexes off the map picture are left out. Plain fills and lines only. */
+  D.terrain = function (c, w, h, view, grid, cells, board) {
+    if (!cells || !cells.length) return;
+    var r = R.hexSize(grid) * view.fit;
+    var colour = {};
+    R.terrainKinds().forEach(function (k) { colour[k.id] = k.colour; });
+    cells.forEach(function (cell) {
+      var col = colour[cell[2]];
+      if (!col) return;
+      var b = R.axialToPixel(grid, cell[0], cell[1]);
+      if (board && (b.x < 0 || b.x > board.w || b.y < 0 || b.y > board.h)) return;
+      var p = R.toScreen(view, b.x, b.y);
+      if (p.x < -2 * r || p.x > w + 2 * r || p.y < -2 * r || p.y > h + 2 * r) return;
+      D.hexPath(c, p.x, p.y, r * 0.96);
+      c.globalAlpha = 0.4;
+      c.fillStyle = col;
+      c.fill();
+      c.globalAlpha = 0.85;
+      c.lineWidth = 1.5;
+      c.strokeStyle = col;
+      c.stroke();
+    });
+    c.globalAlpha = 1;
   };
 
   /* Fog: the whole area dark, with the uncovered hexes cut out. store is { "q,r": true } for the uncovered hexes. */

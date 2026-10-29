@@ -47,6 +47,7 @@
 .tsi-xpv-weather[hidden], .tsi-xpv-map[hidden] { display: none; }
 .tsi-xpv-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .tsi-xpv-canvas--grid { z-index: 3; }
+.tsi-xpv-canvas--terrain { z-index: 4; }
 .tsi-xpv-pins { position: absolute; inset: 0; z-index: 14; pointer-events: none; }
 .tsi-xpv-canvas--fog { z-index: 16; }
 .tsi-xpv-canvas--reach { z-index: 17; }

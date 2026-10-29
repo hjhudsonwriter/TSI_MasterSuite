@@ -61,9 +61,10 @@
     var gridCanvas = el('canvas', { class: 'tsi-xpv-canvas tsi-xpv-canvas--grid', 'data-test': 'pv-grid' });
     var pinLayer = el('div', { class: 'tsi-xpv-pins', 'data-test': 'pv-pins' });
     var fogCanvas = el('canvas', { class: 'tsi-xpv-canvas tsi-xpv-canvas--fog', 'data-test': 'pv-fog' });
+    var terrainCanvas = el('canvas', { class: 'tsi-xpv-canvas tsi-xpv-canvas--terrain', 'data-test': 'pv-terrain' });
     var reachCanvas = el('canvas', { class: 'tsi-xpv-canvas tsi-xpv-canvas--reach', 'data-test': 'pv-reach' });
     var tokenLayer = el('div', { class: 'tsi-xpv-world tsi-xpv-world--tokens', 'data-test': 'pv-tokens' });
-    var stage = el('div', { class: 'tsi-xpv-stage', 'data-test': 'pv-stage' }, [mapLayer, video, gridCanvas, pinLayer, fogCanvas, reachCanvas, tokenLayer]);
+    var stage = el('div', { class: 'tsi-xpv-stage', 'data-test': 'pv-stage' }, [mapLayer, video, gridCanvas, terrainCanvas, pinLayer, fogCanvas, reachCanvas, tokenLayer]);
 
     var full = el('button', { type: 'button', class: 'tsi-xpv-full', 'data-test': 'pv-fullscreen' }, 'Full screen');
     full.addEventListener('click', function () {
@@ -367,6 +368,8 @@
 
       var g = sizeCanvas(gridCanvas);
       D.grid(g.ctx, g.w, g.h, view, snap.grid);
+      var tc = sizeCanvas(terrainCanvas);
+      D.terrain(tc.ctx, tc.w, tc.h, view, snap.grid, snap.terrain, board);
       var f = sizeCanvas(fogCanvas);
       if (snap.fog.enabled) {
         var store = {};

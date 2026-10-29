@@ -563,3 +563,18 @@
 .tsi-tool--explorer .tsi-exp-row--tight > .tsi-btn { padding-left: 6px; padding-right: 6px; letter-spacing: .02em; white-space: nowrap; }
 .tsi-tool--explorer .tsi-exp-field--side { flex-direction: row; align-items: center; gap: 10px; }
 .tsi-tool--explorer .tsi-exp-field--side > input { flex: 1 1 auto; min-width: 0; }
+
+/* Terrain painting (29 October 2026) */
+.tsi-tool--explorer .tsi-exp-canvas--terrain { z-index: 4; }
+.tsi-tool--explorer .tsi-exp-stage--painting { cursor: crosshair; }
+.tsi-tool--explorer .tsi-exp-stage--painting .tsi-exp-world--tokens,
+.tsi-tool--explorer .tsi-exp-stage--painting .tsi-exp-pins { pointer-events: none; }
+.tsi-tool--explorer .tsi-exp-terrainpanel { position: absolute; top: 12px; right: 12px; z-index: 30; display: flex; flex-direction: column; gap: 6px; width: 250px; padding: 10px; background: rgba(20, 8, 10, .92); border: 1px solid var(--tsi-gold, #c9a55a); border-radius: 8px; }
+.tsi-tool--explorer .tsi-exp-terrainpanel[hidden] { display: none; }
+.tsi-tool--explorer .tsi-exp-terrainpanel__title { font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--tsi-gold, #c9a55a); }
+.tsi-tool--explorer .tsi-exp-terrainpanel__hint { font-size: 13px; color: var(--tsi-text-muted); }
+.tsi-tool--explorer .tsi-exp-terrainbtn { display: flex; align-items: center; gap: 8px; justify-content: flex-start; text-align: left; }
+.tsi-tool--explorer .tsi-exp-terrainbtn.is-on { outline: 2px solid var(--tsi-gold, #c9a55a); }
+.tsi-tool--explorer .tsi-exp-terrainchip { width: 14px; height: 14px; border-radius: 3px; flex: 0 0 auto; border: 1px solid rgba(255,255,255,.4); }
+.tsi-tool--explorer .tsi-exp-terrainchip--erase { background: transparent; border-style: dashed; }
+.tsi-tool--explorer .tsi-exp-terraincost { margin-left: auto; color: var(--tsi-text-muted); font-size: 13px; }

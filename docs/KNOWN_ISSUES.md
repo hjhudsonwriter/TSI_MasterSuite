@@ -4373,3 +4373,10 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - Before: one hex size and position for every map, so changing map meant re-fitting the grid by hand each time.
 - After: each map (each preset map, and each uploaded picture) remembers its own hex size, nudge position and lock. A map you have never opened starts at the usual size (r 38), unlocked. "Miles across this map" sets the hex so one hex is 6 miles (the map's width in hexes = miles / 6); the box shows the current figure. "Lock hex" freezes Hex −/+, the arrows and the miles box for that map only. Older saves are filed under the map that was open.
 - Left alone: the hex size is still in pixels on a 1440-wide board, so the accepted miles range is about 23 to 499 across.
+
+
+### EXP-TERRAIN-01 · Explorer: terrain painted on the hexes (29 October 2026)
+- Before: every hex cost 6 miles, whatever was on the map.
+- After: the DM can paint terrain onto a map's hexes (Edit terrain). Costs, set in `tools/explorer/data/hex-terrain-data.js`: Road ×0.5 (3 miles), Forest ×2, Hills ×2, Mountain trails ×2, Marsh ×3, Mountain climb ×3, Open land ×1 (unpainted), and two that cannot be crossed (Mountains, Water). Dragging, click-to-move, the day's limit, the travel-event hex and the reach tint all use the costs.
+- Decisions made without asking (tell me if any is wrong): the TV does not see the terrain unless "Show terrain to players" is ticked (it would spoil the map); Free Move ignores terrain completely (6 miles a hex, nothing blocks); a walk goes in a straight line and is refused if impassable ground is anywhere on it (no route-finding round obstacles); a hex that would take the party past the day's limit is refused whole (no half-hexes), as before; the hex size must be locked before painting, and unlocking a painted map asks first, because a changed hex size would make the painting slide off the picture.
+- Left alone: terrain does not yet change which travel events can happen (that needs the events tagged, a later job).
