@@ -172,3 +172,15 @@
 .tsi-xpv-sc__sub[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .tsi-xpv-sc, .tsi-xpv-sc__card { transition-duration: .01s !important; } }
 
+/* ---------- "The Ironbow sends word…", read only (the DM's pop-up shown to the players) ---------- */
+.tsi-xpv-wordhost { position: absolute; inset: 0; z-index: 32; display: grid; place-items: center; padding: 4vh 4vw; background: rgba(5, 3, 4, .6); }
+.tsi-xpv-wordhost[hidden] { display: none; }
+.tsi-xpv-word {
+  box-sizing: border-box; max-width: min(88vw, 1000px); max-height: 100%; overflow: hidden; display: grid; gap: 1.4vh;
+  padding: clamp(18px, 3.4vh, 40px) clamp(22px, 3vw, 48px); border-radius: 14px; border: 2px solid rgba(214, 178, 94, .7);
+  background: var(--tsi-modal-fill, rgba(22, 8, 12, .96)); box-shadow: 0 18px 60px rgba(0, 0, 0, .6);
+}
+.tsi-xpv-word__title { margin: 0; font: 600 clamp(26px, 5vh, 56px)/1.1 var(--tsi-font-display); letter-spacing: .04em; color: var(--tsi-gold-text, #e6c777); }
+.tsi-xpv-word__day { margin: .4vh 0 0; font: 600 clamp(18px, 3vh, 32px) var(--tsi-font-display); color: var(--tsi-text); }
+.tsi-xpv-word__lines { margin: 0; padding-left: 1.2em; display: grid; gap: .8vh; font: 400 clamp(20px, 3.6vh, 40px)/1.3 var(--tsi-font-body); color: var(--tsi-text); }
+

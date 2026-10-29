@@ -4342,3 +4342,8 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **Done to the file:** the upload had black bars top and bottom (the painting inside a 16:9 frame); they were cropped off so the loop is the painting's shape (2.4 : 1) and lines up with the overlays. Re-encoded (H.264, no sound), 2.9 MB.
 - **Left alone:** the loop is not seamless if its last frame differs from its first (it simply restarts); say if you see a jump and I can add a short crossfade.
 
+### PLV-07 · "The Ironbow sends word…" on the Explorer's Player View (29 October 2026)
+- **Before/after:** the pop-up showed only on the DM's screen; now, while it is open, the TV shows the same title and the same days and lines, read only (nothing to click), and takes it away when the DM closes it (or Esc). A refreshed TV window shows it again while it is still open.
+- **What goes to the TV:** only the days and the lines, exactly as the DM's pop-up shows them. The pop-up's note ("The Bastion works these out…"), the Bastion's records and the outbox stay with the DM (tested).
+- **Left alone:** the Bastion window has its own copy of this pop-up; it is not shown on the Bastion's Player View (say if you want it there too).
+

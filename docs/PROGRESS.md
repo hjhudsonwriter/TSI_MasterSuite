@@ -4,6 +4,9 @@
 
 **Strip Back Overhaul (steps S01 to S17, 22 to 25 October 2026) is built and merged; S19 (art) and S20 (guide and home-screen text) and S21 (these docs) are done. S18 (removing the internal Day Log data) is done (26 October 2026, BAS-SB-83).** The war game, Clan founding, the Hall's trade system, the three Shrines, the Library, Arcane Laboratory, Clan Influence and the Day Log screens are gone or folded into the Temple, Beast Pen, Dock and Workshop. Details: `docs/STRIP-BACK-PLAN.md`, `docs/strip-back/*-built.md`, and the new "Strip Back Overhaul" section at the end of `docs/KNOWN_ISSUES.md` (BAS-SB-01 onwards).
 
+### 29 October 2026: "The Ironbow sends word…" shows on the Explorer's Player View
+- KNOWN_ISSUES PLV-07. Next: the DM's cursor mirrored on the Player Views.
+
 ### 28 October 2026: The Bastion base painting is a loop
 - Harry's loop plays over the painting in the Bastion and its Player View (KNOWN_ISSUES BAS-SB-112).
 

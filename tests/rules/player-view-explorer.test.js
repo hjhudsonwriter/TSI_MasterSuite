@@ -117,7 +117,7 @@
 
   test('the snapshot has only the listed top-level fields, and survives a structured clone shape (plain JSON)', function (t) {
     var s = snap(busy());
-    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'dim', 'camp', 'atlas', 'scene', 'tokens', 'v', 'view', 'weather'].sort());
+    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'dim', 'camp', 'atlas', 'scene', 'tokens', 'word', 'v', 'view', 'weather'].sort());
     t.same(JSON.parse(JSON.stringify(s)), s);
   });
 
@@ -354,5 +354,27 @@
     var still = R.cleanScene(R.stepScene(step, { stillOnly: true }));
     t.equal(still.kind, 'image');
     t.ok(/\.png$/.test(still.src) && still.poster === '');
+  });
+
+  group('Explorer Player View: The Ironbow sends word');
+
+  test('with no word the snapshot has none; with it, only the days and the lines the pop-up shows', function (t) {
+    t.equal(R.playerSnapshot(busy(), D, {}).word, null);
+    var w = R.playerSnapshot(busy(), D, { word: [{ day: 3, lines: ['A cart arrives.', 'The harbour is quiet.'], secret: 'ZZSECRET' }] }).word;
+    t.same(w, [{ day: 3, lines: ['A cart arrives.', 'The harbour is quiet.'] }]);
+    t.ok(JSON.stringify(R.playerSnapshot(busy(), D, { word: [{ day: 3, lines: ['x'], secret: 'ZZSECRET' }] })).indexOf('ZZSECRET') < 0);
+    t.equal(R.playerSnapshot(busy(), D, { word: [{ day: 3, lines: [] }] }).word, null, 'a day with nothing to say is nothing');
+  });
+
+  test('the Bastion records, the outbox and the DM\'s note never ride along with the word', function (t) {
+    var json = JSON.stringify(R.playerSnapshot(busy(), D, { word: [{ day: 2, lines: ['One line.'] }] }));
+    ['ZZOUTBOX', 'ZZLOG', 'ZZNOTES', 'ZZDMDOC', 'The Bastion works these out'].forEach(function (w) { t.ok(json.indexOf(w) < 0, w); });
+  });
+
+  test('the word is kept to six days of twelve lines', function (t) {
+    var days = []; for (var i = 0; i < 9; i++) days.push({ day: i + 1, lines: new Array(20).fill('line') });
+    var w = R.cleanWord(days);
+    t.equal(w.length, 6);
+    t.equal(w[0].lines.length, 12);
   });
 }());
