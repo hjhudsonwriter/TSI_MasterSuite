@@ -85,6 +85,25 @@
     /* The DM's open pin card, read only. */
     var pinHost = el('div', { class: 'tsi-xpv-pinhost', 'data-test': 'pv-pin-host', hidden: true });
     stage.appendChild(pinHost);
+    /* "The Ironbow sends word…", read only: the same words the DM's pop-up shows, while it is open. */
+    var wordHost = el('div', { class: 'tsi-xpv-wordhost', 'data-test': 'pv-word-host', hidden: true });
+    stage.appendChild(wordHost);
+    var wordKey = '';
+    function drawWord() {
+      var w = snap && snap.word;
+      var key = w ? JSON.stringify(w) : '';
+      if (key === wordKey) return;
+      wordKey = key;
+      TSI.clear(wordHost);
+      if (!w) { wordHost.hidden = true; return; }
+      var parts = [el('h2', { class: 'tsi-xpv-word__title', 'data-test': 'pv-word-title', text: 'The Ironbow sends word\u2026' })];
+      w.forEach(function (d) {
+        if (w.length > 1) parts.push(el('h3', { class: 'tsi-xpv-word__day', text: 'Day ' + d.day }));
+        parts.push(el('ul', { class: 'tsi-xpv-word__lines', 'data-test': 'pv-word-lines' }, d.lines.map(function (l) { return el('li', { text: l }); })));
+      });
+      wordHost.appendChild(el('div', { class: 'tsi-xpv-word', role: 'dialog', 'aria-label': 'The Ironbow sends word', 'data-test': 'pv-word' }, parts));
+      wordHost.hidden = false;
+    }
     /* The Scarlett Isles panel: the picture fills the panel's width and scrolls up and down (the wheel, trackpad and keys by
        themselves; dragging too), as the Bastion's Trade Routes view does. Read only; it only changes how this screen looks. */
     var atlasClose = el('button', { type: 'button', class: 'tsi-xpv-atlas__close', 'data-test': 'pv-map-close', 'aria-label': 'Close the map', title: 'Close the map' }, '×');
@@ -455,6 +474,7 @@
         drawAll();
         drawPin();
         drawDim();
+        drawWord();
         drawScene();
         /* The DM's button overrides a click here whenever it changes (and sets the panel when this window first hears). */
         if (snap.atlas !== lastAtlas) { lastAtlas = snap.atlas; setAtlas(snap.atlas); }

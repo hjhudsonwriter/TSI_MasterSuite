@@ -90,7 +90,7 @@
         name: 'ScarlettExplorerPlayers',
         keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
-        getState: function () { return R.playerSnapshot(state, DATA, { atlas: pvAtlas, view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, dim: pvDim(), camp: pvCamp, scene: pvScene }); },
+        getState: function () { return R.playerSnapshot(state, DATA, { atlas: pvAtlas, view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, dim: pvDim(), camp: pvCamp, scene: pvScene, word: pvWord }); },
         onStatus: function (st) {
           pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvStatus.classList.toggle('is-connected', st === 'connected');
@@ -110,6 +110,8 @@
       var pvNightUntil = 0;
       /* The scene card the players see (the Absent Tide decks): a plain card object, or null for the map. */
       var pvScene = null;
+      /* "The Ironbow sends word…", while its pop-up is open: the days and lines the pop-up shows (and nothing else). */
+      var pvWord = null;
       function setPvScene(card) { pvScene = card || null; queuePlayerSync(); }
       /* The next card's picture or clip, named on its own (never in the snapshot) so the players' window can have it ready. */
       function pvPreload(kind, src) { if (src && pvLink.isConnected()) pvLink.send('preload', { kind: kind === 'video' ? 'video' : 'image', src: String(src) }); }
@@ -1271,6 +1273,8 @@
          out the results, with their rolls, when it next sees the day. */
       function openWord(news) {
         var body = [];
+        pvWord = news.map(function (w) { return { day: w.day, lines: w.lines.slice() }; });
+        queuePlayerSync();
         news.forEach(function (w) {
           if (news.length > 1) body.push(el('h4', { class: 'tsi-exp-word-day', text: 'Day ' + w.day }));
           body.push(el('ul', { class: 'tsi-exp-word', 'data-test': 'word-lines' }, w.lines.map(function (l) { return el('li', { text: l }); })));
@@ -1283,7 +1287,7 @@
           escValue: 'close',
           actions: [{ label: 'Open the Bastion ↗', value: 'bastion' }, { label: 'Close', value: 'close', primary: true }],
           onOpen: function (api) { if (api && api.dialog) api.dialog.setAttribute('data-test', 'ironbow-word'); }
-        }).then(function (v) { if (v === 'bastion') openBastion(); });
+        }).then(function (v) { pvWord = null; queuePlayerSync(); if (v === 'bastion') openBastion(); });
       }
 
       /* Weather: roll at the table and type the result (old 1034-1134). */
@@ -2520,6 +2524,7 @@
       /* For the tests. */
       ns.debug = {
         setScene: function (card) { setPvScene(card); },
+        showWord: function (news) { return showEvents([{ kind: 'word', news: news }]); },
         deck: function () { return deckDebug; },
         scene: function () { return pvScene ? JSON.parse(JSON.stringify(pvScene)) : null; },
         preload: function (kind, src) { pvPreload(kind, src); },

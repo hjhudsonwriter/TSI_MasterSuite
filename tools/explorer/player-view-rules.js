@@ -31,6 +31,9 @@
      atlas: true/false,                    the DM has chosen to show the players the picture of the Scarlett Isles (their window opens its map panel)
      dim: 'none' | 'night' | 'event',     'event' while a campfire event is open in the DM's window: the map stays very dark
      camp: n                               how many times the DM has made camp; each new number fades the map out and in once
+     word: null | [{ day, lines: [text, ...] }]
+                                          "The Ironbow sends word…" while the DM has it open: the days and the lines exactly as the DM's window shows them
+                                          (the DM's note under them, the Bastion's records and the parcels themselves stay with the DM)
      scene: null | { kind: 'image' | 'video' | 'portrait', src, poster, loop, name, caption, overlays, subtitle }
                                           the one scene card the DM is showing (the Absent Tide decks): the map fades to black and the card
                                           fills the window. Only what is on screen: never the DM's note, the voice line (unless the card
@@ -79,6 +82,16 @@
     };
   };
 
+  /* "The Ironbow sends word…", cleaned: at most six days of at most twelve lines each, text only. */
+  R.cleanWord = function (raw) {
+    if (!Array.isArray(raw) || !raw.length) return null;
+    var days = raw.slice(0, 6).map(function (w) {
+      w = w && typeof w === 'object' ? w : {};
+      return { day: Math.max(0, Math.floor(num(Number(w.day), 0))), lines: (Array.isArray(w.lines) ? w.lines : []).slice(0, 12).map(function (l) { return str(l, 300); }).filter(Boolean) };
+    }).filter(function (d) { return d.lines.length; });
+    return days.length ? days : null;
+  };
+
   /* A scene card, cleaned: exactly the fields the players may see, each trimmed to a sane size, or null. */
   R.cleanScene = function (raw) {
     if (!raw || typeof raw !== 'object') return null;
@@ -100,7 +113,7 @@
     };
   };
 
-  /* extras: { atlas: true to show the Scarlett Isles map panel, view: the DM's visible region ({ x0, y0, x1, y1 }) or none, pin: a marker's id or null, dim: 'none' | 'night' | 'event', camp: a whole number, scene: a scene card (see R.cleanScene) or null }. */
+  /* extras: { atlas: true to show the Scarlett Isles map panel, view: the DM's visible region ({ x0, y0, x1, y1 }) or none, pin: a marker's id or null, dim: 'none' | 'night' | 'event', camp: a whole number, scene: a scene card (see R.cleanScene) or null, word: the Ironbow's word (see R.cleanWord) or null }. */
   R.playerSnapshot = function (s, data, extras) {
     extras = extras && typeof extras === 'object' ? extras : {};
     var limit = R.dayLimit(s);
@@ -167,7 +180,8 @@
       atlas: extras.atlas === true,
       dim: dim,
       camp: camp,
-      scene: R.cleanScene(extras.scene)
+      scene: R.cleanScene(extras.scene),
+      word: R.cleanWord(extras.word)
     };
   };
 }());
