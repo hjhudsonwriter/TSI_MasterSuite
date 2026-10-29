@@ -1,6 +1,6 @@
 # Travel and campfire events: which could be tied to terrain? (29 October 2026)
 
-A review for Harry, nothing built yet. Every event already has a "where" rule (anywhere, certain maps, certain provinces, certain gods, or near a river or the sea). The idea is to add one more optional rule: **terrain**, the kind painted on the hex where the party is when the event happens (for a travel event, the hex the walk stops on; for a campfire event, the hex where they make camp). An event with no terrain rule stays "anywhere", as now.
+A review for Harry. **Built on 29 October 2026 with the suggestions below** (see EXP-TERRAIN-02 in KNOWN_ISSUES.md); to change a tag, edit that event's `where: { terrain: [...] }` in `tools/explorer/data/journey-events.js`. Every event already has a "where" rule (anywhere, certain maps, certain provinces, certain gods, or near a river or the sea). The idea is to add one more optional rule: **terrain**, the kind painted on the hex where the party is when the event happens (for a travel event, the hex the walk stops on; for a campfire event, the hex where they make camp). An event with no terrain rule stays "anywhere", as now.
 
 How it would work if you like it: an event with `terrain: ['road']` can only happen on a road hex. Events with no terrain rule can happen on any terrain. Unpainted hexes count as **open land**, which can be tagged too (fields, farmland).
 
