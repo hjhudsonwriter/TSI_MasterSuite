@@ -161,6 +161,10 @@
       var btnFullscreen = btn('Fullscreen', toggleFullscreen, '', 'fullscreen');
       var btnPlayerView = btn('Open Player View', function () { pvLink.open(); }, 'tsi-btn--ghost', 'open-player-view');
       btnPlayerView.title = 'Open the players\' view of the map in a new window, to drag onto the TV. It only looks.';
+      /* Click to move (29 October 2026): with heroes picked, a click on the map sends them walking there. Not saved. */
+      var clickMove = true;
+      var btnClickMove = btn('Click to move: On', function () { clickMove = !clickMove; updateButtons(); setNotice(clickMove ? 'Click to move: pick heroes, then click where they should go.' : 'Click to move is off. Dragging works as always.'); }, '', 'click-move');
+      btnClickMove.title = 'Pick a hero or group, then click a hex: they walk there on their own, a hex at a time with Snap on, in a straight line with it off. Dragging still works.';
       var zoomBox = el('div', { class: 'tsi-exp-zoombox', role: 'group', 'aria-label': 'Zoom' });
       var btnZoomIn = btn('+', function () { zoomBy(1.4); }, 'tsi-exp-zoom', 'zoom-in');
       var btnZoomOut = btn('−', function () { zoomBy(1 / 1.4); }, 'tsi-exp-zoom', 'zoom-out');
@@ -171,6 +175,8 @@
       btnZoomIn.setAttribute('aria-label', 'Zoom in');
       btnZoomOut.setAttribute('aria-label', 'Zoom out');
       zoomBox.appendChild(btnZoomOut); zoomBox.appendChild(btnZoomIn); zoomBox.appendChild(btnFit);
+      zoomBox.appendChild(btnClickMove);
+      zoomBox.appendChild(cursorRow);
       var btnAtlas = btn('Show Scarlett Isles map to players', function () {
         pvAtlas = !pvAtlas;
         btnAtlas.textContent = pvAtlas ? 'Hide Scarlett Isles map from players' : 'Show Scarlett Isles map to players';
@@ -207,7 +213,7 @@
           row([mapSelect, btn('Load', onLoadPreset, '', 'load')], 'tsi-exp-row--select'),
           row([uploadLabel, btn('Clear map', onClearMap, '', 'clear-map')])
         ]),
-        sectionWith('View', el('span', { class: 'tsi-exp-pvbox' }, [btnPlayerView, pvStatus]), [row([btnFullscreen, btnHideUi]), cursorRow]),
+        sectionWith('View', el('span', { class: 'tsi-exp-pvbox' }, [btnPlayerView, pvStatus]), [row([btnFullscreen, btnHideUi])]),
         section('Hex grid', [
           row([btnGrid]),
           row([btn('Hex −', function () { gridSize(-2); }, '', 'hex-down'), btn('Hex +', function () { gridSize(2); }, '', 'hex-up')]),
@@ -404,7 +410,7 @@
       var tokenEls = {};
       function renderTokens() {
         queuePlayerSync();
-        var spots = R.layoutTokens(state, board, drag ? drag.anchorId : null);
+        var spots = R.layoutTokens(state, board, drag ? drag.anchorId : (walking ? walking.drag.anchorId : null));
         state.tokens.forEach(function (t) {
           var node = tokenEls[t.id];
           if (!node) {
@@ -474,6 +480,8 @@
         setOn(btnGrid, state.grid.enabled);
         btnSnap.textContent = 'Snap: ' + (state.snap.enabled ? 'On' : 'Off');
         setOn(btnSnap, state.snap.enabled);
+        btnClickMove.textContent = 'Click to move: ' + (clickMove ? 'On' : 'Off');
+        setOn(btnClickMove, clickMove);
         btnPick.textContent = 'Pick Marker XY: ' + (pickXY ? 'On' : 'Off');
         setOn(btnPick, pickXY);
         btnFreeMove.textContent = state.freeMove ? 'Free Move: ON' : 'Free Move: OFF';
@@ -756,10 +764,13 @@
       /* ---------- Selecting and dragging ---------- */
       var box = null;
       var pan = null;
+      var prevSelection = new Set();   /* who was picked before this click, so a click that is a move order does not lose them */
       life.on(stage, 'pointerdown', function (e) {
         if (e.button !== 0) return;
         if (e.target.closest('.tsi-exp-token') || e.target.closest('.tsi-exp-pin') || e.target.closest('.tsi-exp-showui') || e.target.closest('.tsi-exp-zoombox')) return;
         if (pickXY) { pickAt(e); return; }
+        if (walking) { stopWalk(); return; }
+        prevSelection = new Set(selected);
         var p = pointerOnStage(e);
         try { stage.focus({ preventScroll: true }); } catch (err) { /* ignore */ }
         try { stage.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
@@ -796,10 +807,26 @@
         var p = pointerOnStage(e);
         setMarquee(box.x, box.y, p.x, p.y);
       });
+      /* A plain click (not a drag, not a box) with heroes picked is a move order. */
+      function tryClickMove(e) {
+        if (!clickMove || e.ctrlKey || walking || drag || !prevSelection.size) return false;
+        selected.clear();
+        prevSelection.forEach(function (id) { if (R.token(state, id)) selected.add(id); });
+        if (!selected.size) return false;
+        renderTokens();
+        return walkTo(pointerOnBoard(e));
+      }
       function endBox(e) {
-        if (pan) { pan = null; stage.classList.remove('tsi-exp-stage--panning'); return; }
+        if (pan) {
+          var wasClick = !pan.moved;
+          pan = null;
+          stage.classList.remove('tsi-exp-stage--panning');
+          if (wasClick) tryClickMove(e);
+          return;
+        }
         if (!box) return;
         var p = pointerOnStage(e);
+        if (Math.abs(p.x - box.x) + Math.abs(p.y - box.y) < 6 && tryClickMove(e)) { box = null; marquee.hidden = true; return; }
         var a = R.toBoard(view, Math.min(box.x, p.x), Math.min(box.y, p.y));
         var b = R.toBoard(view, Math.max(box.x, p.x), Math.max(box.y, p.y));
         box = null;
@@ -817,6 +844,7 @@
       life.on(tokenLayer, 'pointerdown', function (e) {
         var node = e.target.closest('.tsi-exp-token');
         if (!node || e.button !== 0) return;
+        if (walking) { stopWalk(); return; }
         var id = node.dataset.id;
         var t = R.token(state, id);
         if (!t) return;
@@ -858,8 +886,12 @@
       function endDrag() {
         if (!drag) return;
         var d = drag;
-        var res = R.finishMove(state, DATA, JDEFS, d, board, rand);
         drag = null;
+        finishDrag(d);
+      }
+      /* Finish a move (a dragged one, or a walk): the miles, the day's roll, saving, the event. */
+      function finishDrag(d) {
+        var res = R.finishMove(state, DATA, JDEFS, d, board, rand);
         if (res.result === 'free') {
           setNotice('Free Move: repositioned without spending miles.');
           saveNow();
@@ -883,6 +915,80 @@
       }
       life.on(window, 'pointerup', endDrag);
       life.on(window, 'pointercancel', endDrag);
+
+      /* ---------- Click to move: the party walks (29 October 2026) ----------
+         R.walkPlan works the whole walk out first (the same miles, limit and day's travel roll a drag has, cutting the
+         walk short at the hex where the roll falls); here the heroes are moved along it at a fixed pace, the fog clears as
+         they pass, the TV follows because every step redraws the heroes, and at the end the move is finished the way a
+         dragged move is (miles charged, the roll made, saved, the event opened). */
+      var walking = null;
+      function walkTo(point) {
+        if (walking || drag) return false;
+        var ids = Array.from(selected).filter(function (id) { return !!R.token(state, id); });
+        if (!ids.length) return false;
+        var anchorId = ids.indexOf(focusId) >= 0 ? focusId : ids[0];
+        var d = R.startDrag(state, board, ids, anchorId);
+        var plan = R.walkPlan(state, board, d, point, rand);
+        if (!plan.ok) {
+          if (plan.reason === 'tooFar') setNotice('Too far. That is ' + plan.miles + ' miles, and one or more heroes would exceed ' + R.dayLimit(state) + ' miles. Make Camp to reset.');
+          else if (plan.reason === 'tired') setNotice(R.token(state, anchorId).initial + ' has reached ' + R.dayLimit(state) + ' miles. Make Camp to reset.');
+          return false;
+        }
+        focusId = anchorId;
+        walking = { plan: plan, drag: d, t0: 0, raf: 0, fromX: plan.from.x, fromY: plan.from.y, hex: null };
+        if (plan.cutAt !== null) setNotice('The party sets off, but something will happen after ' + plan.hexes + ' hex' + (plan.hexes === 1 ? '' : 'es') + '.');
+        else setNotice('');
+        updateTravelUI();
+        walking.raf = life.raf(walkFrame);
+        return true;
+      }
+      function walkFrame(now) {
+        var w = walking;
+        if (!w) return;
+        w.raf = 0;
+        if (!w.t0) w.t0 = now;
+        var spacing = R.hexSize(state.grid) * Math.sqrt(3);
+        var pos = R.pointAlong(w.plan.path, (now - w.t0) / R.WALK_MS_PER_HEX * spacing);
+        R.dragFree(state, board, w.drag, pos.x - w.fromX, pos.y - w.fromY);
+        if (state.fog.enabled) {
+          var a = R.token(state, w.drag.anchorId);
+          var hex = a ? R.tokenHex(state, board, a) : null;
+          if (state.snap.enabled && hex) { if (!w.hex || w.hex.q !== hex.q || w.hex.r !== hex.r) { w.hex = hex; R.reveal(state, hex, 2); drawFog(); } }
+          else { R.revealAroundFocus(state, board, focusId); drawFog(); }
+        }
+        renderTokens();
+        if (pos.done) { finishWalk(); return; }
+        w.raf = life.raf(walkFrame);
+      }
+      /* Arrived: rest in the exact hex (snapped) or at the exact point, then finish like a dragged move. */
+      function finishWalk() {
+        var w = walking;
+        if (!w) return;
+        walking = null;
+        if (w.raf) life.cancelRaf(w.raf);
+        if (w.plan.snap && w.plan.endAx) R.snapTo(state, board, w.drag, w.plan.endAx);
+        else R.dragFree(state, board, w.drag, w.plan.end.x - w.fromX, w.plan.end.y - w.fromY);
+        if (w.plan.cutAt !== null) setNotice('The party stops after ' + w.plan.hexes + ' hex' + (w.plan.hexes === 1 ? '' : 'es') + '. Click again to carry on.');
+        finishDrag(w.drag);
+      }
+      /* Esc, or a click while walking: stop where the party is, and pay for the hexes walked. */
+      function stopWalk() {
+        var w = walking;
+        if (!w) return;
+        walking = null;
+        if (w.raf) life.cancelRaf(w.raf);
+        var a = R.token(state, w.drag.anchorId);
+        if (state.snap.enabled && a) R.snapTo(state, board, w.drag, R.tokenHex(state, board, a));
+        finishDrag(w.drag);
+      }
+      life.onKey(function (e) {
+        if (e.key !== 'Escape') return;
+        if (walking) { e.preventDefault(); stopWalk(); return; }
+        /* With Click to move on a click on the map is a move order, so Esc is how to put the heroes down again. */
+        if (clickMove && selected.size && !drag && !document.querySelector('.tsi-modal')) { selected.clear(); renderTokens(); updateTravelUI(); }
+      });
+      /* Leaving the Explorer mid-walk puts everyone back, so nothing is left half-moved. */
+      life.onStop(function () { if (walking) { R.undoDrag(state, walking.drag); walking = null; } });
 
       /* ---------- Travel ---------- */
       function toggleFreeMove() {
@@ -918,6 +1024,7 @@
       /* Make Camp: the night's pop-ups show one after another (EXP-01), and
          a double click, Enter or Space can't camp twice (EXP-02). */
       var makeCamp = TSI.oneAtATime(function () {
+        if (walking) stopWalk();
         /* An event left open waits to be finished first, so the day can't move on under it. */
         if (state.journey.current) {
           setNotice('Finish or end the event in progress before you make camp.');
@@ -2529,6 +2636,7 @@
 
       /* For the tests. */
       ns.debug = {
+        walking: function () { return !!walking; },
         setScene: function (card) { setPvScene(card); },
         showWord: function (news) { return showEvents([{ kind: 'word', news: news }]); },
         deck: function () { return deckDebug; },
