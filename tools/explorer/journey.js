@@ -278,7 +278,13 @@
     if (!ev || ev.off) return false;
     var w = ev.where || { any: true };
     /* terrain: ['road', ...] (Harry, 29 October 2026): only on those painted kinds; 'open' is an unpainted hex. */
-    if (Array.isArray(w.terrain) && ctx.terrainPainted && !lenient && w.terrain.indexOf(ctx.terrain || 'open') === -1) return false;
+    if (Array.isArray(w.terrain)) {
+      var onIt = w.terrain.indexOf(ctx.terrain || 'open') !== -1;
+      /* terrainStrict: an event for a kind of ground that is only ever somewhere in particular (marsh, mountains): it never
+         comes up unless that terrain is painted under the party, even on a map nobody has painted yet. */
+      if (w.terrainStrict) { if (!onIt) return false; }
+      else if (ctx.terrainPainted && !lenient && !onIt) return false;
+    }
     /* near: 'river' or 'coast' (T2 only near a river: Harry, 7 October 2026). */
     if (w.near && !(ctx.near && ctx.near[w.near])) return false;
     if (w.any) return true;

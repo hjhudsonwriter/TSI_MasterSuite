@@ -64,6 +64,8 @@ window.TSI_DATA.fights = {
     veteran: { name: 'Veteran', ac: 17, hp: 58, init: 1, link: 'https://www.dndbeyond.com/monsters?filter-search=Veteran' },
     winter_wolf: { name: 'Winter Wolf', ac: 13, hp: 75, init: 1, link: 'https://www.dndbeyond.com/monsters?filter-search=Winter%20Wolf' },
     wolf: { name: 'Wolf', ac: 13, hp: 11, init: 2, link: 'https://www.dndbeyond.com/monsters?filter-search=Wolf' },
+    crocodile: { name: 'Crocodile', ac: 12, hp: 19, init: 0, link: 'https://www.dndbeyond.com/monsters?filter-search=Crocodile' },
+    shambling_mound: { name: 'Shambling Mound', ac: 15, hp: 136, init: -1, link: 'https://www.dndbeyond.com/monsters?filter-search=Shambling%20Mound' },
     /* Not in the SRD: the Heartwood Ritual's Husk (35 hit points there; the Ritual gives no Armour Class or initiative). Only T9 uses it, and T9 is switched off. */
     rootbound_husk: { name: 'Rootbound Husk', ac: null, hp: 35, init: 0, link: '' }
   },
@@ -147,6 +149,12 @@ window.TSI_DATA.fights = {
       coast: 'cove',
       low: [['thug', 2, 'Toll-man'], ['bandit', 6]],
       high: [['thug', 2, 'Toll-man'], ['veteran', 2], ['bandit', 6]]
+    },
+    /* T20 The Marsh Lights: "Levels 7–10: 4 crocodiles. Levels 11–16: add a shambling mound." Lurking round the drowned waystone, so the ford's water map. */
+    t20: {
+      map: 'ford',
+      low: [['crocodile', 4]],
+      high: [['shambling_mound', 1], ['crocodile', 4]]
     },
     /* T9 The Husk in the Furrows (switched off): "One Rootbound Husk (35 HP, as in the Heartwood Ritual)." */
     t9: {

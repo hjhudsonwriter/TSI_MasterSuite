@@ -17,7 +17,8 @@
      the events uses 'dm' or 'night' at present.
    - where: { any: true } | { gods: [...] } | { provinces: [...] } | { maps: [...] }, and optionally terrain: ['road', 'forest', ...]
      (the kind painted on the hex the party is on: road, forest, hills, marsh, mountain_trails, mountain_climb, open for an unpainted
-     hex). It is only used once someone has painted terrain on that map, and ignored if it would leave nothing to draw.
+     hex). It is only used once someone has painted terrain on that map, and ignored if it would leave nothing to draw. Add
+     terrainStrict: true for an event that needs that ground even on a map nobody has painted (the marsh and mountain events).
      gods and provinces follow the Region list; maps need that map loaded.
      Any of them can add near: 'river' or 'coast': the party must be within
      2 hexes of one, as marked in data/terrain-data.js (never on an uploaded
@@ -784,6 +785,191 @@ window.TSI_DATA.journeyEvents = {
       }
     },
 
+    /* ================= Travel events: terrain (Harry's drafts, 29 October 2026) ================= */
+    {
+      id: 't19', code: 'T19', kind: 'travel', title: 'The Sunken Causeway', where: { any: true, terrain: ['marsh'], terrainStrict: true },
+      line: 'Survival, then Dexterity saves and Athletics · a rescue or a haul',
+      steps: {
+        start: {
+          text: 'Black water on both sides, and ahead a plank road gone soft with age, half under the mire. Every third plank is missing. Someone has driven fresh marker-poles in beside it, and a few have snapped.',
+          check: { skill: 'Wisdom (Survival)', dc: 14, who: 'one', success: 'across', failure: 'plank' }
+        },
+        across: {
+          text: 'You read which planks will bear weight and cross cleanly. Under a tarred sheet at the far end is a dry cache.',
+          apply: [{ gold: 50 }, { dm: 'Optional: a coil of good rope, or another minor item.' }],
+          end: true
+        },
+        plank: {
+          text: 'A plank gives way.',
+          check: { skill: 'Dexterity saving throw', dc: 14, who: 'each', tags: ['terrain', 'vegetation'], whoText: 'Every hero makes the save. Tick who failed: they sink to the chest in mire.', anyFail: 'sunk', noneFail: 'clear' }
+        },
+        clear: { text: 'Everyone throws themselves onto firmer planks.', end: true },
+        sunk: {
+          text: '{failed} sank to the chest in mire. Someone has to haul them out.',
+          check: { skill: 'Strength (Athletics)', dc: 13, who: 'one', whoText: 'A hero who did not sink hauls them out.', success: 'hauled', failure: 'stuck' }
+        },
+        hauled: {
+          text: 'You haul them out, black to the chest.',
+          apply: [{ effect: { name: 'Mire-Caked', text: 'disadvantage on Dexterity checks', who: 'failed', camp: true } }],
+          end: true
+        },
+        stuck: {
+          text: 'Getting them free takes a long, muddy time.',
+          apply: [{ miles: -12 }, { effect: { name: 'Mire-Caked', text: 'disadvantage on Dexterity checks', who: 'failed', camp: true } }],
+          end: true
+        }
+      }
+    },
+
+    {
+      id: 't20', code: 'T20', kind: 'travel', title: 'The Marsh Lights', where: { any: true, terrain: ['marsh'], terrainStrict: true },
+      line: 'Nature or Survival, then a choice · may lead to a fight',
+      steps: {
+        start: {
+          text: 'Pale lights drift between the reeds, a few hundred yards off, slow as boats. They do not flicker like lanterns. They bob, wait, and move on, as if waiting for you to follow.',
+          check: { skill: 'Intelligence (Nature) or Wisdom (Survival)', dc: 15, who: 'one', success: 'gas', failure: 'unsure' }
+        },
+        gas: {
+          text: 'It is marsh-gas, harmless. The old drovers\' road runs alongside it, and the going is easy.',
+          apply: [{ miles: 6 }],
+          end: true
+        },
+        unsure: {
+          text: 'You cannot tell whether the lights are a lure.',
+          choices: [
+            { label: 'Follow the lights', go: 'follow' },
+            { label: 'Keep to the road: −6 miles today', go: 'road' }
+          ]
+        },
+        road: { text: 'The lights drift away. The detour costs you time.', apply: [{ miles: -6 }], end: true },
+        follow: {
+          text: 'The lights lead to a drowned waystone and a cache of coins. Something in the water has been luring travellers here.',
+          fight: { suggest: 'Levels 7–10: 4 crocodiles. Levels 11–16: add a shambling mound.', encounter: 't20', won: 'won', fled: 'fled' }
+        },
+        won: { text: 'The water goes still. The cache is yours.', apply: [{ gold: 100 }], end: true },
+        fled: { text: 'You get away along the old road, and the lights go out behind you.', end: true }
+      }
+    },
+
+    {
+      id: 't21', code: 'T21', kind: 'travel', title: 'The Cut Rope', where: { any: true, terrain: ['mountain_climb'], terrainStrict: true },
+      line: 'Investigation, then a group Athletics check',
+      steps: {
+        start: {
+          text: 'A fixed rope runs up the cliff face, its pegs bright in the grey rock: the climbers\' way up. Its end lies coiled at your feet. Someone has cut it clean and left the cut end where you would find it.',
+          check: { skill: 'Intelligence (Investigation)', dc: 14, who: 'one', success: 'spotted', failure: 'climb' }
+        },
+        spotted: {
+          text: 'The cut is old, weathered, and made by a blade, not frayed. A second line of handholds runs a little to the left, and you take it with care.',
+          apply: [{ dm: 'Who cut the rope is left open: a rival climber, a local who does not want strangers on the face, or just a bad winter. Leave it for the table.' }],
+          end: true
+        },
+        climb: {
+          text: 'You climb the old line of the rope.',
+          check: { skill: 'Strength (Athletics)', dc: 15, who: 'group', tags: ['terrain'], success: 'up', failure: 'fall' }
+        },
+        up: { text: 'Everyone gets up the face.', end: true },
+        fall: {
+          text: 'Someone comes off the rope and falls 20 feet (2d6 bludgeoning). Recovering costs time.',
+          apply: [{ miles: -12 }],
+          end: true
+        }
+      }
+    },
+
+    {
+      id: 't22', code: 'T22', kind: 'travel', title: 'Rockfall on the Face', where: { any: true, terrain: ['mountain_climb'], terrainStrict: true },
+      line: 'Perception for the warning, then Dexterity saves',
+      steps: {
+        start: {
+          text: 'A pebble skips past your boot. Then another. High above, something small and loose gives a dry, clicking sound.',
+          check: { skill: 'Wisdom (Perception)', dc: 14, who: 'one', success: 'warned', failure: 'unwarned' }
+        },
+        warned: {
+          text: 'A shout gives everyone a moment to brace.',
+          check: { skill: 'Dexterity saving throw', dc: 15, who: 'each', tags: ['terrain'], whoText: 'Every hero makes the save with advantage. Tick who failed: 3d8 bludgeoning (half if they brace under an overhang).', anyFail: 'hit', noneFail: 'clear' }
+        },
+        unwarned: {
+          text: 'The rock comes down with no warning.',
+          check: { skill: 'Dexterity saving throw', dc: 15, who: 'each', tags: ['terrain'], whoText: 'Every hero makes the save. Tick who failed: 3d8 bludgeoning (half if they brace under an overhang).', anyFail: 'hit', noneFail: 'clear' }
+        },
+        clear: { text: 'The rock goes past, and the face is quiet again.', end: true },
+        hit: {
+          text: '{failed} lose their grip and slide before they catch themselves.',
+          apply: [{ miles: -6 }],
+          end: true
+        }
+      }
+    },
+
+    {
+      id: 't23', code: 'T23', kind: 'travel', title: 'The Shepherd\'s Warning', where: { any: true, terrain: ['mountain_trails'], terrainStrict: true },
+      line: 'Survival, then a choice · weather and exhaustion',
+      steps: {
+        start: {
+          text: 'A shepherd is bringing her flock down the trail at a fast, uneasy walk. She stops when she sees you. "Not today," she says, and nods upslope at a white edge of cloud on the ridge. "That\'s coming down by dark."',
+          check: { skill: 'Wisdom (Survival)', dc: 13, who: 'one', success: 'hut', failure: 'caught' }
+        },
+        hut: {
+          text: 'You judge how bad it will be and find a stone shepherd\'s hut a short way on. You sit the weather out dry.',
+          apply: [{ effect: { name: 'Dry and Rested', text: 'advantage on the first Constitution saving throw tomorrow', who: 'party', camp: true } }],
+          end: true
+        },
+        caught: {
+          text: 'You cannot judge how bad it will be, and the weather catches you.',
+          choices: [
+            { label: 'Push on: Constitution saving throw, DC 14', go: 'push' },
+            { label: 'Turn back and wait it out: −12 miles today', go: 'wait' },
+            { label: 'Pay the shepherd to guide you by a lee path: −50 gold', go: 'guide' }
+          ]
+        },
+        push: {
+          text: 'You push on into the wind.',
+          check: { skill: 'Constitution saving throw', dc: 14, who: 'each', tags: ['exhaustion', 'terrain'], whoText: 'Every hero makes the save. Tick who failed: a level of exhaustion that fades with the next long rest.', anyFail: 'chilled', noneFail: 'through' }
+        },
+        chilled: {
+          text: '{failed} are chilled to the bone.',
+          apply: [{ effect: { name: 'Wind-Chilled', text: 'one level of exhaustion, gone at the next long rest', who: 'failed', camp: true } }],
+          end: true
+        },
+        through: { text: 'You get through the worst of it.', end: true },
+        wait: { text: 'You turn back and wait the weather out.', apply: [{ miles: -12 }], end: true },
+        guide: { text: 'She takes your coin and a lee path, and you are through before the cloud comes down.', apply: [{ gold: -50 }], end: true }
+      }
+    },
+
+    {
+      id: 't24', code: 'T24', kind: 'travel', title: 'The Lost Pilgrim', where: { any: true, terrain: ['mountain_trails'], terrainStrict: true },
+      line: 'Medicine, then a choice',
+      steps: {
+        start: {
+          text: 'A pilgrim sits on a trail-stone with her boot off and her ankle swelling. Her staff has snapped. "I took the wrong fork an hour ago," she says. "I don\'t think I can walk down."',
+          check: { skill: 'Wisdom (Medicine)', dc: 13, who: 'one', success: 'splinted', failure: 'worse' }
+        },
+        splinted: {
+          text: 'You splint the ankle well. She can bear weight with help.',
+          choices: [
+            { label: 'Help her down to the next shelter: −12 miles today', go: 'carry' },
+            { label: 'Leave her splinted, with food and water', go: 'leave' }
+          ]
+        },
+        worse: {
+          text: 'You do what you can, but the ankle is badly hurt. She cannot walk on it.',
+          choices: [
+            { label: 'Carry her down to the next shelter: −12 miles today', go: 'carry' },
+            { label: 'Leave her with food and water, and send help', go: 'leave' }
+          ]
+        },
+        carry: {
+          text: 'It takes the afternoon. At the shelter she presses a small purse on you.',
+          apply: [{ miles: -12 }, { gold: 100 }],
+          pick: { prompt: 'Who carried her longest? They gain Inspiration.', go: 'thanked' }
+        },
+        thanked: { text: 'She will not forget it.', apply: [{ inspiration: 'hero' }], end: true },
+        leave: { text: 'You leave her splinted, with food and water, and look back twice.', end: true }
+      }
+    },
+
     /* ================= Campfire events ================= */
     {
       id: 'c1', code: 'C1', kind: 'camp', title: 'A Stranger at the Fire', where: { any: true },
@@ -1315,6 +1501,115 @@ window.TSI_DATA.journeyEvents = {
         },
         fled: { text: 'You get away, and the lights swing on.', end: true },
         leave: { text: 'Before dawn you hear a hull break on the rocks.', end: true }
+      }
+    },
+
+    /* ================= Campfire events: terrain (Harry's drafts, 29 October 2026) ================= */
+    {
+      id: 'c13', code: 'C13', kind: 'camp', title: 'Fever in the Reeds', where: { any: true, terrain: ['marsh'], terrainStrict: true },
+      line: 'Constitution saves, then a remedy',
+      steps: {
+        start: {
+          text: 'The insects come at dusk and do not stop. By midnight your skin is hot and the reeds seem to lean in closer.',
+          check: { skill: 'Constitution saving throw', dc: 13, who: 'each', tags: ['exhaustion', 'terrain'], whoText: 'Every hero makes the save. Tick who failed: they fall to the marsh-fever.', anyFail: 'fever', noneFail: 'well' }
+        },
+        well: { text: 'You wake sore, but whole.', end: true },
+        fever: {
+          text: '{failed} burn with fever through the night. A reed-cutter at her own small fire calls across: "Boil the water first. Next time."',
+          choices: [
+            { label: 'Buy her fever-bark remedy: −50 gold', go: 'buy' },
+            { label: 'Work out the remedy yourselves: Wisdom (Medicine), DC 14', go: 'brew' },
+            { label: 'Sweat it out', go: 'sweat' }
+          ]
+        },
+        buy: { text: 'The remedy works, and by morning the fever is gone.', apply: [{ gold: -50 }], end: true },
+        brew: {
+          text: 'You try to make the remedy from what is growing round the camp.',
+          check: { skill: 'Wisdom (Medicine)', dc: 14, who: 'one', success: 'brewed', failure: 'sweat' }
+        },
+        brewed: { text: 'You brew it from her cuttings, and the fever breaks by morning.', end: true },
+        sweat: {
+          text: 'Nothing to do but sweat it out.',
+          apply: [{ effect: { name: 'Marsh-Fever', text: 'no benefit from tonight\'s long rest; no Inspiration tomorrow', who: 'failed', night: true } }],
+          end: true
+        }
+      }
+    },
+
+    {
+      id: 'c14', code: 'C14', kind: 'camp', title: 'The Cairn of Names', where: { any: true, terrain: ['mountain_climb'], terrainStrict: true },
+      line: 'Constitution saves for the thin air · a quiet choice',
+      steps: {
+        start: {
+          text: 'You camp on a ledge with a cairn on it, taller than a man, built from thousands of flat stones. Scratched into the stones, in a hundred hands, are names. The air is thin.',
+          check: { skill: 'Constitution saving throw', dc: 14, who: 'each', tags: ['exhaustion'], whoText: 'Every hero makes the save. Tick who failed: the thin air leaves them short of breath.', anyFail: 'breathless', noneFail: 'cairn' }
+        },
+        breathless: {
+          text: '{failed} lie awake short of breath.',
+          apply: [{ effect: { name: 'Short of Breath', text: 'disadvantage on the first Athletics or Acrobatics check tomorrow', who: 'failed', camp: true } }],
+          next: 'cairn'
+        },
+        cairn: {
+          text: 'Before you sleep, there is the cairn.',
+          choices: [
+            { label: 'Add a name to the cairn', go: 'name' },
+            { label: 'Leave it as it is', go: 'leave' }
+          ]
+        },
+        name: {
+          text: 'It is an old climbers\' habit, and the thin air makes it feel important.',
+          pick: { prompt: 'Who adds a name? They gain Inspiration.', go: 'named' }
+        },
+        named: {
+          text: 'The stone is cold under your thumb.',
+          apply: [{ inspiration: 'hero' }, { dm: 'A name the party knows could be among those on the cairn, as a small hook. Not required.' }],
+          end: true
+        },
+        leave: { text: 'You leave the names as they are.', end: true }
+      }
+    },
+
+    {
+      id: 'c15', code: 'C15', kind: 'camp', title: 'Smoke on the Ridge', where: { any: true, terrain: ['mountain_trails'], terrainStrict: true },
+      line: 'Perception, then Persuasion · a thread',
+      steps: {
+        start: {
+          text: 'Across the valley, on the far ridge, a thin line of smoke rises. A minute later, a second answers it from further along. They look like signals, though there is no pattern you can read.',
+          check: { skill: 'Wisdom (Perception)', dc: 14, who: 'one', success: 'watch', failure: 'unsure' }
+        },
+        watch: { text: 'They are watch-fires, not a camp: {clan} scouts keeping the ridge.', next: 'scout' },
+        unsure: { text: 'You cannot tell what the fires are. A scout reaches your camp at first light, wary of you.', next: 'scout' },
+        scout: {
+          text: 'The scout stands at the edge of the firelight, one hand on her blade.',
+          check: { skill: 'Charisma (Persuasion)', dc: 14, who: 'one', success: 'told', failure: 'warned' }
+        },
+        told: {
+          text: 'She relaxes, and tells you what she will.',
+          apply: [{ thread: { name: 'What the Scouts Watched For', note: 'A {clan} scout says Chief {chief} has doubled the ridge watch for a week and will not say why.' } }, { dm: 'What the clan is watching for is for you to decide when it matters.' }],
+          end: true
+        },
+        warned: { text: 'She tells you only to keep to the trails, and goes.', end: true }
+      }
+    },
+
+    {
+      id: 'c16', code: 'C16', kind: 'camp', title: 'The Hermit\'s Fire', where: { any: true, terrain: ['mountain_trails'], terrainStrict: true },
+      line: 'Insight · trail-lore or a lighter purse',
+      steps: {
+        start: {
+          text: 'An old man with a goat on a rope stops at the edge of your firelight. "Cold up here," he says. "I\'ve wood, if you\'ve room."',
+          check: { skill: 'Wisdom (Insight)', dc: 13, who: 'one', success: 'honest', failure: 'odd' }
+        },
+        honest: {
+          text: 'He is exactly what he seems. Over the fire he tells you which trails hold in a thaw and which do not.',
+          apply: [{ effect: { name: 'Trail-Wise', text: 'advantage on Wisdom (Survival) checks on mountain trails', who: 'party', days: 3 } }],
+          end: true
+        },
+        odd: {
+          text: 'He is hard to read, and you sleep with one eye open. By dawn he and the goat are gone, and something small is missing from a pouch.',
+          apply: [{ gold: -20 }],
+          end: true
+        }
       }
     },
 

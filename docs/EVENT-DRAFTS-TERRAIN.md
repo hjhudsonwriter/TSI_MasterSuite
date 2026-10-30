@@ -1,6 +1,6 @@
 # Draft events for Marsh, Mountain climb and Mountain trails (29 October 2026)
 
-**Drafts for Harry to rewrite, cut or approve. Nothing here is in the Explorer yet.** Once you are happy with one (or have changed it), I will enter it exactly as written.
+**Entered into the Explorer on 30 October 2026** (EXP-TERRAIN-03 in KNOWN_ISSUES.md), with two extra Mountain trails events (T24, C16) added on request. This page is the original draft; the events themselves live in `tools/explorer/data/journey-events.js`.
 
 What these are written to do:
 - Fill the gaps from the terrain review: Marsh and Mountain climb have no events, and Mountain trails only the Prospector and the Beacons.

@@ -202,4 +202,45 @@
     var pool = J.pool({ events: [{ id: 'x', kind: 'travel', where: { any: true, terrain: ['road'] }, steps: {} }] }, 'travel', J.context(m.s, E));
     t.equal(pool.length, 1);
   });
+
+  test('the marsh and mountain events come up only on their own terrain, even on a map nobody has painted', function (t) {
+    var m = mapState();
+    var unpainted = ids(m.s, 'travel').concat(ids(m.s, 'camp'));
+    ['t19', 't20', 't21', 't22', 't23', 't24', 'c13', 'c14', 'c15', 'c16'].forEach(function (id) { t.ok(unpainted.indexOf(id) === -1, id + ' is not drawn on an unpainted map'); });
+    R.paintHexes(m.s, [{ q: 10, r: 6 }], 'marsh');
+    var marsh = ids(m.s, 'travel');
+    t.ok(marsh.indexOf('t19') !== -1 && marsh.indexOf('t20') !== -1, 'the marsh events are drawn on marsh');
+    t.ok(marsh.indexOf('t21') === -1 && marsh.indexOf('t23') === -1, 'and not the mountain ones');
+    t.ok(ids(m.s, 'camp').indexOf('c13') !== -1);
+    R.paintHexes(m.s, [{ q: 10, r: 6 }], 'mountain_climb');
+    t.ok(ids(m.s, 'travel').indexOf('t21') !== -1 && ids(m.s, 'camp').indexOf('c14') !== -1);
+    R.paintHexes(m.s, [{ q: 10, r: 6 }], 'mountain_trails');
+    var trails = ids(m.s, 'travel').concat(ids(m.s, 'camp'));
+    ['t23', 't24', 'c15', 'c16'].forEach(function (id) { t.ok(trails.indexOf(id) !== -1, id + ' on mountain trails'); });
+  });
+
+  test('every step of the ten new events is reachable and every "go" and "next" lands on a real step', function (t) {
+    ['t19', 't20', 't21', 't22', 't23', 't24', 'c13', 'c14', 'c15', 'c16'].forEach(function (id) {
+      var ev = J.def(E, id);
+      t.ok(ev, id + ' exists');
+      var seen = { start: true }, todo = ['start'];
+      while (todo.length) {
+        var st = ev.steps[todo.pop()];
+        var out = [];
+        if (st.next) out.push(st.next);
+        (st.choices || []).forEach(function (c) { out.push(c.go); });
+        ['success', 'failure', 'anyFail', 'noneFail'].forEach(function (k) { if (st.check && st.check[k]) out.push(st.check[k]); });
+        if (st.fight) { out.push(st.fight.won, st.fight.fled); }
+        if (st.pick) out.push(st.pick.go);
+        out.forEach(function (n) { t.ok(ev.steps[n], id + ': ' + n + ' exists'); if (ev.steps[n] && !seen[n]) { seen[n] = true; todo.push(n); } });
+      }
+      Object.keys(ev.steps).forEach(function (k) { t.ok(seen[k], id + ': step ' + k + ' can be reached'); });
+    });
+  });
+
+  test('T20\'s fight is set up for both bands with stat blocks the Combat Tracker knows', function (t) {
+    var F = window.TSI_DATA.fights;
+    t.ok(F.encounters.t20 && F.encounters.t20.low && F.encounters.t20.high);
+    ['crocodile', 'shambling_mound'].forEach(function (m) { t.ok(F.monsters[m] && F.monsters[m].hp > 0, m); });
+  });
 }());
