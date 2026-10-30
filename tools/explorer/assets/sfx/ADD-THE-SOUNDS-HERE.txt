@@ -1,0 +1,13 @@
+The Explorer's sound effects (added 30 October 2026).
+
+Save the sound files in this folder with these names (mp3 is best; to use a different
+name or kind of file, change it in tools/explorer/data/sfx-data.js):
+
+  footsteps.mp3   grassy footsteps. Plays only while the heroes are moving. Should loop cleanly.
+  campfire.mp3    a crackling campfire. Plays from Make Camp through the fade, and on while a
+                  campfire event is open. Should loop cleanly.
+  rain.mp3        rain. Loops while rain weather is active.
+  storm.mp3       thunder and rain. Loops while storm weather is active.
+  raven.mp3       a wing flap and a raven's caw. Plays once when "The Ironbow sends word..." opens.
+
+A file that is not here is skipped quietly (the Sound panel in the Explorer says "file missing").

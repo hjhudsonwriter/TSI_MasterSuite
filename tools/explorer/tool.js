@@ -72,6 +72,14 @@
       var uploadUrl = state.mapUploadKey && upload ? upload.dataUrl : null;
       function saveNow() { R.rememberGrid(state); ctx.store.set('save', R.toSave(state)); queuePlayerSync(); }
 
+      /* Sound effects (30 October 2026; data/sfx-data.js, sfx.js): played from this window only. */
+      var sfx = ns.sfx.create({
+        life: life,
+        config: window.TSI_DATA.explorerSfx,
+        load: function () { try { return JSON.parse(window.localStorage.getItem(ns.sfx.KEY)); } catch (e) { return null; } },
+        save: function (v) { try { window.localStorage.setItem(ns.sfx.KEY, JSON.stringify(v)); } catch (e) { /* the setting just isn't remembered */ } }
+      });
+
       /* Not saved: selection, the hero whose miles show, drags and modes. */
       var selected = new Set();
       var focusId = state.tokens[0] ? state.tokens[0].id : null;
@@ -199,6 +207,12 @@
       zoomBox.appendChild(btnTerrain);
       zoomBox.appendChild(terrainRow);
       var terrainPanel = el('div', { class: 'tsi-exp-terrainpanel', hidden: true, 'data-test': 'terrain-panel' });
+      /* The Sound panel: on or off, the volume, and a Test button for each sound (it says if a file is missing). */
+      var sfxPanel = el('div', { class: 'tsi-exp-sfxpanel', hidden: true, 'data-test': 'sfx-panel' });
+      var btnSfx = btn('Sound', function () { toggleSfxPanel(); }, 'tsi-exp-zoom', 'sfx-toggle');
+      btnSfx.title = 'Sound effects: footsteps, campfire, rain and storm, and the raven. Plays from this window.';
+      btnSfx.setAttribute('aria-pressed', 'false');
+      zoomBox.appendChild(btnSfx);
       var btnAtlas = btn('Show Scarlett Isles map to players', function () {
         pvAtlas = !pvAtlas;
         btnAtlas.textContent = pvAtlas ? 'Hide Scarlett Isles map from players' : 'Show Scarlett Isles map to players';
@@ -293,7 +307,7 @@
       var tokenLayer = el('div', { class: 'tsi-exp-world tsi-exp-world--tokens' });
       var marquee = el('div', { class: 'tsi-exp-marquee', hidden: true });
       var showUi = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-showui', hidden: true, 'data-test': 'show-ui', onclick: function () { setUiHidden(false); } }, 'Show UI');
-      var stage = el('div', { class: 'tsi-exp-stage' }, [mapLayer, video, gridCanvas, terrainCanvas, pinLayer, fogCanvas, reachCanvas, tokenLayer, marquee, showUi, zoomBox, terrainPanel]);
+      var stage = el('div', { class: 'tsi-exp-stage' }, [mapLayer, video, gridCanvas, terrainCanvas, pinLayer, fogCanvas, reachCanvas, tokenLayer, marquee, showUi, zoomBox, terrainPanel, sfxPanel]);
 
       /* The travel panel. */
       var dayLabel = el('strong', { class: 'tsi-exp-day', text: 'Day 1', 'data-test': 'day' });
@@ -590,6 +604,7 @@
       function applyWeather() {
         var w = R.currentWeather(state, DATA);
         if (w.changed) saveNow();
+        sfx.weather(w.src && state.travel.activeWeather ? state.travel.activeWeather.kind : null);
         if (!w.src) {
           if (video.getAttribute('src')) {
             video.pause();
@@ -866,6 +881,37 @@
       var box = null;
       var pan = null;
       var prevSelection = new Set();   /* who was picked before this click, so a click that is a move order does not lose them */
+      /* ---------- The Sound panel ---------- */
+      function buildSfxPanel() {
+        TSI.clear(sfxPanel);
+        var set = sfx.settings();
+        var onBox = el('input', { type: 'checkbox', id: 'tsi-exp-sfx-on', 'data-test': 'sfx-on' });
+        onBox.checked = set.on;
+        life.on(onBox, 'change', function () { sfx.setOn(onBox.checked); });
+        var vol = el('input', { type: 'range', min: '0', max: '1', step: '0.05', 'aria-label': 'Sound effects volume', 'data-test': 'sfx-volume' });
+        vol.value = String(set.volume);
+        life.on(vol, 'input', function () { sfx.setVolume(Number(vol.value)); });
+        sfxPanel.appendChild(el('div', { class: 'tsi-exp-terrainpanel__title', text: 'Sound effects' }));
+        sfxPanel.appendChild(el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-sfx-on' }, [onBox, el('span', { text: 'Sound effects on' })]));
+        sfxPanel.appendChild(el('label', { class: 'tsi-exp-field tsi-exp-field--side' }, [el('span', { text: 'Volume' }), vol]));
+        sfx.names().forEach(function (name) {
+          var status = el('span', { class: 'tsi-exp-sfxstatus', text: 'checking…', 'data-test': 'sfx-status-' + name });
+          sfx.probe(name, function (st) { status.textContent = st === 'ok' ? 'ready' : 'file missing'; status.classList.toggle('is-missing', st !== 'ok'); });
+          sfxPanel.appendChild(el('div', { class: 'tsi-exp-sfxrow' }, [
+            el('span', { class: 'tsi-exp-sfxname', text: sfx.label(name) }), status,
+            btn('Test', function () { sfx.test(name); }, 'tsi-exp-mini', 'sfx-test-' + name)
+          ]));
+        });
+        sfxPanel.appendChild(el('div', { class: 'tsi-exp-terrainpanel__hint', text: 'Sound files go in tools/explorer/assets/sfx/ (see the note there).' }));
+        sfxPanel.appendChild(row([btn('Close', function () { toggleSfxPanel(false); }, 'tsi-btn--primary', 'sfx-close')]));
+      }
+      function toggleSfxPanel(on) {
+        on = typeof on === 'boolean' ? on : sfxPanel.hidden;
+        sfxPanel.hidden = !on;
+        btnSfx.setAttribute('aria-pressed', on ? 'true' : 'false');
+        if (on) { if (terrainEdit) setTerrainEdit(false); buildSfxPanel(); }
+      }
+
       /* ---------- Painting terrain ---------- */
       function buildTerrainPanel() {
         TSI.clear(terrainPanel);
@@ -904,7 +950,7 @@
         stage.classList.toggle('tsi-exp-stage--painting', on);
         btnTerrain.textContent = 'Edit terrain: ' + (on ? 'On' : 'Off');
         setOn(btnTerrain, on);
-        if (on) { selected.clear(); buildTerrainPanel(); renderTokens(); updateTravelUI(); }
+        if (on) { if (!sfxPanel.hidden) toggleSfxPanel(false); selected.clear(); buildTerrainPanel(); renderTokens(); updateTravelUI(); }
         updateReach();
       }
       function toggleTerrainEdit() {
@@ -934,7 +980,7 @@
       }
       life.on(stage, 'pointerdown', function (e) {
         if (!terrainEdit || e.button !== 0) return;
-        if (e.target.closest('.tsi-exp-showui') || e.target.closest('.tsi-exp-zoombox') || e.target.closest('.tsi-exp-terrainpanel')) return;
+        if (e.target.closest('.tsi-exp-showui') || e.target.closest('.tsi-exp-zoombox') || e.target.closest('.tsi-exp-terrainpanel') || e.target.closest('.tsi-exp-sfxpanel')) return;
         e.stopImmediatePropagation();
         try { stage.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
         terrainStroke = { last: null, changed: false };
@@ -954,7 +1000,7 @@
 
       life.on(stage, 'pointerdown', function (e) {
         if (e.button !== 0) return;
-        if (e.target.closest('.tsi-exp-token') || e.target.closest('.tsi-exp-pin') || e.target.closest('.tsi-exp-showui') || e.target.closest('.tsi-exp-zoombox') || e.target.closest('.tsi-exp-terrainpanel')) return;
+        if (e.target.closest('.tsi-exp-token') || e.target.closest('.tsi-exp-pin') || e.target.closest('.tsi-exp-showui') || e.target.closest('.tsi-exp-zoombox') || e.target.closest('.tsi-exp-terrainpanel') || e.target.closest('.tsi-exp-sfxpanel')) return;
         if (pickXY) { pickAt(e); return; }
         if (walking) { stopWalk(); return; }
         prevSelection = new Set(selected);
@@ -1060,12 +1106,14 @@
         if (state.snap.enabled && drag.startAxial) {
           var target = R.dragSnap(state, board, drag, p);
           if (!target) return;
+          sfx.moving();
           renderTokens();
           /* The fog clears as you drag (saved when you let go). */
           if (state.fog.enabled) { R.reveal(state, target, 2); drawFog(); }
           return;
         }
         R.dragFree(state, board, drag, p.x - drag.pointer.x, p.y - drag.pointer.y);
+        sfx.moving();
         renderTokens();
         if (state.fog.enabled) { R.revealAroundFocus(state, board, focusId); drawFog(); }
       });
@@ -1082,6 +1130,7 @@
       }
       /* Finish a move (a dragged one, or a walk): the miles, the day's roll, saving, the event. */
       function finishDrag(d) {
+        sfx.stopMoving();
         var res = R.finishMove(state, DATA, JDEFS, d, board, rand);
         if (res.result === 'free') {
           setNotice('Free Move: repositioned without spending miles.');
@@ -1148,6 +1197,7 @@
         var spacing = R.hexSize(state.grid) * Math.sqrt(3);
         var pos = R.pointAlong(w.plan.path, (now - w.t0) / R.WALK_MS_PER_HEX * spacing);
         R.dragFree(state, board, w.drag, pos.x - w.fromX, pos.y - w.fromY);
+        sfx.moving();
         if (state.fog.enabled) {
           var a = R.token(state, w.drag.anchorId);
           var hex = a ? R.tokenHex(state, board, a) : null;
@@ -1236,6 +1286,7 @@
           var queue = R.makeCamp(state, DATA, JDEFS, rand, bastion);
           pvCamp++;
           pvNightUntil = Date.now() + 4000;
+          sfx.campStart();
           saveNow();
           setNotice('');
           updateTravelUI();
@@ -1265,9 +1316,14 @@
         items.forEach(function (item) {
           chain = chain.then(function () {
             if (!life.alive) return null;
-            if (item.kind === 'journey') return openJourney();
-            if (item.kind === 'word') return openWord(item.news);
-            return item.kind === 'weather' ? openWeather(item) : openEvent(item.kind, item.event);
+            /* A campfire event keeps the campfire sound on until it is finished. */
+            var cur = state.journey && state.journey.current;
+            var campy = item.kind === 'camp' || (item.kind === 'journey' && cur && cur.phase === 'camp');
+            if (campy) sfx.campHold(true);
+            var shown = item.kind === 'journey' ? openJourney()
+              : item.kind === 'word' ? openWord(item.news)
+              : item.kind === 'weather' ? openWeather(item) : openEvent(item.kind, item.event);
+            return Promise.resolve(shown).then(function (v) { if (campy) sfx.campHold(false); return v; }, function (err) { if (campy) sfx.campHold(false); throw err; });
           }).catch(function (err) {
             /* One broken pop-up mustn't stop the rest of the night's pop-ups. */
             if (window.console) console.error('[TSI] Explorer pop-up failed:', err);
@@ -1584,6 +1640,7 @@
          out the results, with their rolls, when it next sees the day. */
       function openWord(news) {
         var body = [];
+        sfx.play('raven');
         pvWord = news.map(function (w) { return { day: w.day, lines: w.lines.slice() }; });
         queuePlayerSync();
         news.forEach(function (w) {
@@ -2835,6 +2892,8 @@
       /* For the tests. */
       ns.debug = {
         walking: function () { return !!walking; },
+        sfx: function () { return sfx.debug(); },
+        sfxSettings: function () { return sfx.settings(); },
         terrain: function () { return { editing: terrainEdit, brush: terrainBrush, count: R.terrainCount(state), tv: pvTerrain(), pixels: (function () { var c = terrainCanvas.getContext('2d'); var g = c.getImageData(0, 0, terrainCanvas.width, terrainCanvas.height).data; var n = 0; for (var i = 3; i < g.length; i += 4) if (g[i] > 8) n++; return n; }()) }; },
         reach: function () { return { reach: reachNow ? JSON.parse(JSON.stringify(reachNow)) : null, target: reachTgt ? JSON.parse(JSON.stringify(reachTgt)) : null, tv: pvReach() }; },
         setScene: function (card) { setPvScene(card); },

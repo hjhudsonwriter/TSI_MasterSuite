@@ -4395,3 +4395,11 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - These ten use `terrainStrict: true`: they never come up unless their terrain is painted under the party, even on a map nobody has painted yet (otherwise a marsh event could come up on dry ground). The older events keep the gentler rule (EXP-TERRAIN-02).
 - The fight uses the ford's battle map and SRD stat blocks for the crocodile and shambling mound (the bog "drowners" in the draft are not SRD, so plain crocodiles stand in).
 - Left alone: the Marsh and Mountain climb terrains now have 3 and 3 events, Mountain trails 4 (with T14 and C10 from before).
+
+
+### EXP-SFX-01 · Explorer: sound effects (30 October 2026)
+- Before: no sound effects in the Explorer.
+- After: five sounds, played from the DM's window only (Harry's choice): footsteps while heroes move (dragged or walking), the campfire from Make Camp through the 4-second fade and on while a campfire event is open, rain and storm looping while that weather lasts (blizzard and sun-heat have none), and the raven when "The Ironbow sends word" opens. A Sound button on the map toolbar opens a panel with on/off, a volume slider (both remembered in this browser, key `tsi.explorer.sfx`), and a Test button and "ready / file missing" for each sound.
+- **The sound files are not in the repo yet** (Harry has them). Save them as footsteps.mp3, campfire.mp3, rain.mp3, storm.mp3 and raven.mp3 in `tools/explorer/assets/sfx/` (see ADD-THE-SOUNDS-HERE.txt there), or change the names in `tools/explorer/data/sfx-data.js`. Until then the sounds are skipped quietly. Loops should loop cleanly (no gap at the end).
+- Decisions I made: footsteps start on the first movement and fade out 0.26 seconds after the last; a campfire event started by hand from the list also turns the campfire on while it is open; the browser only allows sound after the page has been clicked, so anything wanted before the first click starts at the first click (for example rain on a reloaded page). Not done: sound in the Player View, and per-terrain footsteps (grass, road and so on).
+- Tests: the real sound files are Harry's, so the tests point the sounds at a voice clip; the test browser treats the not-yet-saved sound files as expected rather than as errors (tests/e2e/helpers.js).

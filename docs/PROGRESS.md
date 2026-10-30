@@ -1276,3 +1276,7 @@ Fourth card in the Tidepool House deck: `act1/04-letter.png` with `voice/maerys-
 
 ## Act 4: market-cup scene removed (30 October 2026)
 The market card (the cup dropped twice) was cut from the session, so it is out of the Act 4 deck (now seven cards). Harry reports all real-world testing on his Edge window and TV is fine. Route planning stays parked until Harry says. New art for the remaining facilities will come from Harry later. The Maerys letter needs no text (the voice clip reads it).
+
+
+## Explorer sound effects (30 October 2026)
+Built the sound system (DM window only; Sound panel with on/off, volume and Test). Waiting for Harry's five files in tools/explorer/assets/sfx/ (names in the note there). More sounds are planned later: they are one line each in tools/explorer/data/sfx-data.js plus a call where they should play.

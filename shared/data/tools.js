@@ -171,6 +171,8 @@ window.TSI_DATA.tools = [
         'tools/explorer/data/terrain-data.js',
         /* The terrain the DM can paint on the hexes (29 October 2026). */
         'tools/explorer/data/hex-terrain-data.js',
+        /* The Explorer's sound effects (30 October 2026). */
+        'tools/explorer/data/sfx-data.js',
         /* The Bastion's creatures (pull request 7): the kinds the DM can
            grant in the Explorer, and their names. */
         'tools/bastion/data/creatures-data.js',
@@ -184,6 +186,7 @@ window.TSI_DATA.tools = [
         'tools/bastion/rules.js',
         'tools/bastion/strip-back-rules.js',
         'shared/js/pointer-mirror.js',
+        'tools/explorer/sfx.js',
         'tools/explorer/tool.js'
       ]
     },
