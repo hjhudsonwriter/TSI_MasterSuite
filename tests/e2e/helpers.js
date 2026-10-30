@@ -82,25 +82,16 @@ async function newContext(browser, size, extra) {
   context.on('requestfailed', r => {
     if (!r.url().startsWith('file:')) return;
     const why = (r.failure() || {}).errorText;
-    /* The Explorer's sound effects (assets/sfx/) are Harry's own files, saved when he has them: until then they are expected to be missing. */
-    (why === 'net::ERR_ABORTED' || SFX_NOT_YET.test(r.url()) ? log.aborted : log.failed).push(r.url() + ' ' + why);
+    (why === 'net::ERR_ABORTED' ? log.aborted : log.failed).push(r.url() + ' ' + why);
   });
   context.on('page', p => watch(p, log));
   context.log = log;
   return context;
 }
 
-const SFX_NOT_YET = /\/tools\/explorer\/assets\/sfx\/[a-z]+\.mp3$/;
-
 function watch(page, log) {
   page.on('pageerror', e => log.errors.push(e.message));
-  page.on('console', m => {
-    if (m.type() !== 'error') return;
-    let where = '';
-    try { where = (m.location() || {}).url || ''; } catch (e) { /* no location */ }
-    if (SFX_NOT_YET.test(where)) return;
-    log.consoleErrors.push(m.text());
-  });
+  page.on('console', m => { if (m.type() === 'error') log.consoleErrors.push(m.text()); });
 }
 
 /* Animations are paused for the picture: the test browser has no graphics

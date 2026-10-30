@@ -35,11 +35,12 @@
     t.equal(S.level({ on: true, volume: 1 }, { volume: 2 }), 1);
   });
 
-  test('Harry\'s five sounds are listed: three loop, the weather loops, the raven plays once', function (t) {
-    t.same(Object.keys(C.sounds).sort(), ['campfire', 'footsteps', 'rain', 'raven', 'storm']);
+  test('Harry\'s six clips are listed: footsteps, campfire and the weather loop; the wing flap and the caw play once', function (t) {
+    t.same(Object.keys(C.sounds).sort(), ['campfire', 'footsteps', 'rain', 'raven', 'storm', 'wingflap']);
+    t.same(C.groups.word.sounds, ['wingflap', 'raven'], 'the Ironbow\'s message is the wing flap and the caw together');
     t.same(['footsteps', 'campfire', 'rain', 'storm'].map(function (n) { return C.sounds[n].loop; }), [true, true, true, true]);
-    t.equal(C.sounds.raven.loop, false);
+    t.equal(C.sounds.raven.loop, false); t.equal(C.sounds.wingflap.loop, false);
     t.equal(C.campFadeMs, 4000);
-    Object.keys(C.sounds).forEach(function (n) { t.ok(/^[a-z]+\.mp3$/.test(C.sounds[n].file) && C.sounds[n].volume > 0 && C.sounds[n].volume <= 1, n); });
+    Object.keys(C.sounds).forEach(function (n) { t.ok(/^[a-z-]+\.mp3$/.test(C.sounds[n].file) && C.sounds[n].volume > 0 && C.sounds[n].volume <= 1, n); });
   });
 }());

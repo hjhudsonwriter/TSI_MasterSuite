@@ -129,8 +129,16 @@
       },
       /* The weather now (the weather kind, or null). */
       weather: function (kind) { want.weather = kind || null; sync(); },
-      /* A one-off sound, from the start. */
+      /* A one-off sound, from the start; a group name starts all its sounds at the same moment. */
       play: function (name) {
+        var grp = config.groups && config.groups[name];
+        if (grp) {
+          var vs = grp.sounds.filter(function (n) { return cfgOf(n); }).map(function (n) { return voice(n); });
+          /* Get every clip ready at its start first, then start them together. */
+          vs.forEach(function (v, i) { try { v.audio.currentTime = 0; } catch (e) { /* not loaded yet */ } });
+          grp.sounds.forEach(function (n) { api.play(n); });
+          return;
+        }
         if (!cfgOf(name) || !settings.on) return;
         var v = voice(name);
         if (v.status === 'missing') return;
@@ -144,6 +152,14 @@
       },
       /* The Sound panel's Test button: a few seconds of it, even if sound is switched off at the moment. */
       test: function (name) {
+        var grp = config.groups && config.groups[name];
+        if (grp) {
+          var was0 = settings.on;
+          settings.on = true;
+          api.play(name);
+          settings.on = was0;
+          return;
+        }
         if (!cfgOf(name)) return;
         var was = settings.on;
         settings.on = true;
@@ -174,13 +190,15 @@
       },
       settings: function () { return { on: settings.on, volume: settings.volume }; },
       names: function () { return names.slice(); },
+      groups: function () { return Object.keys(config.groups || {}); },
+      groupLabel: function (name) { return config.groups && config.groups[name] ? config.groups[name].label : name; },
       label: function (name) { return cfgOf(name) ? cfgOf(name).label : name; },
       /* For the tests: what is playing and from which file. */
       debug: function () {
         var out = {};
         names.forEach(function (n) {
           var v = voices[n];
-          out[n] = v ? { playing: v.playing && !v.audio.paused, wanted: v.playing, src: v.audio.getAttribute('src') || '', volume: v.audio.volume, status: v.status } : { playing: false, wanted: false, src: '', volume: 0, status: 'unknown' };
+          out[n] = v ? { playing: v.playing && !v.audio.paused, wanted: v.playing, src: v.audio.getAttribute('src') || '', volume: v.audio.volume, time: v.audio.currentTime, status: v.status } : { playing: false, wanted: false, src: '', volume: 0, status: 'unknown' };
         });
         return out;
       }

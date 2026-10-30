@@ -902,6 +902,12 @@
             btn('Test', function () { sfx.test(name); }, 'tsi-exp-mini', 'sfx-test-' + name)
           ]));
         });
+        sfx.groups().forEach(function (g) {
+          sfxPanel.appendChild(el('div', { class: 'tsi-exp-sfxrow' }, [
+            el('span', { class: 'tsi-exp-sfxname', text: sfx.groupLabel(g) }),
+            btn('Test', function () { sfx.test(g); }, 'tsi-exp-mini', 'sfx-test-' + g)
+          ]));
+        });
         sfxPanel.appendChild(el('div', { class: 'tsi-exp-terrainpanel__hint', text: 'Sound files go in tools/explorer/assets/sfx/ (see the note there).' }));
         sfxPanel.appendChild(row([btn('Close', function () { toggleSfxPanel(false); }, 'tsi-btn--primary', 'sfx-close')]));
       }
@@ -1640,7 +1646,7 @@
          out the results, with their rolls, when it next sees the day. */
       function openWord(news) {
         var body = [];
-        sfx.play('raven');
+        sfx.play('word');
         pvWord = news.map(function (w) { return { day: w.day, lines: w.lines.slice() }; });
         queuePlayerSync();
         news.forEach(function (w) {

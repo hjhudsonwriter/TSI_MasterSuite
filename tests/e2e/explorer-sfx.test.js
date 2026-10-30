@@ -1,6 +1,6 @@
 /* Explorer: sound effects (30 October 2026). Footsteps while heroes move, the campfire at Make Camp (and through a campfire event),
-   rain and storm while that weather lasts, the raven when the Ironbow sends word; all from the DM window, with an on/off and a volume.
-   The real sound files are Harry's, so the tests point the sounds at a voice clip that is in the repo.
+   rain and storm while that weather lasts, the wing flap and raven together when the Ironbow sends word; all from the DM window, with an on/off and a volume.
+   These use Harry's real sound files in tools/explorer/assets/sfx/.
    Run:  node tests/e2e/explorer-sfx.test.js */
 'use strict';
 
@@ -30,27 +30,24 @@ const playing = name => (n => TSI.explorer.debug.sfx()[n].playing);
     await page.waitForTimeout(300);
     await change(page, s => { s.travel.travelEventDay = s.travel.day; s.snap.enabled = true; });
 
-    await check('the Sound panel lists the five sounds and says "file missing" for the ones Harry has not saved yet; Test never breaks', async () => {
+    await check('the Sound panel lists the six clips, all ready, and a group for the Ironbow\'s message; a missing file says so', async () => {
+      await page.evaluate(() => { TSI_DATA.explorerSfx.sounds.rain.file = 'not-there.mp3'; });
       await page.click('[data-test=sfx-toggle]');
       await page.waitForSelector('[data-test=sfx-panel]', { state: 'visible' });
-      for (const n of ['footsteps', 'campfire', 'rain', 'storm', 'raven']) {
+      for (const n of ['footsteps', 'campfire', 'rain', 'storm', 'wingflap', 'raven']) {
         await page.waitForFunction(n => document.querySelector('[data-test=sfx-status-' + n + ']').textContent !== 'checking…', n, { timeout: 5000 });
-        equal(await page.textContent('[data-test=sfx-status-' + n + ']'), 'file missing');
-        await page.click('[data-test=sfx-test-' + n + ']');
+        equal(await page.textContent('[data-test=sfx-status-' + n + ']'), n === 'rain' ? 'file missing' : 'ready', n);
       }
-      equal(await page.isVisible('[data-test=sfx-panel]'), true);
+      assert(await page.isVisible('[data-test=sfx-test-word]'));
+      await page.click('[data-test=sfx-test-rain]');
       await page.click('[data-test=sfx-close]');
+      await page.evaluate(() => { TSI_DATA.explorerSfx.sounds.rain.file = 'rain.mp3'; });
     });
 
-    /* From here the sounds are pointed at a clip that is in the repo (after a reload, so the "missing" ones are forgotten). */
+    /* After a reload, so the one we pointed at a missing file is forgotten. */
     await page.reload();
     await page.waitForSelector('[data-test=camp]');
     await change(page, s => { s.travel.travelEventDay = s.travel.day; s.snap.enabled = true; });
-    await page.evaluate(() => {
-      const c = TSI_DATA.explorerSfx;
-      c.folder = 'tools/explorer/assets/absent-tide/voice/';
-      c.sounds.footsteps.file = 'seris-thane.mp3'; c.sounds.campfire.file = 'dren-marr.mp3'; c.sounds.rain.file = 'linnet.mp3'; c.sounds.storm.file = 'tovin-ash.mp3'; c.sounds.raven.file = 'pell-ardwick.mp3';
-    });
 
     await check('footsteps play while a hero is dragged, and stop soon after it stops', async () => {
       equal((await sfx(page)).footsteps.playing, false);
@@ -118,11 +115,15 @@ const playing = name => (n => TSI.explorer.debug.sfx()[n].playing);
       await until(page, n => !TSI.explorer.debug.sfx()[n].playing && !TSI.explorer.debug.sfx().rain.playing, 'storm');
     });
 
-    await check('the raven plays when "The Ironbow sends word" opens', async () => {
+    await check('the wing flap and the raven\'s caw start together when "The Ironbow sends word" opens', async () => {
       await page.evaluate(() => { TSI.explorer.debug.showWord([{ day: 1, lines: ['A raven brings word from the Ironbow.'] }]); });
-      await until(page, playing('raven'), 'raven');
+      await until(page, () => { const s = TSI.explorer.debug.sfx(); return s.wingflap.playing && s.raven.playing; }, null);
+      const s = await sfx(page);
+      assert(/wing-flap\.mp3$/.test(s.wingflap.src) && /raven\.mp3$/.test(s.raven.src), s.wingflap.src + ' ' + s.raven.src);
+      assert(Math.abs(s.wingflap.time - s.raven.time) < 0.5, 'started within half a second of each other: ' + s.wingflap.time + ' vs ' + s.raven.time);
       await page.waitForSelector('[data-test=ironbow-word]');
       await page.evaluate(() => { document.querySelectorAll('.tsi-modal__foot button').forEach(b => b.click()); });
+      await until(page, () => { const s = TSI.explorer.debug.sfx(); return !s.wingflap.playing && !s.raven.playing; }, null, 8000);
     });
 
     await check('sound off silences everything and is remembered; the volume sets how loud, and is remembered', async () => {
