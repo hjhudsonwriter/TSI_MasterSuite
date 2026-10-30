@@ -328,9 +328,9 @@
     t.equal(d.showFirst, false, 'the party chooses its stops, so nothing goes up by itself');
   });
 
-  test('Act 4 has eight cards in the handover\'s order, two with writing laid over them', function (t) {
+  test('Act 4 has seven cards in the handover\'s order (the market card was cut, 30 October 2026), two with writing laid over them', function (t) {
     var d = R.mainEvent(D, 'absent_tide_act4');
-    t.same(R.deckCards(d).map(function (c) { return c.kind; }), ['image', 'video', 'portrait', 'image', 'image', 'portrait', 'image', 'image']);
+    t.same(R.deckCards(d).map(function (c) { return c.kind; }), ['image', 'video', 'portrait', 'image', 'portrait', 'image', 'image']);
     t.same(d.steps.filter(function (s) { return s.overlays; }).map(function (s) { return s.overlays[0].text; }),
       ['Do not trust yesterday.', 'Five visitors asked after Maerys Vell. They were frightened. Do not tell them the date.']);
   });
