@@ -70,14 +70,29 @@
         state.mapAspect = null;
       }
       var uploadUrl = state.mapUploadKey && upload ? upload.dataUrl : null;
+
+      /* The DM's settings (rules.js R.cleanPrefs): saved with the Explorer, so they are in a backup. A first run after this was
+         added picks up what used to be kept in the browser's small storage. */
+      var savedPrefs = load('prefs', R.isPrefs);
+      var prefs = R.cleanPrefs(savedPrefs);
+      if (!savedPrefs) {
+        try {
+          var oldSfx = JSON.parse(window.localStorage.getItem('tsi.explorer.sfx'));
+          if (oldSfx && typeof oldSfx === 'object') prefs = R.cleanPrefs(Object.assign({}, prefs, { sfxOn: oldSfx.on, sfxVolume: oldSfx.volume }));
+          var oldAuto = window.localStorage.getItem('tsi.explorer.autoplayVoice');
+          if (oldAuto === '0' || oldAuto === '1') prefs.autoplayVoice = oldAuto === '1';
+        } catch (e) { /* nothing to carry over */ }
+      }
+      function savePrefs() { ctx.store.set('prefs', R.cleanPrefs(prefs)); }
+      function setPref(key, value) { if (prefs[key] === value) return; prefs[key] = value; savePrefs(); }
       function saveNow() { R.rememberGrid(state); ctx.store.set('save', R.toSave(state)); queuePlayerSync(); }
 
       /* Sound effects (30 October 2026; data/sfx-data.js, sfx.js): played from this window only. */
       var sfx = ns.sfx.create({
         life: life,
         config: window.TSI_DATA.explorerSfx,
-        load: function () { try { return JSON.parse(window.localStorage.getItem(ns.sfx.KEY)); } catch (e) { return null; } },
-        save: function (v) { try { window.localStorage.setItem(ns.sfx.KEY, JSON.stringify(v)); } catch (e) { /* the setting just isn't remembered */ } }
+        load: function () { return { on: prefs.sfxOn, volume: prefs.sfxVolume }; },
+        save: function (v) { prefs.sfxOn = !!v.on; prefs.sfxVolume = v.volume; savePrefs(); }
       });
 
       /* Not saved: selection, the hero whose miles show, drags and modes. */
@@ -94,7 +109,7 @@
          the Explorer stores it) and the window keeps it; it is sent again only when the picture changes. */
       /* The DM's cursor on the players' map (shared/js/pointer-mirror.js): on unless this box is cleared. */
       var cursorBox = el('input', { type: 'checkbox', id: 'tsi-exp-cursor-on', 'data-test': 'cursor-on' });
-      cursorBox.checked = true;
+      cursorBox.checked = prefs.showCursor;
       var cursorRow = el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-cursor-on' }, [cursorBox, el('span', { text: 'Show my cursor to players' })]);
       var pvStatus = el('span', { class: 'tsi-exp-pvstatus', 'data-test': 'player-view-status', role: 'status', text: 'Not open' });
       var pvLink = ctx.playerLink({
@@ -178,8 +193,8 @@
       var btnPlayerView = btn('Open Player View', function () { pvLink.open(); }, 'tsi-btn--ghost', 'open-player-view');
       btnPlayerView.title = 'Open the players\' view of the map in a new window, to drag onto the TV. It only looks.';
       /* Click to move (29 October 2026): with heroes picked, a click on the map sends them walking there. Not saved. */
-      var clickMove = true;
-      var btnClickMove = btn('Click to move: On', function () { clickMove = !clickMove; updateButtons(); updateReach(); setNotice(clickMove ? 'Click to move: pick heroes, then click where they should go.' : 'Click to move is off. Dragging works as always.'); }, '', 'click-move');
+      var clickMove = prefs.clickMove;
+      var btnClickMove = btn('Click to move: On', function () { clickMove = !clickMove; setPref('clickMove', clickMove); updateButtons(); updateReach(); setNotice(clickMove ? 'Click to move: pick heroes, then click where they should go.' : 'Click to move is off. Dragging works as always.'); }, '', 'click-move');
       btnClickMove.title = 'Pick a hero or group, then click a hex: they walk there on their own, a hex at a time with Snap on, in a straight line with it off. Dragging still works.';
       var zoomBox = el('div', { class: 'tsi-exp-zoombox', role: 'group', 'aria-label': 'Zoom' });
       var btnZoomIn = btn('+', function () { zoomBy(1.4); }, 'tsi-exp-zoom', 'zoom-in');
@@ -195,7 +210,7 @@
       zoomBox.appendChild(cursorRow);
       /* Show the players where the picked party can reach today (29 October 2026): on by default. */
       var reachBox = el('input', { type: 'checkbox', id: 'tsi-exp-reach-on', 'data-test': 'reach-on' });
-      reachBox.checked = true;
+      reachBox.checked = prefs.showReach;
       var reachRow = el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-reach-on' }, [reachBox, el('span', { text: 'Show reach to players' })]);
       zoomBox.appendChild(reachRow);
       /* Terrain painted on the hexes (29 October 2026): costs miles, can block the way. Seen by the players only if ticked. */
@@ -203,6 +218,7 @@
       var btnTerrain = btn('Edit terrain: Off', function () { toggleTerrainEdit(); }, 'tsi-exp-zoom', 'terrain-edit');
       btnTerrain.title = 'Paint forests, hills, roads and so on onto the hexes. They change what a hex costs to cross, and some stop the party.';
       var terrainBox = el('input', { type: 'checkbox', id: 'tsi-exp-terrain-on', 'data-test': 'terrain-show' });
+      terrainBox.checked = prefs.showTerrain;
       var terrainRow = el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-terrain-on' }, [terrainBox, el('span', { text: 'Show terrain to players' })]);
       zoomBox.appendChild(btnTerrain);
       zoomBox.appendChild(terrainRow);
@@ -427,7 +443,7 @@
         return R.toBoard(view, p.x, p.y);
       }
       var cursorMirror = TSI.pointerMirror.attach({ life: life, target: stage, link: pvLink, enabled: function () { return cursorBox.checked; }, point: pointerOnBoard });
-      life.on(cursorBox, 'change', function () { if (!cursorBox.checked) cursorMirror.hide(); });
+      life.on(cursorBox, 'change', function () { setPref('showCursor', cursorBox.checked); if (!cursorBox.checked) cursorMirror.hide(); });
       /* ---------- Drawing ---------- */
       function drawGrid() {
         var s = sizeCanvas(gridCanvas);
@@ -471,8 +487,8 @@
         updateReach();
       });
       life.on(stage, 'pointerleave', function () { hoverHex = null; updateReach(); });
-      life.on(reachBox, 'change', function () { queuePlayerSync(); });
-      life.on(terrainBox, 'change', function () { queuePlayerSync(); });
+      life.on(reachBox, 'change', function () { setPref('showReach', reachBox.checked); queuePlayerSync(); });
+      life.on(terrainBox, 'change', function () { setPref('showTerrain', terrainBox.checked); queuePlayerSync(); });
       function drawFog() {
         var s = sizeCanvas(fogCanvas);
         if (!state.fog.enabled) return;
@@ -1365,9 +1381,8 @@
          TV in any order; Hide clears the TV and leaves the deck open. A portrait's recorded voice line plays from this
          window only (never on the TV). A file that is not there shows as "file missing" and never throws; a card
          whose picture is missing leaves the TV as it was and says so. */
-      var AUTOPLAY_KEY = 'tsi.explorer.autoplayVoice';
-      function loadAutoplay() { try { return window.localStorage.getItem(AUTOPLAY_KEY) !== '0'; } catch (e) { return true; } }
-      function saveAutoplay(on) { try { window.localStorage.setItem(AUTOPLAY_KEY, on ? '1' : '0'); } catch (e) { /* not remembered */ } }
+      function loadAutoplay() { return prefs.autoplayVoice; }
+      function saveAutoplay(on) { setPref('autoplayVoice', !!on); }
       var deckVoice = null;           /* the one audio element of the open deck */
       function openDeck(deck) {
         var cards = R.deckCards(deck);
@@ -2898,6 +2913,7 @@
       /* For the tests. */
       ns.debug = {
         walking: function () { return !!walking; },
+        prefs: function () { return JSON.parse(JSON.stringify(prefs)); },
         sfx: function () { return sfx.debug(); },
         sfxSettings: function () { return sfx.settings(); },
         terrain: function () { return { editing: terrainEdit, brush: terrainBrush, count: R.terrainCount(state), tv: pvTerrain(), pixels: (function () { var c = terrainCanvas.getContext('2d'); var g = c.getImageData(0, 0, terrainCanvas.width, terrainCanvas.height).data; var n = 0; for (var i = 3; i < g.length; i += 4) if (g[i] > 8) n++; return n; }()) }; },

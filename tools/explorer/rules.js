@@ -240,6 +240,24 @@
     return state;
   };
 
+  /* ---------- The DM's settings (30 October 2026) ----------
+     The choices the DM makes on the Explorer's screen, kept in their own saved item (tsi.explorer.prefs) so they come back after a
+     reload and travel in an Export, Import and Back up everything: sound on or off and its volume, the voice lines playing
+     by themselves, Click to move, and the three "show to the players" tick boxes. Not kept: which heroes are picked, the zoom. */
+  R.defaultPrefs = function () {
+    return { sfxOn: true, sfxVolume: 0.8, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: false };
+  };
+  R.cleanPrefs = function (raw) {
+    var d = R.defaultPrefs();
+    var o = isObj(raw) ? raw : {};
+    Object.keys(d).forEach(function (k) {
+      if (k === 'sfxVolume') { var v = Number(o[k]); if (Number.isFinite(v)) d[k] = R.clamp(v, 0, 1); }
+      else if (typeof o[k] === 'boolean') d[k] = o[k];
+    });
+    return d;
+  };
+  R.isPrefs = function (v) { return isObj(v); };
+
   /* A reason to refuse an import file, or null (checked before anything is replaced). */
   R.importProblem = function (records) {
     for (var i = 0; i < records.length; i++) {

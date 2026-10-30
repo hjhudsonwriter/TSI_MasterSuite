@@ -14,7 +14,6 @@
   var ns = TSI.explorer = TSI.explorer || {};
   var S = ns.sfx = {};
 
-  S.KEY = 'tsi.explorer.sfx';
   S.STOP_AFTER_MS = 260;      /* footsteps stop this long after the last movement */
   S.FADE_OUT_MS = 260;
 

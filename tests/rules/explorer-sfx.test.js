@@ -43,4 +43,11 @@
     t.equal(C.campFadeMs, 4000);
     Object.keys(C.sounds).forEach(function (n) { t.ok(/^[a-z-]+\.mp3$/.test(C.sounds[n].file) && C.sounds[n].volume > 0 && C.sounds[n].volume <= 1, n); });
   });
+
+  var R = TSI.explorer.rules;
+  test('the DM\'s settings are tidied: unknown or wrong-typed values fall back to the defaults', function (t) {
+    t.same(R.cleanPrefs(null), { sfxOn: true, sfxVolume: 0.8, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: false });
+    t.same(R.cleanPrefs({ sfxOn: false, sfxVolume: 9, showReach: 'yes', showTerrain: true, junk: 1 }), { sfxOn: false, sfxVolume: 1, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: true });
+    t.same(R.cleanPrefs('x'), R.defaultPrefs());
+  });
 }());
