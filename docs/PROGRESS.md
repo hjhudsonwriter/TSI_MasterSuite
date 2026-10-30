@@ -1272,3 +1272,11 @@ Step 4 of 4 of click-to-move (walk, reach, hex size, terrain). Edit terrain: bru
 
 ## Absent Tide Act 1: Maerys's letter (29 October 2026)
 Fourth card in the Tidepool House deck: `act1/04-letter.png` with `voice/maerys-letter.mp3` playing by itself (like the portraits), no name on the TV, no overlay ("M.V" is clear in the picture). The DM pop-up line (the letter's words) is empty until Harry pastes it from the session doc: edit `line` on the `letter` step in `tools/explorer/data/absent-tide-scenes.js`. Parked for later: route planning (see the chat notes of 29 October).
+
+
+## Act 4: market-cup scene removed (30 October 2026)
+The market card (the cup dropped twice) was cut from the session, so it is out of the Act 4 deck (now seven cards). Harry reports all real-world testing on his Edge window and TV is fine. Route planning stays parked until Harry says. New art for the remaining facilities will come from Harry later. The Maerys letter needs no text (the voice clip reads it).
+
+
+## Explorer sound effects (30 October 2026)
+Built the sound system (DM window only; Sound panel with on/off, volume and Test). Waiting for Harry's five files in tools/explorer/assets/sfx/ (names in the note there). More sounds are planned later: they are one line each in tools/explorer/data/sfx-data.js plus a call where they should play.

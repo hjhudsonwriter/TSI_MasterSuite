@@ -616,7 +616,7 @@ Harry's upload of nine 2752 x 1536 JPEGs (placed in the repository's top folder,
 
 `tools/explorer/assets/absent-tide/` holds the pictures, clips, portraits and voice lines the Explorer shows to the players (see `docs/SHOWING-SCENES-TO-PLAYERS.md`; the cards are listed in `tools/explorer/data/absent-tide-scenes.js`):
 - `act1/` 01-outside, 02-inside, 03-chambers (PNG)
-- `act4/` middlemount-arrival (PNG and MP4), liaison-wall-notes, liaison-writ, liaison-ledger (PNG); **market-cup.png is not uploaded yet** (it shows as "file missing")
+- `act4/` middlemount-arrival (PNG and MP4), liaison-wall-notes, liaison-writ, liaison-ledger (PNG); the market-cup card was removed from the Act 4 deck on 30 October 2026 (cut from the session), so no picture is expected
 - `portraits/` dren-marr, seris-thane, linnet, tovin-ash, pell-ardwick, isla-tarrow (PNG)
 - `voice/` the same six names (MP3), played only from the DM's window
 - Tidal Sequence: `tools/pelagosi/assets/images/hidden-chamber.png` and `tools/pelagosi/assets/video/hidden-chamber.mp4` (used by part D, "Show the hidden chamber").

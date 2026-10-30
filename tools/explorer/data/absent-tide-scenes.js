@@ -65,7 +65,6 @@
         { id: 'arrival', name: 'Middlemount, arriving', image: A + 'act4/middlemount-arrival.png', dmNote: '' },
         { id: 'arrival-clip', name: 'Middlemount, slow push-in (clip)', image: A + 'act4/middlemount-arrival.png', video: A + 'act4/middlemount-arrival.mp4', loop: false, dmNote: '' },
         portrait('tovin-ash', 'Tovin Ash', 'You came! You did, didn’t you? Please say you came today. I keep losing the order of things.'),
-        { id: 'market-cup', name: 'The market', image: A + 'act4/market-cup.png', dmNote: '' },
         {
           id: 'wall-notes', name: 'Liaison office: the wall of notes', image: A + 'act4/liaison-wall-notes.png', dmNote: '',
           /* On the one lit note in the middle of the wall. */

@@ -4395,3 +4395,11 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - These ten use `terrainStrict: true`: they never come up unless their terrain is painted under the party, even on a map nobody has painted yet (otherwise a marsh event could come up on dry ground). The older events keep the gentler rule (EXP-TERRAIN-02).
 - The fight uses the ford's battle map and SRD stat blocks for the crocodile and shambling mound (the bog "drowners" in the draft are not SRD, so plain crocodiles stand in).
 - Left alone: the Marsh and Mountain climb terrains now have 3 and 3 events, Mountain trails 4 (with T14 and C10 from before).
+
+
+### EXP-SFX-01 · Explorer: sound effects (30 October 2026)
+- Before: no sound effects in the Explorer.
+- After: five sounds, played from the DM's window only (Harry's choice): footsteps while heroes move (dragged or walking), the campfire from Make Camp through the 4-second fade and on while a campfire event is open, rain and storm looping while that weather lasts (blizzard and sun-heat have none), and the wing flap and the raven caw, together, when "The Ironbow sends word" opens. A Sound button on the map toolbar opens a panel with on/off, a volume slider (both remembered in this browser, key `tsi.explorer.sfx`), and a Test button and "ready / file missing" for each sound.
+- Harry's six files are in `tools/explorer/assets/sfx/` (footsteps, campfire, rain, storm, wing-flap, raven). The Ironbow's message is a wing flap and a raven caw that start at the same moment (a "group" in `sfx-data.js`). Names can be changed in `tools/explorer/data/sfx-data.js`; a missing file is skipped quietly. The loops (storm is only about 6 seconds, footsteps about 13) restart at their end, so a gap or click at the join would be in the file itself: I could not listen to them.
+- Decisions I made: footsteps start on the first movement and fade out 0.26 seconds after the last; a campfire event started by hand from the list also turns the campfire on while it is open; the browser only allows sound after the page has been clicked, so anything wanted before the first click starts at the first click (for example rain on a reloaded page). Not done: sound in the Player View, and per-terrain footsteps (grass, road and so on).
+- Tests use Harry's real files.

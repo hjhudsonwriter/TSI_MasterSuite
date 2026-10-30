@@ -578,3 +578,11 @@
 .tsi-tool--explorer .tsi-exp-terrainchip { width: 14px; height: 14px; border-radius: 3px; flex: 0 0 auto; border: 1px solid rgba(255,255,255,.4); }
 .tsi-tool--explorer .tsi-exp-terrainchip--erase { background: transparent; border-style: dashed; }
 .tsi-tool--explorer .tsi-exp-terraincost { margin-left: auto; color: var(--tsi-text-muted); font-size: 13px; }
+
+/* The Sound panel (30 October 2026) */
+.tsi-tool--explorer .tsi-exp-sfxpanel { position: absolute; top: 12px; right: 12px; z-index: 30; display: flex; flex-direction: column; gap: 6px; width: 300px; padding: 10px; background: rgba(20, 8, 10, .92); border: 1px solid var(--tsi-gold, #c9a55a); border-radius: 8px; }
+.tsi-tool--explorer .tsi-exp-sfxpanel[hidden] { display: none; }
+.tsi-tool--explorer .tsi-exp-sfxrow { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.tsi-tool--explorer .tsi-exp-sfxname { flex: 1 1 auto; min-width: 0; }
+.tsi-tool--explorer .tsi-exp-sfxstatus { font-size: 13px; color: var(--tsi-text-muted); white-space: nowrap; }
+.tsi-tool--explorer .tsi-exp-sfxstatus.is-missing { color: #f2b3a6; }
