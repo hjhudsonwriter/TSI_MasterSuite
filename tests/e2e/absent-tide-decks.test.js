@@ -160,19 +160,26 @@ async function closeDeck(page) {
     });
 
     await check('Act 4: a card whose picture file is missing says so and leaves the TV as it was', async () => {
+      /* The market card was removed (Harry, 30 October 2026), so no card is missing any more: point one at a file that is not there. */
+      await page.evaluate(() => { const d = TSI_DATA.explorer.mainEvents.filter(e => e.id === 'absent_tide_act4')[0]; d.steps[3].image = 'tools/explorer/assets/absent-tide/act4/not-there.png'; });
       await queue(page, 'absent_tide_act4');
       await page.waitForSelector('[data-test=deck-list]');
       await page.waitForFunction(() => TSI.explorer.debug.deck().status().every(s => s.media !== 'checking'), null, { timeout: 8000 });
       const st = await deck(page);
       const missingIdx = st.status.map((s, i) => s.media === 'missing' ? i : -1).filter(i => i >= 0);
-      assert(missingIdx.length >= 1, 'expected the market-cup card to be missing from the repo');
+      assert(missingIdx.length >= 1, 'expected the card pointed at a missing file to be flagged');
       await page.click('[data-test=deck-card-' + missingIdx[0] + ']');
       assert(/file is missing/.test(await page.textContent('[data-test=deck-msg]')), 'the DM is told');
       equal(await page.isVisible('[data-test=deck-flag-' + missingIdx[0] + ']'), true);
     });
 
     await check('Act 4: the wall of notes carries its writing on the TV, over the picture', async () => {
-      await page.click('[data-test=deck-card-4]');
+      await closeDeck(page);
+      await page.evaluate(() => { const d = TSI_DATA.explorer.mainEvents.filter(e => e.id === 'absent_tide_act4')[0]; d.steps[3].image = 'tools/explorer/assets/absent-tide/act4/liaison-wall-notes.png'; });
+      await queue(page, 'absent_tide_act4');
+      await page.waitForSelector('[data-test=deck-list]');
+      await page.waitForFunction(() => TSI.explorer.debug.deck().status().every(s => s.media !== 'checking'), null, { timeout: 8000 });
+      await page.click('[data-test=deck-card-3]');
       await pv.waitForSelector('.tsi-xpv-sc__card.is-front.is-ready [data-test=pv-scene-note]', { timeout: 5000 });
       equal(await sceneText(pv), 'Do not trust yesterday.');
     });
