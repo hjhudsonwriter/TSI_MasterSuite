@@ -122,9 +122,9 @@ async function closeDeck(page) {
       equal((await deck(page)).voice.paused, true);
       await page.click('[data-test=deck-voice]');
       await page.waitForFunction(() => !TSI.explorer.debug.deck().voice().paused, null, { timeout: 5000 });
-      equal(await page.evaluate(() => window.localStorage.getItem('tsi.explorer.autoplayVoice')), '0');
+      equal(await page.evaluate(() => TSI.explorer.debug.prefs().autoplayVoice), false);
       await page.check('[data-test=deck-autoplay]');
-      equal(await page.evaluate(() => window.localStorage.getItem('tsi.explorer.autoplayVoice')), '1');
+      equal(await page.evaluate(() => TSI.explorer.debug.prefs().autoplayVoice), true);
     });
 
     await check('Esc closes the deck: the TV returns to the map and the voice is stopped and let go', async () => {

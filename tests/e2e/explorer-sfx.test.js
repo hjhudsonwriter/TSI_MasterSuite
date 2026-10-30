@@ -135,11 +135,11 @@ const playing = name => (n => TSI.explorer.debug.sfx()[n].playing);
       await until(page, () => Math.abs(TSI.explorer.debug.sfx().rain.volume - 0.25) < 0.01, null);
       await page.uncheck('[data-test=sfx-on]');
       await until(page, n => !TSI.explorer.debug.sfx()[n].playing, 'rain');
-      equal(await page.evaluate(() => JSON.parse(localStorage.getItem('tsi.explorer.sfx'))), { on: false, volume: 0.5 });
+      equal(await page.evaluate(() => { const p = TSI.explorer.debug.prefs(); return { on: p.sfxOn, volume: p.sfxVolume }; }), { on: false, volume: 0.5 });
+      await page.waitForTimeout(300);
       await page.reload();
       await page.waitForSelector('[data-test=camp]');
       equal(await page.evaluate(() => TSI.explorer.debug.sfxSettings()), { on: false, volume: 0.5 });
-      await page.evaluate(() => localStorage.removeItem('tsi.explorer.sfx'));
     });
 
     await check('the Sound panel and the terrain brush take turns on the map; nothing sideways', async () => {

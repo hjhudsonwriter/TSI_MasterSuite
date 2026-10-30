@@ -1280,3 +1280,7 @@ The market card (the cup dropped twice) was cut from the session, so it is out o
 
 ## Explorer sound effects (30 October 2026)
 Built the sound system (DM window only; Sound panel with on/off, volume and Test). Waiting for Harry's five files in tools/explorer/assets/sfx/ (names in the note there). More sounds are planned later: they are one line each in tools/explorer/data/sfx-data.js plus a call where they should play.
+
+
+## Explorer settings saved (30 October 2026)
+Closed gaps 2 and 3 from the save review: sound settings, voice autoplay, Click to move and the show-to-players tick boxes are now saved with the Explorer (`tsi.explorer.prefs`) and travel in backups. Still open from that review: Heartwood Ritual and Pelagosi progress is not saved (by design so far; Harry to decide).
