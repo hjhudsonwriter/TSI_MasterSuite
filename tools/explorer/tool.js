@@ -1310,6 +1310,8 @@
           pvNightUntil = Date.now() + 4000;
           sfx.campStart();
           saveNow();
+          /* A moment worth keeping a snapshot of (shared/js/snapshots.js). */
+          if (TSI.snapshots) TSI.snapshots.take('Make Camp, Day ' + state.travel.day);
           setNotice('');
           updateTravelUI();
           applyWeather();

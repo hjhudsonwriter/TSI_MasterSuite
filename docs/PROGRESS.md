@@ -1288,3 +1288,7 @@ Closed gaps 2 and 3 from the save review: sound settings, voice autoplay, Click 
 
 ## Saving and loading sessions (2 November 2026)
 Items 1 to 3 of the save review: storage protection, named backups, the "Back up all" button in every tool, and the two-day nudge. Next suggested: rolling snapshots in the browser (an undo for the night), an end-of-session button, restoring only some tools, and (Harry's call) saving Ritual and Pelagosi progress.
+
+
+## Snapshots (2 November 2026)
+Item 4 of the save review: rolling snapshots of the Explorer and the Bastion in the browser (last 12), with a Snapshots list and Go back. Next suggested: an end-of-session button and restoring only some tools (items 5 and 6); Ritual and Pelagosi progress is Harry's call.

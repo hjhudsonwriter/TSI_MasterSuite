@@ -185,6 +185,9 @@
       });
     },
 
+    /* The campaign tool (the Explorer or the Bastion) open in another window, or null (snapshots use this before going back). */
+    campaignOpenElsewhere: function () { return openElsewhere(rules.CAMPAIGN); },
+
     /* Called whenever a backup of the campaign finishes (the shell updates its "last backed up" words). */
     onStamp: function (fn) { stampListeners.push(fn); },
     /* Is a backup due? (Something is saved, and none in the last couple of days.) */

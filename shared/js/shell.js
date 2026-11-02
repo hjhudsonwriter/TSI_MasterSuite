@@ -338,6 +338,16 @@
       TSI.backup.onStamp(refreshBackupAll);
       TSI.store.ready.then(refreshBackupAll);
       actions.appendChild(backupAll);
+      /* Snapshots: the Explorer and the Bastion go back a step (shared/js/snapshots.js). */
+      if (TSI.backupRules.inCampaign(info.id) && TSI.snapshots) {
+        actions.appendChild(TSI.el('button', {
+          type: 'button',
+          class: 'tsi-btn tsi-btn--small',
+          title: 'The suite keeps copies of the Explorer and the Bastion at Make Camp and as you play. Go back to one.',
+          'data-test': 'snapshots',
+          onclick: function () { TSI.snapshots.open(); }
+        }, 'Snapshots'));
+      }
     }
     /* The DM doc (shared/js/dmdoc.js), on every screen, just left of Switch tool. */
     if (TSI.dmDoc) actions.appendChild(TSI.dmDoc.button());
@@ -511,6 +521,13 @@
               return TSI.backup.backupEverything().then(function (r) { refreshLastBackup(); refreshProtect(); return r; });
             })
           }, 'Back up everything'),
+          TSI.snapshots ? TSI.el('button', {
+            type: 'button',
+            class: 'tsi-btn tsi-btn--small',
+            title: 'The suite keeps copies of the Explorer and the Bastion as you play. Go back to one.',
+            'data-test': 'snapshots',
+            onclick: function () { TSI.snapshots.open(); }
+          }, 'Snapshots') : null,
           TSI.el('button', {
             type: 'button',
             class: 'tsi-btn tsi-btn--small',
@@ -713,6 +730,10 @@
     TSI.tabGuard.start(info ? info.id : '');
 
     TSI.store.onStatus(showSaveStatus);
+    /* A campaign tool opening is the first moment worth a snapshot; then one every ten minutes if something changed. */
+    if (info && TSI.snapshots && TSI.backupRules.inCampaign(info.id)) {
+      TSI.store.ready.then(function () { TSI.snapshots.take('Opened ' + TSI.the(info.name)); TSI.snapshots.startAuto(); });
+    }
     TSI.store.ready.then(function (mode) {
       showSaveStatus(TSI.store.status());
       warnAboutStorage(TSI.store.status().state);
