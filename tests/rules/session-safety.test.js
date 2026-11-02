@@ -20,11 +20,11 @@
     t.equal(B.backupAgeDays(now + DAY, now), 0, 'a clock set back never gives a negative age');
   });
 
-  test('the reminder is due only when there is a campaign and no backup in the last week', function (t) {
+  test('the reminder is due only when there is a campaign and no backup in the last two days (it was seven until 2 November 2026)', function (t) {
     t.equal(B.backupDue(null, now, false), false, 'nothing saved, nothing to lose');
     t.equal(B.backupDue(null, now, true), true, 'saved but never backed up');
-    t.equal(B.backupDue(now - 7 * DAY, now, true), false, 'seven days is still fine');
-    t.equal(B.backupDue(now - 8 * DAY, now, true), true);
+    t.equal(B.backupDue(now - 2 * DAY, now, true), false, 'two days is still fine');
+    t.equal(B.backupDue(now - 3 * DAY, now, true), true);
     t.equal(B.backupDue(now - DAY, now, true), false);
   });
 

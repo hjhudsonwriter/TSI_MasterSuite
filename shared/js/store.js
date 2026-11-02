@@ -27,6 +27,7 @@
   var WRITE_DELAY = 120;
   var OPEN_TIMEOUT = 4000;
 
+  var protection = { supported: false, persisted: false };
   var cache = new Map();       /* key → record */
   var pending = new Map();     /* key → { op: 'put' | 'delete', key, record } */
   var inflight = null;
@@ -292,6 +293,19 @@
   /* ---------- Public ---------- */
   TSI.store = {
     ready: ready,
+
+    /* Ask the browser not to clear the suite's saves when the disk is nearly full (Harry, 2 November 2026). Edge decides for
+       itself and may say no (it is more willing for a site that is bookmarked or installed), so the answer is shown on the home
+       screen. Resolves { supported, persisted }; protection() gives the latest answer. */
+    protect: function () {
+      var s = window.navigator && window.navigator.storage;
+      function done(supported, persisted) { protection = { supported: supported, persisted: persisted }; return { supported: supported, persisted: persisted }; }
+      if (!s || typeof s.persist !== 'function') return Promise.resolve(done(false, false));
+      return Promise.resolve(typeof s.persisted === 'function' ? s.persisted() : false).then(function (already) {
+        return already ? true : s.persist();
+      }).then(function (ok) { return done(true, !!ok); }, function () { return done(true, false); });
+    },
+    protection: function () { return { supported: protection.supported, persisted: protection.persisted }; },
 
     /* 'suite' for the real suite, 'test' for the test page. */
     space: SPACE,

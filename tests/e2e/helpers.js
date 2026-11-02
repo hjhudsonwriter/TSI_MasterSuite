@@ -118,9 +118,23 @@ async function chooseFile(page, selector, filePath) {
   await chooser.setFiles(filePath);
 }
 
+/* Back up everything and Export ask "Name this backup" first (2 November 2026): say OK with no name, as most tests want. */
+async function acceptBackupName(page) {
+  try {
+    await page.waitForSelector('.tsi-modal [data-test=backup-name]', { timeout: 4000 });
+    await page.waitForTimeout(380);
+    await page.click('.tsi-modal__foot .tsi-btn--primary');
+  } catch (e) { /* no name box: this click made no backup, or the test handles it */ }
+}
+
+/* A notice (say "Already open") can sit over a button at the foot of the page: clear it and click again. */
+async function clickClearingNotices(page, selector) {
+  try { await page.click(selector, { timeout: 5000 }); } catch (e) { await dismissNotices(page); await page.click(selector); }
+}
+
 async function download(page, selector) {
   await page.waitForTimeout(HUMAN_PAUSE);
-  const [d] = await Promise.all([page.waitForEvent('download'), page.click(selector)]);
+  const [d] = await Promise.all([page.waitForEvent('download'), clickClearingNotices(page, selector).then(() => (/backup-everything|backup-all|data-test=export\]|export-save|download-save/.test(selector) ? acceptBackupName(page) : null))]);
   const p = await d.path();
   return { name: d.suggestedFilename(), text: fs.readFileSync(p, 'utf8') };
 }
@@ -188,5 +202,5 @@ function summary() {
 
 module.exports = {
   chromium, ROOT, SHOTS, SIZES, fileUrl, toolList, section, check, assert, equal, newContext, watch, shot, writeTemp,
-  chooseFile, download, dismissNotices, ackChanges, noticeTexts, waitForNotice, modalText, clickModal, layoutCheck, summary, results
+  chooseFile, download, acceptBackupName, dismissNotices, ackChanges, noticeTexts, waitForNotice, modalText, clickModal, layoutCheck, summary, results
 };

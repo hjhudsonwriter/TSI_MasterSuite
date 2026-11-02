@@ -124,3 +124,9 @@ h1.tsi-topbar__tool { margin: 0; }
 
 /* "Last backed up: 3 days ago" on the home screen */
 .tsi-home__lastbackup { font-size: 14px; color: var(--tsi-text-soft); }
+.tsi-home__lastbackup.is-due { color: var(--tsi-gold-text, #f0d68a); font-weight: 600; }
+.tsi-home__lastbackup.is-due::before { content: '⚠ '; }
+.tsi-home__protect { font-size: 14px; color: var(--tsi-text-soft); }
+.tsi-home__protect.is-ok { color: var(--tsi-text-soft); }
+.tsi-home__protect:not(.is-ok) { color: var(--tsi-gold-text, #f0d68a); }
+.tsi-topbar__backup.is-due { border-color: var(--tsi-gold, #c9a55a); color: var(--tsi-gold-text, #f0d68a); box-shadow: 0 0 0 1px var(--tsi-gold, #c9a55a) inset; }

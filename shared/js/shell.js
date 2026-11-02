@@ -321,6 +321,23 @@
         'data-test': 'import',
         onclick: TSI.oneAtATime(function () { return TSI.backup.importTool(info.id); })
       }, 'Import'));
+      /* One click from any tool (Harry, 2 November 2026): the whole suite in one file. It turns gold-edged and says so when a
+         backup is due (none in the last two days). */
+      var backupAll = TSI.el('button', {
+        type: 'button',
+        class: 'tsi-btn tsi-btn--small tsi-topbar__backup',
+        'data-test': 'backup-all',
+        onclick: TSI.oneAtATime(function () { return TSI.backup.backupEverything().then(function (r) { refreshBackupAll(); return r; }); })
+      }, 'Back up all');
+      function refreshBackupAll() {
+        var due = TSI.backup.due();
+        backupAll.classList.toggle('is-due', due);
+        backupAll.title = 'Download everything the suite has saved, from every tool, as one file. Last backed up: ' + TSI.backup.lastBackupText() + (due ? '. A backup is due.' : '.');
+      }
+      refreshBackupAll();
+      TSI.backup.onStamp(refreshBackupAll);
+      TSI.store.ready.then(refreshBackupAll);
+      actions.appendChild(backupAll);
     }
     /* The DM doc (shared/js/dmdoc.js), on every screen, just left of Switch tool. */
     if (TSI.dmDoc) actions.appendChild(TSI.dmDoc.button());
@@ -434,6 +451,23 @@
     /* "Last backed up: 3 days ago" beside the backup buttons (Harry, 18 October 2026). */
     function lastBackupLine() { return 'Last backed up: ' + TSI.backup.lastBackupText(); }
     var lastBackupEl = TSI.el('span', { class: 'tsi-home__lastbackup', 'data-test': 'last-backup', title: 'When Back up everything, or an Export of the Explorer or the Bastion, last finished in this browser', text: lastBackupLine() });
+    function refreshLastBackup() {
+      lastBackupEl.textContent = lastBackupLine();
+      lastBackupEl.classList.toggle('is-due', TSI.backup.due());
+    }
+    TSI.backup.onStamp(refreshLastBackup);
+    TSI.store.ready.then(refreshLastBackup);
+    /* Has the browser promised to keep the saves? (TSI.store.protect, asked when the suite opens and again on a backup.) */
+    var protectEl = TSI.el('span', { class: 'tsi-home__protect', 'data-test': 'storage-protection', hidden: true });
+    function refreshProtect() {
+      var line = TSI.storeRules.protectionLine(TSI.store.protection());
+      protectEl.hidden = !line;
+      if (!line) return;
+      protectEl.textContent = line.text;
+      protectEl.classList.toggle('is-ok', line.ok);
+      protectEl.title = line.ok ? 'The browser has agreed to keep this suite\'s saved data even when the disk is nearly full.' : 'The browser has not promised to keep this suite\'s saved data if the disk is nearly full. Bookmarking or installing the page can help. Keep backups.';
+    }
+    TSI.store.ready.then(function () { return TSI.store.protect(); }).then(refreshProtect, refreshProtect);
 
     TSI.append(main, [
       TSI.el('div', { class: 'tsi-home__brand' }, [
@@ -466,6 +500,7 @@
             ' ',
             TSI.el('span', { class: 'tsi-extlink__note', text: '(needs internet)' })
           ]) : null,
+          protectEl,
           lastBackupEl,
           TSI.el('button', {
             type: 'button',
@@ -473,7 +508,7 @@
             title: 'Download everything the suite has saved as one file',
             'data-test': 'backup-everything',
             onclick: TSI.oneAtATime(function () {
-              return TSI.backup.backupEverything().then(function (r) { lastBackupEl.textContent = lastBackupLine(); return r; });
+              return TSI.backup.backupEverything().then(function (r) { refreshLastBackup(); refreshProtect(); return r; });
             })
           }, 'Back up everything'),
           TSI.el('button', {
