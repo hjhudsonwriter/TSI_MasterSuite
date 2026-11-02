@@ -4434,3 +4434,9 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **End session** (top bar of the Explorer and the Bastion, and the home screen): suggests a name ("Session end 2 Nov 2026", editable), keeps a "Session ended" snapshot, downloads a named Back up everything, then a "Session ended" box names the file and reminds you to copy it off the laptop (USB stick, OneDrive, email) and to keep the older backups. Cancel makes nothing.
 - Left alone: the suite cannot copy the file off the laptop for you (a web page can't), so the reminder is words only; a "copied" tick that keeps nagging until you confirm was not built.
 - The top bar of the Explorer and the Bastion is now full at the laptop's width (the last button ends about 18 pixels inside 1707). A narrower window wraps it; the TV is fine.
+
+
+### SAVE-04 · Restore only some of a backup (2 November 2026)
+- Before: Restore always replaced everything the suite had saved with everything in the file.
+- After: the Restore box has a shut-away **Restore only some of it…** listing what the file holds by tool, all ticked. Untick a tool to leave what is saved now for that tool exactly as it is. The Explorer and the Bastion are one entry ("The campaign"), because they only make sense together. Ticking everything (the default) behaves exactly as before. Nothing ticked is refused. Only restoring the campaign needs the Explorer and Bastion closed in other windows, though the first check at the start of Restore (before you choose) still refuses while either is open.
+- Left alone: Import in a tool still replaces that tool's data from one file as before; a backup file made from one tool only (Export) is not offered this list.

@@ -355,6 +355,24 @@
         : 'Nothing is saved in the suite yet, so nothing will be lost.',
       hasCurrent ? 'First, download a backup of what\'s saved now' : null
     );
+    /* "Restore only some": every part of the file is ticked, so by default nothing changes; untick a part to leave what is
+       saved now for that part alone. Shut away until asked for. */
+    var groups = rules.restoreGroups(backup, nameOf);
+    var ticks = {};
+    var picker = null;
+    if (groups.length > 1) {
+      picker = TSI.el('details', { class: 'tsi-restorepick', 'data-test': 'restore-pick' }, [
+        TSI.el('summary', { text: 'Restore only some of it…' }),
+        TSI.el('p', { text: 'Untick anything you want to leave exactly as it is now.' })
+      ].concat(groups.map(function (g) {
+        var box = TSI.el('input', { type: 'checkbox', checked: true, 'data-test': 'restore-tick-' + g.id });
+        ticks[g.id] = box;
+        return TSI.el('label', { class: 'tsi-check' }, [box, TSI.el('span', { text: g.label + ': ' + g.count + ' saved item' + (g.count === 1 ? '' : 's') })]);
+      })));
+      body.nodes.appendChild(picker);
+    }
+    var chosenPlan = null;
+    function chosenIds() { return groups.filter(function (g) { return !ticks[g.id] || ticks[g.id].checked; }).map(function (g) { return g.id; }); }
     return TSI.modal.open({
       title: title,
       body: body.nodes,
@@ -364,17 +382,23 @@
         { label: 'Restore', value: true, primary: true }
       ]
     }).then(function (go) {
-      return go ? stillClear(title, watch) : false;
+      if (!go) return false;
+      var plan = rules.restorePlan(backup, groups, chosenIds());
+      if (!plan) return TSI.modal.alert({ title: title, message: 'Nothing is ticked, so there is nothing to restore. Nothing was changed.' }).then(function () { return false; });
+      chosenPlan = plan;
+      /* Only the campaign needs the Explorer and the Bastion shut in other windows. */
+      return stillClear(title, plan.campaign ? watch : []);
     }).then(function (go) {
       if (!go) return false;
+      var plan = chosenPlan;
       var first = body.box && body.box.checked ? TSI.backup.backupEverything({ quiet: true, label: 'before restore' }) : Promise.resolve();
       return first.then(function () {
-        return TSI.store.replace(backup.records, { all: true });
+        return TSI.store.replace(plan.records, plan.scope);
       }).then(function (ok) {
         if (!ok) {
           return TSI.modal.alert({ title: title, message: 'The browser refused to save the restored data. ' + TSI.store.status().reason + '\n\nWhat you had before may be partly replaced. If you downloaded a backup first, you can restore that.' }).then(function () { return false; });
         }
-        flash('Restored the backup saved on ' + TSI.dates.human(backup.savedAt) + '.');
+        flash(plan.tools ? 'Restored part of the backup saved on ' + TSI.dates.human(backup.savedAt) + '.' : 'Restored the backup saved on ' + TSI.dates.human(backup.savedAt) + '.');
         reload();
         return true;
       });

@@ -1296,3 +1296,7 @@ Item 4 of the save review: rolling snapshots of the Explorer and the Bastion in 
 
 ## End session (2 November 2026)
 Item 5 of the save review done. Next suggested: restoring only some tools from a backup (item 6); Ritual and Pelagosi progress and writing the backup straight to a synced folder (item 8) are Harry's calls.
+
+
+## Restore only some (2 November 2026)
+Item 6 of the save review done. Still open, Harry's calls: save Ritual and Pelagosi progress; write the backup straight to a synced folder (item 8).

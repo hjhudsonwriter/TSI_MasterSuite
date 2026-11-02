@@ -122,6 +122,41 @@
       return start + toolId + '-' + tail;
     },
 
+    /* "Restore only some" (Harry, 2 November 2026): a backup's saved items grouped the way the DM thinks of them. The Explorer and the
+       Bastion are one group (the campaign: they only make sense together). Returns [{ id, label, tools, count }] in the order the
+       items come, for the tools that are in the file. */
+    restoreGroups: function (backup, nameOf) {
+      var groups = [], byId = {};
+      var families = store().SUITE_FAMILIES;
+      (backup.records || []).forEach(function (r) {
+        var tool = store().toolOf(r.key);
+        var campaign = rules.inCampaign(tool);
+        var id = campaign ? 'campaign' : tool;
+        if (!byId[id]) {
+          var label = campaign ? 'The campaign (the Explorer and the Bastion)'
+            : Object.prototype.hasOwnProperty.call(families, tool) ? families[tool] : ((nameOf && nameOf(tool)) || tool);
+          byId[id] = { id: id, label: label, tools: campaign ? rules.CAMPAIGN.slice() : [tool], count: 0 };
+          groups.push(byId[id]);
+        }
+        byId[id].count++;
+      });
+      return groups;
+    },
+    /* What a partial restore writes and clears: { all: true } if every group is chosen (as Restore always did), else the chosen
+       groups' tools; records is only those groups' saved items. null if nothing is chosen. */
+    restorePlan: function (backup, groups, chosenIds) {
+      var chosen = groups.filter(function (g) { return chosenIds.indexOf(g.id) !== -1; });
+      if (!chosen.length) return null;
+      if (chosen.length === groups.length) return { scope: { all: true }, records: backup.records, tools: null, campaign: groups.some(function (g) { return g.id === 'campaign'; }) };
+      var tools = [].concat.apply([], chosen.map(function (g) { return g.tools; }));
+      return {
+        scope: { tools: tools },
+        records: backup.records.filter(function (r) { return tools.indexOf(store().toolOf(r.key)) !== -1; }),
+        tools: tools,
+        campaign: chosen.some(function (g) { return g.id === 'campaign'; })
+      };
+    },
+
     /* The name suggested when a session is ended (Harry, 2 November 2026): "Session end 2 Nov 2026". */
     sessionEndLabel: function (when) {
       var d = when instanceof Date ? when : new Date(when || Date.now());
