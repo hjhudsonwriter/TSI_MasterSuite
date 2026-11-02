@@ -122,6 +122,12 @@ h1.tsi-topbar__tool { margin: 0; }
 /* The test page (tests/harness.html) is labelled in the top bar. */
 .tsi-topbar__test { flex-shrink: 0; }
 
+/* Snapshots (2 November 2026) */
+.tsi-snaplist { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow: auto; }
+.tsi-snap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid var(--tsi-line-control, #6b5a3a); border-radius: 8px; }
+.tsi-snap__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tsi-snap__meta { font-size: 14px; color: var(--tsi-text-soft); }
+
 /* "Last backed up: 3 days ago" on the home screen */
 .tsi-home__lastbackup { font-size: 14px; color: var(--tsi-text-soft); }
 .tsi-home__lastbackup.is-due { color: var(--tsi-gold-text, #f0d68a); font-weight: 600; }

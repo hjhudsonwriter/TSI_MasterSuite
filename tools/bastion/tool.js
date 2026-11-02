@@ -3638,7 +3638,12 @@
           }
           if (state.word && state.word.length) await showWord();
           return null;
-        }()).then(function (r) { finish(); return r; }, function (err) { finish(); throw err; });
+        }()).then(function (r) {
+          finish();
+          /* A moment worth keeping a snapshot of (shared/js/snapshots.js): the days have passed. */
+          if (r === null && TSI.snapshots) TSI.snapshots.take('Bastion day passed, Day ' + state.day);
+          return r;
+        }, function (err) { finish(); throw err; });
       }
 
       /* One day, from wherever it had got to. */
