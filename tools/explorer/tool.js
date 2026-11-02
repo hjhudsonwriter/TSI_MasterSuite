@@ -2883,7 +2883,7 @@
       /* ---------- Saving the journey to a file ---------- */
       function exportSave() {
         saveNow();
-        TSI.backup.exportTool('explorer').then(function () { setNotice('Save exported.'); });
+        TSI.backup.exportTool('explorer').then(function (name) { if (name) setNotice('Save exported.'); });
       }
       function importSave() { TSI.backup.importTool('explorer'); }
 

@@ -4410,3 +4410,13 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - After: all of them (sound on and volume, voice lines playing by themselves, Click to move, and the three show-to-players boxes) are one saved item, `tsi.explorer.prefs`, part of the Explorer's save. So they come back after a reload and are in the campaign Export, Import and Back up everything. A backup from before this change has none: the usual settings come back. A first run after this change picks up the old sound and autoplay settings once.
 - Left out on purpose: which heroes are picked, the zoom and pan, and which panel is open, which are about where you are looking rather than how you run the table. The old `tsi.explorer.sfx` and `tsi.explorer.autoplayVoice` browser entries are no longer written (and not deleted).
 - Hex size, the hex lock and painted terrain were already in the save.
+
+
+### SAVE-01 · Named backups, a backup button in every tool, a sooner nudge, and storage protection (2 November 2026)
+- Before: backup files were told apart only by the date; the reminder came after a week and only when the Explorer or Bastion opened; Back up everything was only on the home screen; nothing asked the browser to keep the saves when the disk is nearly full.
+- After:
+  - Back up everything and every Export ask "Name this backup" first (empty is fine). The name goes into the file name (`tsi-backup-everything-2026-11-02-2240-session-7-end.json`) and into the file (`label`), and Restore and Import show it ("Its name: …"). The safety copies the suite makes by itself are named too (`before-restore`, `before-import`, `before-reset`). Old files without a name load as before.
+  - A **Back up all** button in the top bar of every tool that saves. It is edged in gold when a backup is due.
+  - A backup is "due" after **two days** with no backup (it was seven). The home screen's "Last backed up" line turns gold with a warning, and the reminder on opening the Explorer or Bastion comes after two days.
+  - The suite asks the browser to protect its saves from automatic cleanup (`navigator.storage.persist`), when it opens and again on a backup, and the home screen says "Saves protected from automatic cleanup ✓" or "Saves not protected…". Edge decides for itself and may say no, especially for a site that is not bookmarked or installed; the line is honest about it and nothing else depends on the answer.
+- Left alone: the last-backup date still only counts Back up everything and Export of the Explorer or Bastion (as before); a name is not asked when the suite makes a backup by itself.

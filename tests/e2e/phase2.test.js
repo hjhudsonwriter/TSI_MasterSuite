@@ -661,6 +661,8 @@ async function downloadPng(page) {
       assert(/Use this crest for the Bastion\?/.test(await ba.textContent('.tsi-modal')));
       await ba.click('.tsi-modal__foot button:text-is("Use this crest")');
       await ba.waitForFunction(() => { const c = TSI.store.get('tsi.bastion.crest', null); return c && c.design && c.design.clanName === 'Wardens of the Ironbow'; });
+      /* The Bastion clears the hand-off just after its save has been written, so wait for that rather than looking at once. */
+      await page.waitForFunction(() => !localStorage.getItem('tsi.suite.handoff-crest'), null, { timeout: 8000 });
       equal(await sent(), null, 'used, so it\'s cleared');
       /* Taking the crest does not take the Creator's name field as the Bastion's Party Name: that is typed in the Bastion (22 October 2026). */
       await ba.evaluate(() => TSI.store.flush());

@@ -28,6 +28,13 @@
 
   var SUITE_NAME = 'The Scarlett Isles: D&D Tool Suite';
 
+  /* A backup, with its name if the DM gave it one. */
+  function withLabel(backup, label) {
+    var l = rules.cleanLabel(label);
+    if (l) backup.label = l;
+    return backup;
+  }
+
   var rules = {
     FORMAT: 'tsi-backup',
     VERSION: 1,
@@ -43,8 +50,8 @@
       beasthandler: { name: 'Beast Handler', why: 'it only shows what the Bastion has saved, and what it used to keep (the old requests from players) is not used any more' }
     },
 
-    makeCampaignBackup: function (records, when, space) {
-      return {
+    makeCampaignBackup: function (records, when, space, label) {
+      return withLabel({
         format: rules.FORMAT,
         version: rules.VERSION,
         kind: 'campaign',
@@ -54,11 +61,11 @@
         suite: SUITE_NAME,
         savedAt: new Date(when || Date.now()).toISOString(),
         records: records
-      };
+      }, label);
     },
 
-    makeSuiteBackup: function (records, when, space) {
-      return {
+    makeSuiteBackup: function (records, when, space, label) {
+      return withLabel({
         format: rules.FORMAT,
         version: rules.VERSION,
         kind: 'suite',
@@ -66,12 +73,12 @@
         suite: SUITE_NAME,
         savedAt: new Date(when || Date.now()).toISOString(),
         records: records
-      };
+      }, label);
     },
 
     /* How long ago the campaign was last backed up (Harry, 18 October 2026:
        the suite should remind him). stamp is a time in milliseconds, or null. */
-    REMIND_AFTER_DAYS: 7,
+    REMIND_AFTER_DAYS: 2,
     backupAgeDays: function (stamp, now) {
       if (typeof stamp !== 'number' || !isFinite(stamp) || stamp <= 0) return null;
       return Math.max(0, Math.floor(((now === undefined ? Date.now() : now) - stamp) / 86400000));
@@ -89,8 +96,8 @@
       return d === null || d > rules.REMIND_AFTER_DAYS;
     },
 
-    makeToolBackup: function (toolId, toolName, records, when, space) {
-      return {
+    makeToolBackup: function (toolId, toolName, records, when, space, label) {
+      return withLabel({
         format: rules.FORMAT,
         version: rules.VERSION,
         kind: 'tool',
@@ -100,17 +107,28 @@
         suite: SUITE_NAME,
         savedAt: new Date(when || Date.now()).toISOString(),
         records: records
-      };
+      }, label);
     },
 
     /* tsi-backup-everything-2026-09-25-1403.json, tsi-quests-2026-09-25-1403.json
        or tsi-campaign-2026-09-25-1403.json (the test page's start tsi-test-). */
-    fileName: function (kind, toolId, when, space) {
+    fileName: function (kind, toolId, when, space, label) {
       var stamp = fileStamp(when instanceof Date ? when : new Date(when || Date.now()));
       var start = store().spaceNames(space).file;
-      if (kind === 'suite') return start + 'backup-everything-' + stamp + '.json';
-      if (kind === 'campaign') return start + 'campaign-' + stamp + '.json';
-      return start + toolId + '-' + stamp + '.json';
+      var slug = rules.labelSlug(label);
+      var tail = stamp + (slug ? '-' + slug : '') + '.json';
+      if (kind === 'suite') return start + 'backup-everything-' + tail;
+      if (kind === 'campaign') return start + 'campaign-' + tail;
+      return start + toolId + '-' + tail;
+    },
+
+    /* A name the DM gives a backup (Harry, 2 November 2026), e.g. "Session 7, end": one tidy line of at most 60 letters. */
+    cleanLabel: function (text) {
+      return String(text === undefined || text === null ? '' : text).replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60).trim();
+    },
+    /* The label as it goes into a file name: lower case letters and digits joined by hyphens, at most 40. */
+    labelSlug: function (text) {
+      return rules.cleanLabel(text).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
     },
 
     /* Read a backup file's text. Returns { ok: true, backup } or { ok: false, reason } in plain English. */
@@ -137,6 +155,7 @@
         return { ok: false, reason: 'This backup file is damaged (it doesn\'t say where it came from).' };
       }
       if (data.space === undefined) data.space = 'suite';
+      if (data.label !== undefined) { var lab = rules.cleanLabel(data.label); if (lab) data.label = lab; else delete data.label; }
       if (data.kind === 'tool' && !store().isValidToolId(data.tool)) {
         return { ok: false, reason: 'This backup file is damaged (it doesn\'t say which tool it\'s from).' };
       }

@@ -1284,3 +1284,7 @@ Built the sound system (DM window only; Sound panel with on/off, volume and Test
 
 ## Explorer settings saved (30 October 2026)
 Closed gaps 2 and 3 from the save review: sound settings, voice autoplay, Click to move and the show-to-players tick boxes are now saved with the Explorer (`tsi.explorer.prefs`) and travel in backups. Still open from that review: Heartwood Ritual and Pelagosi progress is not saved (by design so far; Harry to decide).
+
+
+## Saving and loading sessions (2 November 2026)
+Items 1 to 3 of the save review: storage protection, named backups, the "Back up all" button in every tool, and the two-day nudge. Next suggested: rolling snapshots in the browser (an undo for the night), an end-of-session button, restoring only some tools, and (Harry's call) saving Ritual and Pelagosi progress.

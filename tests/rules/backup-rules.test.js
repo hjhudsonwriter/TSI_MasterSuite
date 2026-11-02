@@ -182,4 +182,46 @@
     t.equal(backup.records.length, 2, 'the original is untouched');
     t.equal(B.withoutTestData(backup, 'test').skipped, 0, 'the test page keeps it');
   });
+
+  /* ---------- Named backups and the browser's protection (2 November 2026) ---------- */
+  test('a backup\'s name is tidied: one line, no angle brackets or control characters, at most 60 letters', function (t) {
+    t.equal(B.cleanLabel('  Session 7,   end '), 'Session 7, end');
+    t.equal(B.cleanLabel('a<b>c\n\td'), 'a b c d');
+    t.equal(B.cleanLabel(null), '');
+    t.equal(B.cleanLabel(new Array(100).join('x')).length, 60);
+  });
+
+  test('the name goes into the file name as lower-case words joined by hyphens, and nothing changes without one', function (t) {
+    var when = new Date(2026, 10, 2, 22, 40);
+    t.equal(B.fileName('suite', null, when, 'suite', 'Session 7, end'), 'tsi-backup-everything-2026-11-02-2240-session-7-end.json');
+    t.equal(B.fileName('suite', null, when, 'suite', ''), 'tsi-backup-everything-2026-11-02-2240.json');
+    t.equal(B.fileName('campaign', null, when, 'suite', 'Before the siege!'), 'tsi-campaign-2026-11-02-2240-before-the-siege.json');
+    t.equal(B.fileName('tool', 'quests', when, 'test', '../../etc'), 'tsi-test-quests-2026-11-02-2240-etc.json');
+    t.equal(B.labelSlug('??'), '');
+  });
+
+  test('all three kinds of backup keep the name, only if there is one, and a file read back keeps a tidy one', function (t) {
+    var rec = [{ key: 'tsi.quests.accepted', value: [], savedAt: '2026-11-02T10:00:00.000Z' }];
+    var s = B.makeSuiteBackup(rec, new Date(), 'suite', 'Session 7, end');
+    t.equal(s.label, 'Session 7, end');
+    t.equal(B.makeSuiteBackup(rec, new Date(), 'suite').label, undefined);
+    t.equal(B.makeCampaignBackup(rec, new Date(), 'suite', 'x').label, 'x');
+    t.equal(B.makeToolBackup('quests', 'Notice Board', rec, new Date(), 'suite', 'y').label, 'y');
+    var back = B.parse(JSON.stringify(s));
+    t.ok(back.ok); t.equal(back.backup.label, 'Session 7, end');
+    var messy = JSON.parse(JSON.stringify(s)); messy.label = '  <b>hi</b>  ';
+    t.equal(B.parse(JSON.stringify(messy)).backup.label, 'b hi /b');
+    var blank = JSON.parse(JSON.stringify(s)); blank.label = '   ';
+    t.equal(B.parse(JSON.stringify(blank)).backup.label, undefined);
+  });
+
+  test('the home screen says whether the browser has promised to keep the saves', function (t) {
+    var S = TSI.storeRules;
+    t.equal(S.protectionLine({ supported: false, persisted: false }), null);
+    t.equal(S.protectionLine(null), null);
+    t.equal(S.protectionLine({ supported: true, persisted: true }).ok, true);
+    var no = S.protectionLine({ supported: true, persisted: false });
+    t.equal(no.ok, false);
+    t.ok(/not protected/.test(no.text) && /backups/.test(no.text));
+  });
 }());

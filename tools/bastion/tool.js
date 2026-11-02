@@ -3800,8 +3800,8 @@
       });
 
       var onDownload = TSI.oneAtATime(function () {
-        return TSI.backup.exportTool('bastion').then(function () {
-          if (!life.alive) return;
+        return TSI.backup.exportTool('bastion').then(function (name) {
+          if (!name || !life.alive) return;
           notice('The campaign save (the Explorer and the Bastion together) was downloaded.', { type: 'info', title: 'Save file.', id: 'tsi-bas-saved', timeout: 8000 });
           done();
         });

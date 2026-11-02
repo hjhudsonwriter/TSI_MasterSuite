@@ -43,12 +43,50 @@
   function readStamp() {
     try { var v = parseInt(localStorage.getItem(STAMP_KEY), 10); return isFinite(v) && v > 0 ? v : null; } catch (e) { return null; }
   }
+  var stampListeners = [];
   function writeStamp() {
     try { localStorage.setItem(STAMP_KEY, String(Date.now())); } catch (e) { /* the reminder just stays as it was */ }
+    stampListeners.forEach(function (fn) { try { fn(); } catch (e) { /* a listener's trouble is its own */ } });
+  }
+
+  /* Is a backup due? Something is saved (other than the DM doc's layout) and none was made in the last couple of days. */
+  function backupIsDue() {
+    var has = TSI.store.keys().some(function (k) { return ['suite', 'dmdoc', 'quarantine'].indexOf(TSI.storeRules.toolOf(k)) === -1; });
+    return rules.backupDue(readStamp(), Date.now(), has);
+  }
+
+  /* "Name this backup" (Harry, 2 November 2026): a short name that goes into the file name and into the file, so a pile of
+     backups can be told apart ("Session 7, end"). Resolves the name ('' for none), or null for Cancel. */
+  function askName(title, okLabel) {
+    var input = TSI.el('input', { type: 'text', class: 'tsi-input', maxlength: '60', placeholder: 'e.g. Session 7, end', 'aria-label': 'Name for this backup', 'data-test': 'backup-name' });
+    var body = TSI.el('div', null, [
+      TSI.el('p', { text: 'Give it a name if you like, so you can tell it from the others later. It goes into the file name. You can leave it empty.' }),
+      input
+    ]);
+    input.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      var dlg = input.closest('.tsi-modal');
+      var ok = dlg && dlg.querySelector('.tsi-modal__foot .tsi-btn--primary');
+      if (ok) ok.click();
+    });
+    return TSI.modal.open({
+      title: title,
+      body: body,
+      escValue: false,
+      actions: [{ label: 'Cancel', value: false }, { label: okLabel, value: true, primary: true }],
+      onOpen: function () { try { input.focus(); } catch (e) { /* no focus */ } }
+    }).then(function (go) { return go ? rules.cleanLabel(input.value) : null; });
+  }
+  /* The name for a backup being made: given (options.label, as the safety copies are), none for a quiet one, else asked. */
+  function nameFor(options, title, okLabel) {
+    if (options && options.label !== undefined) return Promise.resolve(rules.cleanLabel(options.label));
+    if (options && options.quiet) return Promise.resolve('');
+    return askName(title, okLabel);
   }
 
   function downloadBackup(backup, kind, toolId) {
-    var name = rules.fileName(kind, toolId, new Date(backup.savedAt), TSI.space);
+    var name = rules.fileName(kind, toolId, new Date(backup.savedAt), TSI.space, backup.label);
     TSI.download(name, JSON.stringify(backup, null, 2), 'application/json');
     return name;
   }
@@ -61,6 +99,7 @@
     } else {
       parts.push(TSI.el('p', null, TSI.el('em', { text: 'Nothing saved: the file is empty.' })));
     }
+    if (backup.label) parts.push(TSI.el('p', null, [TSI.el('span', { text: 'Its name: ' }), TSI.el('strong', { text: backup.label })]));
     if (backup.skippedTest) {
       parts.push(TSI.el('p', { text: 'It also holds ' + backup.skippedTest + ' item' + (backup.skippedTest === 1 ? '' : 's') + ' of test data from the test page, which will be left out.' }));
     }
@@ -128,25 +167,35 @@
   TSI.backup = {
     /* Download every saved item in the suite as one dated file. */
     backupEverything: function (options) {
-      /* Read again from the browser, so a home screen opened a while ago
-         still backs up what the tools in other windows have saved since. */
-      return TSI.store.freshAll().then(function (records) {
-        var backup = rules.makeSuiteBackup(records, new Date(), TSI.space);
-        var name = downloadBackup(backup, 'suite');
-        writeStamp();
-        if (!options || !options.quiet) {
-          TSI.notify('Saved to your Downloads folder as ' + name + '.', { type: 'ok', title: 'Backup downloaded.', timeout: 8000, id: 'tsi-backup' });
-        }
-        return name;
+      return nameFor(options, 'Back up everything', 'Back up').then(function (label) {
+        if (label === null) return null;
+        /* A click is also a good moment to ask the browser to keep the saves (it may only say yes to one). */
+        TSI.store.protect();
+        /* Read again from the browser, so a home screen opened a while ago
+           still backs up what the tools in other windows have saved since. */
+        return TSI.store.freshAll().then(function (records) {
+          var backup = rules.makeSuiteBackup(records, new Date(), TSI.space, label);
+          var name = downloadBackup(backup, 'suite');
+          writeStamp();
+          if (!options || !options.quiet) {
+            TSI.notify('Saved to your Downloads folder as ' + name + '.', { type: 'ok', title: 'Backup downloaded.', timeout: 8000, id: 'tsi-backup' });
+          }
+          return name;
+        });
       });
     },
+
+    /* Called whenever a backup of the campaign finishes (the shell updates its "last backed up" words). */
+    onStamp: function (fn) { stampListeners.push(fn); },
+    /* Is a backup due? (Something is saved, and none in the last couple of days.) */
+    due: backupIsDue,
 
     /* When the campaign was last backed up (milliseconds), or null. */
     lastBackup: function () { return readStamp(); },
     lastBackupText: function () { return rules.backupAgeText(readStamp(), Date.now()); },
 
     /* One dismissible reminder when a campaign tool opens, if there is a
-       campaign saved and no backup in the last week. No settings, no
+       campaign saved and no backup in the last two days. No settings, no
        schedule. */
     remindIfDue: function (toolId) {
       if (!rules.inCampaign(toolId)) return;
@@ -178,7 +227,7 @@
         actions: [{ label: 'Cancel', value: false }, { label: options.okLabel || 'Reset', value: true, primary: true }]
       }).then(function (go) {
         if (!go) return false;
-        var first = box.checked ? TSI.backup.exportTool(options.toolId, { quiet: true }) : Promise.resolve();
+        var first = box.checked ? TSI.backup.exportTool(options.toolId, { quiet: true, label: 'before reset' }) : Promise.resolve();
         return first.then(function () { return true; });
       });
     },
@@ -203,14 +252,18 @@
        campaign file: both, each as last saved (the other may be open in
        another window). */
     exportTool: function (toolId, options) {
-      return TSI.store.flush().then(function () {
-        if (!rules.inCampaign(toolId)) return rules.makeToolBackup(toolId, nameOf(toolId), TSI.store.records(toolId), new Date(), TSI.space);
-        return Promise.all(rules.CAMPAIGN.map(function (t) {
-          return t === toolId ? TSI.store.records(t) : TSI.store.freshRecords(t);
-        })).then(function (lists) {
-          return rules.makeCampaignBackup([].concat.apply([], lists), new Date(), TSI.space);
+      return nameFor(options, 'Export ' + (rules.inCampaign(toolId) ? 'the campaign' : (nameOf(toolId) || toolId)), 'Export').then(function (label) {
+        if (label === null) return null;
+        return TSI.store.flush().then(function () {
+          if (!rules.inCampaign(toolId)) return rules.makeToolBackup(toolId, nameOf(toolId), TSI.store.records(toolId), new Date(), TSI.space, label);
+          return Promise.all(rules.CAMPAIGN.map(function (t) {
+            return t === toolId ? TSI.store.records(t) : TSI.store.freshRecords(t);
+          })).then(function (lists) {
+            return rules.makeCampaignBackup([].concat.apply([], lists), new Date(), TSI.space, label);
+          });
         });
       }).then(function (backup) {
+        if (!backup) return null;
         var name = downloadBackup(backup, backup.kind, toolId);
         if (rules.inCampaign(toolId)) writeStamp();
         if (!options || !options.quiet) {
@@ -282,7 +335,7 @@
       return go ? stillClear(title, watch) : false;
     }).then(function (go) {
       if (!go) return false;
-      var first = body.box && body.box.checked ? TSI.backup.backupEverything({ quiet: true }) : Promise.resolve();
+      var first = body.box && body.box.checked ? TSI.backup.backupEverything({ quiet: true, label: 'before restore' }) : Promise.resolve();
       return first.then(function () {
         return TSI.store.replace(backup.records, { all: true });
       }).then(function (ok) {
@@ -342,7 +395,7 @@
       var stop = TSI.shell && TSI.shell.stopTool ? TSI.shell.stopTool() : Promise.resolve();
       /* Stop the tool first (it saves as it closes), then take the copy, then replace. */
       return stop.then(function () {
-        return body.box && body.box.checked ? TSI.backup.exportTool(toolId, { quiet: true }) : null;
+        return body.box && body.box.checked ? TSI.backup.exportTool(toolId, { quiet: true, label: 'before import' }) : null;
       }).then(function () {
         return TSI.store.replace(backup.records, campaign ? { tools: scopeTools } : { tool: toolId });
       }).then(function (ok) {

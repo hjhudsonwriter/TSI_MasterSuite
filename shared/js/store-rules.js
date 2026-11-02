@@ -17,6 +17,15 @@
   function pad(n) { return (n < 10 ? '0' : '') + n; }
 
   var rules = {
+    /* The browser can be asked to keep the suite's saves when the disk is nearly full (Harry, 2 November 2026). p is what
+       TSI.store.protect() found: { supported, persisted }. Returns { ok, text } for the home screen, or null if the browser can't say. */
+    protectionLine: function (p) {
+      if (!p || !p.supported) return null;
+      return p.persisted
+        ? { ok: true, text: 'Saves protected from automatic cleanup ✓' }
+        : { ok: false, text: 'Saves not protected: this browser may clear them if the disk fills. Keep backups.' };
+    },
+
     RESERVED_TOOLS: ['suite', 'quarantine', 'dmdoc'],
 
     /* Saves that belong to the whole suite rather than one tool, and how a
