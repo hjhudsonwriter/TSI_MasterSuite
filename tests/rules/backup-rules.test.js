@@ -230,4 +230,39 @@
     t.equal(B.sessionEndLabel(new Date(2027, 0, 15)), 'Session end 15 Jan 2027');
     t.equal(B.labelSlug(B.sessionEndLabel(new Date(2026, 10, 2))), 'session-end-2-nov-2026');
   });
+
+  test('a backup\'s saved items are grouped for "restore only some", the Explorer and Bastion as one', function (t) {
+    var recs = [rec('tsi.quests.accepted', []), rec('tsi.bastion.state', {}), rec('tsi.explorer.save', {}), rec('tsi.explorer.prefs', {}), rec('tsi.dmdoc.layout', {})];
+    var backup = B.makeSuiteBackup(recs, when, 'suite');
+    var g = B.restoreGroups(backup, names);
+    t.same(g.map(function (x) { return x.id + ':' + x.count; }), ['quests:1', 'campaign:3', 'dmdoc:1']);
+    t.same(g[1].tools, ['explorer', 'bastion']);
+    t.equal(g[2].label, 'DM doc');
+  });
+
+  test('choosing every part restores everything as before; choosing some touches only those tools; none is refused', function (t) {
+    var recs = [rec('tsi.quests.accepted', []), rec('tsi.bastion.state', {}), rec('tsi.explorer.save', {}), rec('tsi.dmdoc.layout', {})];
+    var backup = B.makeSuiteBackup(recs, when, 'suite');
+    var g = B.restoreGroups(backup, names);
+    var all = B.restorePlan(backup, g, ['quests', 'campaign', 'dmdoc']);
+    t.same(all.scope, { all: true });
+    t.equal(all.records.length, 4);
+    var some = B.restorePlan(backup, g, ['quests', 'dmdoc']);
+    t.same(some.scope, { tools: ['quests', 'dmdoc'] });
+    t.same(some.records.map(function (r) { return r.key; }), ['tsi.quests.accepted', 'tsi.dmdoc.layout']);
+    t.equal(some.campaign, false);
+    var camp = B.restorePlan(backup, g, ['campaign']);
+    t.same(camp.scope.tools, ['explorer', 'bastion']);
+    t.equal(camp.campaign, true);
+    t.equal(camp.records.length, 2);
+    t.equal(B.restorePlan(backup, g, []), null);
+  });
+
+  test('restoring an empty backup still clears everything (there is nothing to untick)', function (t) {
+    var empty = B.makeSuiteBackup([], when, 'suite');
+    var plan = B.restorePlan(empty, B.restoreGroups(empty, names), []);
+    t.same(plan.scope, { all: true });
+    t.equal(plan.records.length, 0);
+    t.equal(plan.campaign, true);
+  });
 }());
