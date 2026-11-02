@@ -122,6 +122,13 @@
       return start + toolId + '-' + tail;
     },
 
+    /* The name suggested when a session is ended (Harry, 2 November 2026): "Session end 2 Nov 2026". */
+    sessionEndLabel: function (when) {
+      var d = when instanceof Date ? when : new Date(when || Date.now());
+      var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return 'Session end ' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+    },
+
     /* A name the DM gives a backup (Harry, 2 November 2026), e.g. "Session 7, end": one tidy line of at most 60 letters. */
     cleanLabel: function (text) {
       return String(text === undefined || text === null ? '' : text).replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60).trim();

@@ -338,6 +338,16 @@
       TSI.backup.onStamp(refreshBackupAll);
       TSI.store.ready.then(refreshBackupAll);
       actions.appendChild(backupAll);
+      /* End session: a snapshot, a named backup of everything, and a reminder to copy it off the laptop. */
+      if (TSI.backupRules.inCampaign(info.id)) {
+        actions.appendChild(TSI.el('button', {
+          type: 'button',
+          class: 'tsi-btn tsi-btn--small',
+          title: 'Finish for the night: make a named backup of everything and be reminded to copy it off this laptop.',
+          'data-test': 'end-session',
+          onclick: TSI.oneAtATime(function () { return TSI.backup.endSession(); })
+        }, 'End session'));
+      }
       /* Snapshots: the Explorer and the Bastion go back a step (shared/js/snapshots.js). */
       if (TSI.backupRules.inCampaign(info.id) && TSI.snapshots) {
         actions.appendChild(TSI.el('button', {
@@ -521,6 +531,13 @@
               return TSI.backup.backupEverything().then(function (r) { refreshLastBackup(); refreshProtect(); return r; });
             })
           }, 'Back up everything'),
+          TSI.el('button', {
+            type: 'button',
+            class: 'tsi-btn tsi-btn--small',
+            title: 'Finish for the night: make a named backup of everything and be reminded to copy it off this laptop.',
+            'data-test': 'end-session',
+            onclick: TSI.oneAtATime(function () { return TSI.backup.endSession().then(function (r) { refreshLastBackup(); return r; }); })
+          }, 'End session'),
           TSI.snapshots ? TSI.el('button', {
             type: 'button',
             class: 'tsi-btn tsi-btn--small',
