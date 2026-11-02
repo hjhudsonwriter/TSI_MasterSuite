@@ -257,4 +257,12 @@
     t.equal(camp.records.length, 2);
     t.equal(B.restorePlan(backup, g, []), null);
   });
+
+  test('restoring an empty backup still clears everything (there is nothing to untick)', function (t) {
+    var empty = B.makeSuiteBackup([], when, 'suite');
+    var plan = B.restorePlan(empty, B.restoreGroups(empty, names), []);
+    t.same(plan.scope, { all: true });
+    t.equal(plan.records.length, 0);
+    t.equal(plan.campaign, true);
+  });
 }());

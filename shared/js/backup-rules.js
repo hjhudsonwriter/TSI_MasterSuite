@@ -145,6 +145,8 @@
     /* What a partial restore writes and clears: { all: true } if every group is chosen (as Restore always did), else the chosen
        groups' tools; records is only those groups' saved items. null if nothing is chosen. */
     restorePlan: function (backup, groups, chosenIds) {
+      /* An empty file has nothing to choose between: restoring it clears everything, as it always did. */
+      if (!groups.length) return { scope: { all: true }, records: backup.records || [], tools: null, campaign: true };
       var chosen = groups.filter(function (g) { return chosenIds.indexOf(g.id) !== -1; });
       if (!chosen.length) return null;
       if (chosen.length === groups.length) return { scope: { all: true }, records: backup.records, tools: null, campaign: groups.some(function (g) { return g.id === 'campaign'; }) };
