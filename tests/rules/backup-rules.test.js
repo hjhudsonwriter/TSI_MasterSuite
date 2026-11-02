@@ -224,4 +224,10 @@
     t.equal(no.ok, false);
     t.ok(/not protected/.test(no.text) && /backups/.test(no.text));
   });
+
+  test('the name suggested when a session ends is the date', function (t) {
+    t.equal(B.sessionEndLabel(new Date(2026, 10, 2, 22, 40)), 'Session end 2 Nov 2026');
+    t.equal(B.sessionEndLabel(new Date(2027, 0, 15)), 'Session end 15 Jan 2027');
+    t.equal(B.labelSlug(B.sessionEndLabel(new Date(2026, 10, 2))), 'session-end-2-nov-2026');
+  });
 }());

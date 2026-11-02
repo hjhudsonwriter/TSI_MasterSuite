@@ -4428,3 +4428,9 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - Not in any backup file, and a Restore or Import leaves them alone. They live in this browser only, so they do not replace backups: clearing Edge's site data deletes them with everything else.
 - Decisions I made (tell me if wrong): twelve kept; ten minutes; nothing is kept for a brand new campaign with nothing saved; the Explorer's uploaded map picture and prefs are not in a snapshot (they would make each one very large).
 - Left alone: snapshots of the other tools (Combat Tracker, Notice Board, Arenas, Crest), and pinning a snapshot so it is never dropped.
+
+
+### SAVE-03 · End session: a named backup and a reminder, in one click (2 November 2026)
+- **End session** (top bar of the Explorer and the Bastion, and the home screen): suggests a name ("Session end 2 Nov 2026", editable), keeps a "Session ended" snapshot, downloads a named Back up everything, then a "Session ended" box names the file and reminds you to copy it off the laptop (USB stick, OneDrive, email) and to keep the older backups. Cancel makes nothing.
+- Left alone: the suite cannot copy the file off the laptop for you (a web page can't), so the reminder is words only; a "copied" tick that keeps nagging until you confirm was not built.
+- The top bar of the Explorer and the Bastion is now full at the laptop's width (the last button ends about 18 pixels inside 1707). A narrower window wraps it; the TV is fine.

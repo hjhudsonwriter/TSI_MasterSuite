@@ -57,10 +57,12 @@
 
   /* "Name this backup" (Harry, 2 November 2026): a short name that goes into the file name and into the file, so a pile of
      backups can be told apart ("Session 7, end"). Resolves the name ('' for none), or null for Cancel. */
-  function askName(title, okLabel) {
+  function askName(title, okLabel, opts) {
+    opts = opts || {};
     var input = TSI.el('input', { type: 'text', class: 'tsi-input', maxlength: '60', placeholder: 'e.g. Session 7, end', 'aria-label': 'Name for this backup', 'data-test': 'backup-name' });
+    if (opts.value) input.value = opts.value;
     var body = TSI.el('div', null, [
-      TSI.el('p', { text: 'Give it a name if you like, so you can tell it from the others later. It goes into the file name. You can leave it empty.' }),
+      TSI.el('p', { text: opts.intro || 'Give it a name if you like, so you can tell it from the others later. It goes into the file name. You can leave it empty.' }),
       input
     ]);
     input.addEventListener('keydown', function (e) {
@@ -187,6 +189,33 @@
 
     /* The campaign tool (the Explorer or the Bastion) open in another window, or null (snapshots use this before going back). */
     campaignOpenElsewhere: function () { return openElsewhere(rules.CAMPAIGN); },
+
+    /* "End session" (Harry, 2 November 2026): keep a snapshot, make a named backup of everything, then remind the DM to copy the file
+       off the laptop. Resolves the file name, or null if the DM cancelled. */
+    endSession: function () {
+      var suggested = rules.sessionEndLabel(new Date());
+      return askName('End the session', 'Back up and finish', {
+        intro: 'This makes one backup of everything (the Explorer, the Bastion, the DM doc and the rest) and then reminds you to copy it somewhere safe. Change the name if you like.',
+        value: suggested
+      }).then(function (label) {
+        if (label === null) return null;
+        var snap = TSI.snapshots ? TSI.snapshots.take('Session ended', { force: true }) : Promise.resolve(null);
+        return snap.then(function () {
+          return TSI.backup.backupEverything({ label: label || suggested });
+        }).then(function (name) {
+          if (!name) return null;
+          var body = TSI.el('div', { 'data-test': 'session-ended' }, [
+            TSI.el('p', null, [TSI.el('span', { text: 'Saved to your Downloads folder as ' }), TSI.el('strong', { text: name }), TSI.el('span', { text: '.' })]),
+            TSI.el('p', { text: 'One last thing, so a wiped browser can never cost you the campaign:' }),
+            TSI.el('ul', null, [
+              TSI.el('li', { text: 'Copy that file somewhere that is not this laptop: a USB stick, OneDrive or email it to yourself.' }),
+              TSI.el('li', { text: 'Keep the older backups too. Don\'t replace them.' })
+            ])
+          ]);
+          return TSI.modal.open({ title: 'Session ended', body: body, escValue: true, actions: [{ label: 'Done', value: true, primary: true }] }).then(function () { return name; });
+        });
+      });
+    },
 
     /* Called whenever a backup of the campaign finishes (the shell updates its "last backed up" words). */
     onStamp: function (fn) { stampListeners.push(fn); },

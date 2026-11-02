@@ -1292,3 +1292,7 @@ Items 1 to 3 of the save review: storage protection, named backups, the "Back up
 
 ## Snapshots (2 November 2026)
 Item 4 of the save review: rolling snapshots of the Explorer and the Bastion in the browser (last 12), with a Snapshots list and Go back. Next suggested: an end-of-session button and restoring only some tools (items 5 and 6); Ritual and Pelagosi progress is Harry's call.
+
+
+## End session (2 November 2026)
+Item 5 of the save review done. Next suggested: restoring only some tools from a backup (item 6); Ritual and Pelagosi progress and writing the backup straight to a synced folder (item 8) are Harry's calls.
