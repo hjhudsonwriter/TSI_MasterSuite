@@ -19,9 +19,9 @@
 
   group('Crest: content');
 
-  test('17 shield shapes, 20 sigils and every list of choices', function (t) {
+  test('17 shield shapes, 25 sigils and every list of choices', function (t) {
     t.equal(SHIELDS.length, 17, 'shields');
-    t.equal(SIGILS.length, 20, 'sigils');
+    t.equal(SIGILS.length, 25, 'sigils');
     t.equal(R.colours().length, 63, 'named colours');
     t.equal(data.colourGroups.length, 8, 'colour families');
     t.equal(data.schemes.length, 20, 'colour schemes');
@@ -66,7 +66,7 @@
   test('every sigil says where its artwork came from, and it is free to use', function (t) {
     SIGILS.forEach(function (s) {
       t.ok(s.credit && s.credit.length > 5, s.id + ' credit');
-      t.equal(s.licence, 'Public domain', s.id + ' licence');
+      t.ok(s.licence === 'Public domain' || s.licence === 'CC0 (public domain dedication)', s.id + ' licence');
       t.ok(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:[^\s'"]+\.svg$/.test(s.source), s.id + ' source ' + s.source);
     });
   });
@@ -163,7 +163,7 @@
   test('Random Crest with the highest dice', function (t) {
     var s = R.randomCrest(dice([0.99]));
     t.same([s.shield, s.division, s.ordinary, s.sigil, s.sigilFace, s.relief, s.rim, s.lighting, s.texture, s.scheme, s.banner, s.motto, s.sigilSize],
-      ['round', 'lozengy', 'none', 'oak', 'right', 'flat', 'rope', 'flat', 'linen', 'stone', 'plaque', '', 105]);
+      ['round', 'lozengy', 'none', 'phoenix', 'right', 'flat', 'rope', 'flat', 'linen', 'stone', 'plaque', '', 105]);
   });
 
   test('many random crests use only real choices, keep in range and take a scheme\'s colours', function (t) {
@@ -300,7 +300,7 @@
         n++;
       });
     });
-    t.equal(n, 340);
+    t.equal(n, 425);
   });
 
   test('every hidden part name starts tsi-crest-svg- and is unique to its picture', function (t) {

@@ -43,13 +43,18 @@ S = [
  ('crescent', 'Crescent', 'The crescent moon, horns upward: hope, and the light that guides at sea.', GJ, 'Coa_Illustration_Elements_Planet_Crescent.svg'),
  ('anchor', 'Anchor', 'An anchor, its stock in the accent colour: hope and steadfastness, and a house of the sea.', FD, 'Coa_Illustration_Elements_Anchor.svg'),
  ('oak', 'Oak Tree', 'An oak torn up by its roots, trunk and roots in the accent colour: endurance, and the living heart of Telluria.', FD, 'Coa_Illustration_Elements_Plant_Oak_Tree_Fructed_and_Eradicated.svg'),
+ ('bull', 'Bull’s Head Caboshed', 'A bull’s head seen full face (caboshed is the heraldic word), horns in the accent colour: strength, fortitude and stubborn courage.', FD, 'Coa_Illustration_Elements_Animal_Bull\'s_Head_Caboshed.svg'),
+ ('ram', 'Ram’s Head Cabossed', 'A ram’s head seen full face, its curling horns in the accent colour: leadership, pride and the charge that breaks a gate.', FD, 'Coa_Illustration_Elements_Animal_Ram\'s_Head_Cabossed.svg'),
+ ('horse', 'Stallion Salient', 'A stallion leaping forward (salient), hooves in the accent colour: nobility, speed and the spirit of the riders’ clans.', 'Gustav Völker', 'Coa_Illustration_Elements_Animal_Horse_Salient.svg'),
+ ('wyvern', 'Wyvern Rampant', 'A wyvern, the two-legged dragon, reared up with its wing and tail fin in the accent colour: war, pestilence and a fierce guardian.', FD, 'Coa_Illustration_Elements_Animal_Wyvern_Rampant.svg'),
+ ('phoenix', 'Phoenix', 'The phoenix rising from its flames, the fire in the accent colour: rebirth, renewal and a house that rises again.', FD, 'Coa_Illustration_Elements_Phoenix.svg'),
 ]
 def q(s):
     return "'" + s.replace('\\', '\\\\').replace("'", "\\'") + "'"
 def num(v):
     return ('%.1f' % v).rstrip('0').rstrip('.')
 out = []
-out.append('''/* Clan Crest Creator — the twenty sigils (charges).
+out.append('''/* Clan Crest Creator — the twenty-five sigils (charges).
 
    Each sigil is traced from a public-domain heraldic drawing on Wikimedia
    Commons (most from A. C. Fox-Davies' A Complete Guide to Heraldry, 1909),

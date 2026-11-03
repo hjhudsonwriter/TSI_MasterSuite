@@ -394,7 +394,7 @@ async function downloadPng(page) {
       await page.click('[data-key=ordinary] [data-value=none]');
     });
 
-    await check('all 20 sigils, the size and up-or-down sliders, facing and relief', async () => {
+    await check('all 25 sigils, the size and up-or-down sliders, facing and relief', async () => {
       await tab(page, 'sigil');
       equal(await page.$$eval('[data-key=sigil] .tsi-crest-tile', t => t.map(x => x.dataset.value)), counts.sigils);
       for (const id of counts.sigils) {

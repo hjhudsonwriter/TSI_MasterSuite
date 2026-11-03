@@ -1300,3 +1300,9 @@ Item 5 of the save review done. Next suggested: restoring only some tools from a
 
 ## Restore only some (2 November 2026)
 Item 6 of the save review done. Still open, Harry's calls: save Ritual and Pelagosi progress; write the backup straight to a synced folder (item 8).
+
+## Five more Crest sigils (3 November 2026)
+
+- Added **Bull's Head Caboshed, Ram's Head Cabossed, Stallion Salient, Wyvern Rampant and Phoenix** to the Clan Crest Creator (now 25 sigils), traced the same way as the first twenty from public-domain Wikimedia Commons drawings (Fox-Davies 1909; the stallion is Gustav Völker's CC0 drawing). The original twenty are untouched.
+- The Sigil tab is now four rows, so the Crest's panels were made 66px taller on every tab to stop the preview jumping when you switch tabs. It still fits the laptop (1707 × 930) and the TV.
+- Credits updated in `docs/ASSETS.md` and `licences/README.md`; trace settings added to `tools/crest/dev/`. Tests updated from 20 to 25 sigils.
