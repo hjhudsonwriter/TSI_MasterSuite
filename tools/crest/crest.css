@@ -91,8 +91,8 @@
 
 .tsi-tool--crest .tsi-crest-panels {
   flex: 1;
-  /* as tall as the tallest tab (Colours), so switching tabs doesn't move anything */
-  min-height: 574px;
+  /* as tall as the tallest tab (Sigil, now 25 sigils in four rows), so switching tabs doesn't move anything */
+  min-height: 640px;
   padding: 4px 12px 10px;
   border: 1px solid var(--tsi-line-faint);
   border-radius: var(--tsi-radius-md);

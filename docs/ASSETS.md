@@ -33,7 +33,7 @@ The crest itself is drawn by code (`tools/crest/draw.js`), not from picture file
 
 **Crest rework (29 September 2026, at Harry's request).** The crest is still drawn by code, with no picture files. Its shapes are data:
 - **Shield outlines** (`tools/crest/data/shields.js`): 17 public-domain outlines from Heraldicon (heraldicon.org), copied exactly and credited shape by shape in the file and in `licences/README.md`.
-- **Sigils** (`tools/crest/data/sigils.js`, redone the same day at Harry's request): 20 sigils traced from public-domain heraldic drawings on Wikimedia Commons and stored as outlines (no picture files were added). The pictures they were traced from aren't kept in the suite; `tools/crest/dev/fetch.py` downloads them again. Each sigil's source:
+- **Sigils** (`tools/crest/data/sigils.js`, redone the same day at Harry's request): 25 sigils traced from public-domain heraldic drawings on Wikimedia Commons and stored as outlines (no picture files were added). The pictures they were traced from aren't kept in the suite; `tools/crest/dev/fetch.py` downloads them again. Each sigil's source:
 
 | Sigil | Wikimedia Commons file | Drawn by |
 |---|---|---|
@@ -57,8 +57,13 @@ The crest itself is drawn by code (`tools/crest/draw.js`), not from picture file
 | Crescent | `Coa_Illustration_Elements_Planet_Crescent.svg` | Graham Johnston, for Fox-Davies |
 | Anchor | `Coa_Illustration_Elements_Anchor.svg` | Fox-Davies |
 | Oak Tree | `Coa_Illustration_Elements_Plant_Oak_Tree_Fructed_and_Eradicated.svg` | Fox-Davies |
+| Bull's Head Caboshed | `Coa_Illustration_Elements_Animal_Bull%27s_Head_Caboshed.svg` | Fox-Davies |
+| Ram's Head Cabossed | `Coa_Illustration_Elements_Animal_Ram%27s_Head_Cabossed.svg` | Fox-Davies |
+| Stallion Salient | `Coa_Illustration_Elements_Animal_Horse_Salient.svg` | Gustav Völker (CC0) |
+| Wyvern Rampant | `Coa_Illustration_Elements_Animal_Wyvern_Rampant.svg` | Fox-Davies |
+| Phoenix | `Coa_Illustration_Elements_Phoenix.svg` | Fox-Davies |
 
-All are public domain. They replace the rework's first sigils, which were drawn for the suite with a kit of shapes (`sigil-kit.js`); the kit has been removed.
+All are public domain (the Stallion is CC0, a public-domain dedication; the five newest were added later at Harry's request). They replace the rework's first sigils, which were drawn for the suite with a kit of shapes (`sigil-kit.js`); the kit has been removed.
 
 
 ## Pelagosi Puzzle Trials (phase 3)

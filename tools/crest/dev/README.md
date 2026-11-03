@@ -1,7 +1,7 @@
 # How the Crest's sigils were made
 
 The suite never loads anything in this folder. It holds the tools that turned
-twenty public-domain heraldic drawings into `../data/sigils.js`, so a later
+twenty-five public-domain heraldic drawings into `../data/sigils.js`, so a later
 session can change a sigil and rebuild the file.
 
 ## The steps
