@@ -78,7 +78,7 @@
    Dire Wolf Den. The Strip Back Overhaul (Harry, 22 October 2026, step S14) replaced all three
    with ONE building, the Beast Pen: it takes a construction slot, needs party level 5 and takes
    21 days to build ("requiredLevel": 5), has one level only ("singleLevel": true: no Upgrade
-   row) and holds one beast of each kind (creatures-data.js, "pen"). It has two orders, and
+   row) and holds as many beasts of each kind as the DM grants (creatures-data.js, "pen"). It has two orders, and
    both are about a creature (creatures-data.js; the rules are in creature-rules.js):
    - "housesSpecies": "*" (House Beast Here, 3 days, no gold): a beast the DM granted in the
      Explorer, waiting for a home. The order's list is built when it is shown, from the beasts
@@ -1488,7 +1488,7 @@ window.TSI_DATA.bastionFacilities = [
     "id": "beast_pen",
     "requiredLevel": 5,
     "singleLevel": true,
-    "description": "Home to the party's beasts: one wyvern, one griffin, one dire wolf, one buckbear and one fellcat. A beast that has been acclimatised can go out on the road with its handler, and bonds with them day by day.",
+    "description": "Home to the party's beasts: wyverns, griffins, dire wolves, buckbears, fellcats and sabrecats, as many of each kind as the DM grants. A beast that has been acclimatised can go out on the road with its handler, and bonds with them day by day.",
     "functions": [
       {
         "id": "house_beast",
@@ -1498,7 +1498,7 @@ window.TSI_DATA.bastionFacilities = [
         "costText": "0",
         "housesSpecies": "*",
         "options": [],
-        "notes": "Gives a home to a beast the DM granted in the Explorer. The Beast Pen keeps one beast of each kind (wyvern, griffin, dire wolf, buckbear and fellcat). Housing a beast never makes one: the DM grants it. No gold and no roll."
+        "notes": "Gives a home to a beast the DM granted in the Explorer. The Beast Pen keeps as many beasts of each kind as the DM grants (wyvern, griffin, dire wolf, buckbear, fellcat and sabrecat). Housing a beast never makes one: the DM grants it. No gold and no roll."
       },
       {
         "id": "acclimatise",

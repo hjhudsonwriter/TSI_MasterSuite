@@ -629,3 +629,14 @@ Harry's upload of nine 2752 x 1536 JPEGs (placed in the repository's top folder,
 ## The Bastion base painting as a loop (Harry, 28 October 2026)
 `tools/bastion/assets/map/bastion_base_loop.mp4` (1280 × 532, 5 seconds, no sound) is Harry's `bastion_loop.mp4` cropped to the painting's own shape. The upload was the painting letter-boxed in a 1280 × 720 frame with black bars; the bars were cut off (crop 1280:532 from 94 down) so the facility overlays still line up. It plays over `map/bastion_base.jpg` (which stays underneath as the fallback) in the Bastion and its Player View. The untouched upload is kept in `tools/bastion/assets/extras/map/bastion_loop_original_1280x720.mp4`.
 
+
+### Sabrecat pictures and videos (3 November 2026)
+
+Harry's first two Sabrecat paintings and videos (his files are named `SC_` for Sabrecat; all future Sabrecat pictures and videos will be too). The videos were shrunk the same way as the others (H.264, CRF 30, no audio, 720 x 1280, 8 seconds). The originals are not in the repository.
+
+| Stored at | What it is |
+|---|---|
+| `tools/beasthandler/assets/sabrecat/fenstalker.webp` / `.mp4` | Fenstalker (Eastern Province marshes; `SC_Fenstalker.mp4`) |
+| `tools/beasthandler/assets/sabrecat/barkhide.webp` / `.mp4` | Barkhide (Northern Province forests; `SC_Barkhide.mp4`) |
+
+Plainsmane, Ashmark and Boltback have no picture yet and show the honest blank frame.

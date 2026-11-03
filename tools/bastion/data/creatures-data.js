@@ -3,8 +3,8 @@
    Back Overhaul, 22 October 2026).
 
    One building, the BEAST PEN, houses every real, named animal the Ironbow
-   keeps: one beast of each kind (wyvern, griffin, dire wolf, buckbear and
-   fellcat). It replaced the Wyvern Roost, the Griffin Tower and the Dire Wolf
+   keeps: as many beasts of each kind as the DM grants (wyvern, griffin, dire wolf,
+   buckbear, fellcat and sabrecat). It replaced the Wyvern Roost, the Griffin Tower and the Dire Wolf
    Den. Building the Pen never creates an animal:
    - The DM grants a beast in the Explorer (Grant a creature, beside Port
      Charter). The Bastion then holds it, waiting for a home, until the Pen's
@@ -69,12 +69,18 @@ window.TSI_DATA.bastionCreatures = {
       name: 'Fellcat',
       plural: 'Fellcats',
       home: 'beast_pen'
+    },
+    /* Sabrecat (Harry, 3 November 2026): a sixth kind. Its five varieties are in tools/beasthandler/data/. */
+    sabrecat: {
+      name: 'Sabrecat',
+      plural: 'Sabrecats',
+      home: 'beast_pen'
     }
   },
 
   /* What the DM can grant in the Explorer, in the order its Grant a creature box lists them (Harry,
      22 October 2026: five kinds). Nothing ever makes a beast by itself. */
-  grantable: ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat'],
+  grantable: ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat', 'sabrecat'],
 
   /* Creatures that already exist in the story, each recorded once. */
   unique: {
@@ -91,10 +97,11 @@ window.TSI_DATA.bastionCreatures = {
     }
   },
 
-  /* The Beast Pen (Harry, 22 October 2026): it keeps ONE beast of each kind, "until further notice". perKind is
-     that number; it only blocks housing a NEW beast of a kind that is full (one already housed, or being
-     housed). A save that already holds more of a kind keeps them all: nothing is ever sent away. */
-  pen: { perKind: 1 },
+  /* The Beast Pen (Harry, 3 November 2026): it no longer keeps just ONE beast of each kind. perKind is how many of
+     each kind it can keep: 0 (or leaving it out) means no limit, which is how it is now. Put a number from 1 to 20
+     here to bring a limit back; it only blocks housing a NEW beast of a kind that is full (housed or being housed),
+     and a save that already holds more of a kind keeps them all: nothing is ever sent away. */
+  pen: { perKind: 0 },
 
   /* Acclimatise With Beast (Harry, 22 October 2026): the beast's handler rolls the skill at the table and the DM
      types their total. A total of dc or more passes (Bond 1); less locks that beast, and only that beast, for

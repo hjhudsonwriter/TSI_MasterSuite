@@ -4,8 +4,8 @@
 (function () {
   var T = window.TSI_DATA;
   var B = T.beastProfile;
-  var KINDS = ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat'];
-  var VARIETIES = { wyvern: 8, griffin: 8, dire_wolf: 7, buckbear: 5, fellcat: 5 };
+  var KINDS = ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat', 'sabrecat'];
+  var VARIETIES = { wyvern: 8, griffin: 8, dire_wolf: 7, buckbear: 5, fellcat: 5, sabrecat: 5 };
 
   group('Beast Handler: Harry\'s profile tables (21 October 2026)');
 
@@ -33,7 +33,7 @@
   });
 
   test('no table is marked draft: Harry approved the Buckbear and Fellcat d8 tables on 26 October 2026', function (t) {
-    ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat'].forEach(function (k) { t.ok(!B.species[k].draft && !B.species[k].attachment.draft && !B.species[k].trigger.draft, k + ' is not draft'); });
+    ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat', 'sabrecat'].forEach(function (k) { t.ok(!B.species[k].draft && !B.species[k].attachment.draft && !B.species[k].trigger.draft, k + ' is not draft'); });
   });
 
   test('Harry\'s exact words, a spread of them, spelt as he wrote them', function (t) {
@@ -111,7 +111,7 @@
   test('the first meeting rolls among the rollable varieties only (Harry, 26 October 2026)', function (t) {
     var I = T.beastInitiation;
     t.equal(I.regional.mode, 'random');
-    var ROLLABLE = { wyvern: ['leafwing', 'ironcrown', 'bloodcrest'], griffin: ['dawnmantle', 'silvershroud'], dire_wolf: ['slatejaw', 'blacktide'], buckbear: ['broadcrown', 'shovelhorn'], fellcat: ['lichenback', 'smokecoat'] };
+    var ROLLABLE = { wyvern: ['leafwing', 'ironcrown', 'bloodcrest'], griffin: ['dawnmantle', 'silvershroud'], dire_wolf: ['slatejaw', 'blacktide'], buckbear: ['broadcrown', 'shovelhorn'], fellcat: ['lichenback', 'smokecoat'], sabrecat: ['fenstalker', 'barkhide'] };
     KINDS.forEach(function (k) {
       var got = B.species[k].regional.filter(function (r) { return r.rollable === true; }).map(function (r) { return r.id; });
       t.same(got.slice().sort(), ROLLABLE[k].slice().sort(), k + ' rollable set');

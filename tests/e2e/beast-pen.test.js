@@ -509,7 +509,7 @@ const STORM = 'cr-storm';
   await ctx.close();
 
   const tv = await context(browser, 'tv');
-  await check('TV (1920 x 1080, pixel ratio 1): the Pen with all five kinds housed, one away and one ready, fits with no sideways scroll; the picture runs the full width, and the Acclimatise dialog fits', async () => {
+  await check('TV (1920 x 1080, pixel ratio 1): the Pen with all five kinds housed (six stalls), one away and one ready, fits with no sideways scroll; the picture runs the full width, and the Acclimatise dialog fits', async () => {
     const tex = await openExplorer(tv);
     await tex.waitForTimeout(500);
     const tba = await openBastion(tv);
@@ -547,7 +547,7 @@ const STORM = 'cr-storm';
       };
     });
     assert(g.gap <= 2 && g.first, 'the picture runs the full width at the top: ' + JSON.stringify(g));
-    equal([g.stalls, g.pills, g.sideways, g.inView], [5, 4, false, true]);
+    equal([g.stalls, g.pills, g.sideways, g.inView], [6, 4, false, true]);
     await H.shot(tba, 'beast-pen-tv');
     /* The one beast still to acclimatise (Lichen) has its dialog open and fitting. */
     await tba.click('[data-test=issue-' + ACC + ']');

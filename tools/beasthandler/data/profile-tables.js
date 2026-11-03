@@ -5,7 +5,7 @@
    player confirms it) and one cosmetic Regional Variety:
    - Dominant Temperament: one d12 table, the same for every kind of beast.
    - Attachment Cue and Instinctive Trigger: one d8 table each for the
-     Wyvern, the Griffin, the Dire Wolf, the Buckbear and the Fellcat. The
+     Wyvern, the Griffin, the Dire Wolf, the Buckbear, the Fellcat and the Sabrecat. The
      Buckbear and Fellcat d8 tables were a DRAFT (22 October 2026): Harry had
      not written them yet, so they were marked `draft: true`; Harry approved them on 26 October 2026.
    - Regional Variety: every variety Harry has written for each kind (26 October 2026
@@ -240,6 +240,45 @@ window.TSI_DATA.beastProfile = {
         { id: 'lichenback', name: 'Lichenback', rollable: true, area: 'The northern highlands', where: 'The northern highlands', appearance: 'Leaner, built for rock rather than snow; a grey coat mottled grey-green like lichen, turning frost-white in winter; the longest ear tufts and a shorter tail; hard, scarred paw pads.' },
         { id: 'tawnyfell', name: 'Tawnyfell', area: 'Midland Province (Clan Bacca)', where: 'The scree and lower slopes of The Fangs', appearance: 'A shorter coat, smoke-brown to tawny-grey; longer legs; hunts at dusk below the snowline.' },
         { id: 'smokecoat', name: 'Smokecoat', rollable: true, area: 'Western Province (Clan Farmer)', where: 'The high gorges of the Shadow Mountains', appearance: 'The smallest and rarest variety; a charcoal-grey coat with near-black rosettes; hunts at night.' }
+      ]
+    },
+
+    /* The Sabrecat joined the Beast Pen on 3 November 2026. Its five varieties are Harry's words (camouflage is part of each
+       appearance). Its two d8 tables are a DRAFT written for him to approve or replace, as the Buckbear's and Fellcat's
+       were: change a line here and nothing else needs to change. */
+    sabrecat: {
+      attachment: {
+        dice: 8,
+        entries: [
+          { roll: 1, label: 'Slow, heavy-lidded blink' },
+          { roll: 2, label: 'Deep, rumbling purr' },
+          { roll: 3, label: 'Rubs its cheek along handler\'s arm' },
+          { roll: 4, label: 'Lays a kill at handler\'s feet' },
+          { roll: 5, label: 'Flops down beside handler' },
+          { roll: 6, label: 'Rests its great head on handler\'s knee' },
+          { roll: 7, label: 'Walks between handler and the dark' },
+          { roll: 8, label: 'Sheathes its fangs when handler is near' }
+        ]
+      },
+      trigger: {
+        dice: 8,
+        entries: [
+          { roll: 1, label: 'Being approached head-on' },
+          { roll: 2, label: 'Hands near its fangs' },
+          { roll: 3, label: 'Sudden fire' },
+          { roll: 4, label: 'Being chained or hobbled' },
+          { roll: 5, label: 'Strangers near its food' },
+          { roll: 6, label: 'Rival sabrecat scent' },
+          { roll: 7, label: 'Roaring crowds' },
+          { roll: 8, label: 'Being watched while it hunts' }
+        ]
+      },
+      regional: [
+        { id: 'plainsmane', name: 'Plainsmane', area: 'Western Province (Clan Farmer)', where: 'The open grasslands', appearance: 'A tawny-gold coat with faint paler dapples; a short, shaggy ruff of fur round the neck and shoulders; long, slightly curved fangs and a very short tail. Its coat hides it in dry summer grass and wheat.' },
+        { id: 'ashmark', name: 'Ashmark', area: 'Southern Province (Clan Molten)', where: 'The volcanic scrubland', appearance: 'A grey-brown coat with soot-black blotches, like ash on cooled rock; a heavy, low-slung build; thick, blunt paws and dark, hard-looking claws. Its coat hides it among ash fields and black volcanic rock.' },
+        { id: 'fenstalker', name: 'Fenstalker', rollable: true, area: 'Eastern Province (Clan Slade)', where: 'The marshes and reedbeds', appearance: 'A muted olive-brown coat with darker vertical banding along the flanks; wide, splayed paws for soft ground; a lean, long-bodied build, and a damp, matted look to its fur. Its coat hides it in reeds, mud and marsh mist.' },
+        { id: 'barkhide', name: 'Barkhide', rollable: true, area: 'Northern Province (Clan Blackstone)', where: 'The deep forests', appearance: 'The heaviest variety, with a thick-necked, powerful frame; a dark brown-black brindled coat, like old bark; a pale underside, and the deepest, longest fangs. Its coat hides it in forest shadow and among tree trunks.' },
+        { id: 'boltback', name: 'Boltback', area: 'Bolt Isle (no clan)', where: 'The heaths and rough hills', appearance: 'The smallest and rarest variety; a lean, scarred, wind-roughened build; a sandy-grey coat with jagged, forked darker markings down its back; often one chipped or broken fang. Its coat hides it in wind-torn heather and broken rock.' }
       ]
     }
   }

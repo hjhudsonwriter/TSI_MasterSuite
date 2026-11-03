@@ -101,32 +101,32 @@
   group('Creatures: the data (Harry, 14 October 2026)');
 
   test('the five kinds: each has a name, a plural and lives at the Beast Pen; none has War Table numbers any more (S06)', function (t) {
-    t.same(Object.keys(CR.species), ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat']);
+    t.same(Object.keys(CR.species), ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat', 'sabrecat']);
     t.same(Object.keys(CR.species).map(function (k) { var sp = CR.species[k]; return [sp.name, sp.plural, sp.home]; }), [
-      ['Wyvern', 'Wyverns', 'beast_pen'], ['Griffin', 'Griffins', 'beast_pen'], ['Dire Wolf', 'Dire Wolves', 'beast_pen'], ['Buckbear', 'Buckbears', 'beast_pen'], ['Fellcat', 'Fellcats', 'beast_pen']
+      ['Wyvern', 'Wyverns', 'beast_pen'], ['Griffin', 'Griffins', 'beast_pen'], ['Dire Wolf', 'Dire Wolves', 'beast_pen'], ['Buckbear', 'Buckbears', 'beast_pen'], ['Fellcat', 'Fellcats', 'beast_pen'], ['Sabrecat', 'Sabrecats', 'beast_pen']
     ]);
     t.same(Object.keys(CR.species).filter(function (k) { return Object.keys(CR.species[k]).some(function (f) { return ['war', 'short', 'defendOnly', 'worstResult', 'woundedDays'].indexOf(f) !== -1; }); }), [], 'no war profile, token letters, or wounded days');
     t.same(['creatureWar', 'fightingCreatures', 'creatureRecovery', 'creatureStatus', 'creatureWarLine'].filter(function (k) { return k in BR; }), [], 'and none of the rules for them');
-    t.same(CR.grantable, ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat'], 'the DM can grant five kinds (Harry, 22 October 2026)');
+    t.same(CR.grantable, ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat', 'sabrecat'], 'the DM can grant five kinds (Harry, 22 October 2026)');
     t.same(CR.unique, { elara_wyvern: { species: 'wyvern', owner: 'elara', ownerName: 'Elara', name: '', defaultName: 'Elara\'s wyvern' } });
     t.ok(ED.heroes.some(function (h) { return h.id === 'elara' && h.title === 'Elara'; }), 'her owner is the Explorer\'s hero Elara');
-    t.same([CR.pen, CR.houseDays, CR.nameMax, CR.provisional], [{ perKind: 1 }, 3, 40, true]);
+    t.same([CR.pen, CR.houseDays, CR.nameMax, CR.provisional], [{ perKind: 0 }, 3, 40, true]);
     t.same([CR.acclimatise, CR.bondTotals], [{ dc: 20, skill: 'Animal Handling', retryDays: 3 }, { 2: 10, 3: 20, 4: 30, 5: 50 }], 'the DC, the lock and the Bonding Day totals');
     t.same(['room', 'roomBase', 'development', 'comingLater'].filter(function (k) { return k in CR; }), [], 'room for each level, training, harnesses and riding are gone');
   });
 
   test('the link knows the same kinds as the data, and its own copy (for a page without the data) matches', function (t) {
-    var KINDS = ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat'];
-    var NAMES = ['Wyvern', 'Griffin', 'Dire Wolf', 'Buckbear', 'Fellcat'];
+    var KINDS = ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat', 'sabrecat'];
+    var NAMES = ['Wyvern', 'Griffin', 'Dire Wolf', 'Buckbear', 'Fellcat', 'Sabrecat'];
     t.same(Bg.grantable(), KINDS);
     t.same(KINDS.map(function (k) { return Bg.speciesName(k); }), NAMES);
-    t.same(KINDS.map(function (k) { return Bg.speciesHomeName(k); }), ['Beast Pen', 'Beast Pen', 'Beast Pen', 'Beast Pen', 'Beast Pen']);
+    t.same(KINDS.map(function (k) { return Bg.speciesHomeName(k); }), ['Beast Pen', 'Beast Pen', 'Beast Pen', 'Beast Pen', 'Beast Pen', 'Beast Pen']);
     var keep = T.bastionCreatures;
     try {
       delete T.bastionCreatures;
       t.same(Bg.grantable(), KINDS, 'without the data file');
       t.same(KINDS.map(function (k) { return Bg.speciesName(k); }), NAMES);
-      t.same(KINDS.map(function (k) { return Bg.speciesHomeName(k); }), ['Beast Pen', 'Beast Pen', 'Beast Pen', 'Beast Pen', 'Beast Pen'], 'and its own copy matches the data');
+      t.same(KINDS.map(function (k) { return Bg.speciesHomeName(k); }), ['Beast Pen', 'Beast Pen', 'Beast Pen', 'Beast Pen', 'Beast Pen', 'Beast Pen'], 'and its own copy matches the data');
     } finally { T.bastionCreatures = keep; }
     t.equal(Bg.isGrantable('wyvern'), true);
     t.equal(Bg.isGrantable('phoenix'), false);
@@ -167,8 +167,8 @@
     var s = explorer(5);
     var before = JSON.stringify(ER.toSave(s));
     t.same(J.grantCreature(s, 'griffin', { name: 'Swiftwing', memory: true }), { ok: false, message: 'This browser isn\'t saving, so the Bastion can\'t see the grant. Nothing was sent.' });
-    t.same(J.grantCreature(s, 'phoenix', { name: 'Swiftwing' }), { ok: false, message: 'The DM can grant a wyvern, a griffin, a dire wolf, a buckbear or a fellcat.' });
-    t.same(J.grantCreature(s, 'phoenix', {}), { ok: false, message: 'The DM can grant a wyvern, a griffin, a dire wolf, a buckbear or a fellcat.' });
+    t.same(J.grantCreature(s, 'phoenix', { name: 'Swiftwing' }), { ok: false, message: 'The DM can grant a wyvern, a griffin, a dire wolf, a buckbear, a fellcat or a sabrecat.' });
+    t.same(J.grantCreature(s, 'phoenix', {}), { ok: false, message: 'The DM can grant a wyvern, a griffin, a dire wolf, a buckbear, a fellcat or a sabrecat.' });
     t.same(J.grantCreature(s, 'griffin', { name: new Array(42).join('x') }), { ok: false, message: 'A name is at most 40 letters.' });
     t.equal(JSON.stringify(ER.toSave(s)), before, 'nothing changed');
     var bags = JSON.stringify(s.journey.inventory || []);

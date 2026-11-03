@@ -1306,3 +1306,8 @@ Item 6 of the save review done. Still open, Harry's calls: save Ritual and Pelag
 - Added **Bull's Head Caboshed, Ram's Head Cabossed, Stallion Salient, Wyvern Rampant and Phoenix** to the Clan Crest Creator (now 25 sigils), traced the same way as the first twenty from public-domain Wikimedia Commons drawings (Fox-Davies 1909; the stallion is Gustav Völker's CC0 drawing). The original twenty are untouched.
 - The Sigil tab is now four rows, so the Crest's panels were made 66px taller on every tab to stop the preview jumping when you switch tabs. It still fits the laptop (1707 × 930) and the TV.
 - Credits updated in `docs/ASSETS.md` and `licences/README.md`; trace settings added to `tools/crest/dev/`. Tests updated from 20 to 25 sigils.
+
+## Sabrecat and an unlimited Beast Pen (3 November 2026)
+- The Beast Pen no longer keeps just one beast of each kind (the limit is one number in `creatures-data.js`, now 0 = no limit).
+- New kind: the **Sabrecat**, grantable in the Explorer, housed at the Pen, shown on the Beast Handler phone page with Harry's Fenstalker and Barkhide pictures and videos. The first-meeting die shows all five varieties but always lands on Fenstalker or Barkhide.
+- Open question for Harry: the Sabrecat's two d8 tables (Attachment Cue, Instinctive Trigger) are my draft. Approve or send replacements.

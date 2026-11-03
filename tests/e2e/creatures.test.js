@@ -284,15 +284,15 @@ async function clickPop(page, label) {
     equal(s.creatures, []);
   });
 
-  await check('the Pen\'s panel: Harry\'s picture across the top, one level, no Upgrade row, five empty stalls, House Beast Here with nothing waiting; the panel fits the laptop', async () => {
+  await check('the Pen\'s panel: Harry\'s picture across the top, one level, no Upgrade row, six empty stalls, House Beast Here with nothing waiting; the panel fits the laptop', async () => {
     await openTile(ba, 'beast_pen');
     equal(await bare(ba, '[data-test=fac-level]'), 'One level only');
     equal(await ba.$('[data-test=upgrade-row-beast_pen]'), null, 'no Upgrade row');
     equal(await orderState(ba, HOUSE), { button: 'None waiting', off: true, why: 'No beast is waiting for a home. The DM grants one in the Explorer.' });
     const p = await panelCreatures(ba);
-    equal(Object.keys(p.stalls), ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat']);
-    equal(Object.values(p.stalls), [[], [], [], [], []]);
-    assert(p.room.startsWith('The Beast Pen keeps one beast of each kind: wyvern, griffin, dire wolf, buckbear'), p.room);
+    equal(Object.keys(p.stalls), ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat', 'sabrecat']);
+    equal(Object.values(p.stalls), [[], [], [], [], [], []]);
+    assert(p.room.startsWith('The Beast Pen keeps as many beasts of each kind as the DM grants: wyvern, griffin, dire wolf, buckbear, fellcat and sabrecat'), p.room);
     equal(await panelFits(ba, HOUSE), { sideways: false, outOfView: [], underFooter: false });
     await H.shot(ba, 'creatures-pen-empty-laptop');
   });
@@ -300,17 +300,17 @@ async function clickPop(page, label) {
   /* ------------------------------------------------------------------ */
   section('Grant a creature… in the Explorer');
 
-  await check('Grant a creature… sits under Sent to the Bastion; a double-click opens one dialog (the five kinds, a name, what for) that says "the Beast Pen" once; it fits the laptop; Cancel sends nothing', async () => {
+  await check('Grant a creature… sits under Sent to the Bastion; a double-click opens one dialog (the six kinds, a name, what for) that says "the Beast Pen" once; it fits the laptop; Cancel sends nothing', async () => {
     const before = await exs(ex);
     await ex.waitForTimeout(400);
     await ex.dblclick('[data-test=creature-open]');
     await ex.waitForSelector('[data-test=creature-dialog]');
     await ex.waitForTimeout(300);
     equal(await ex.$$eval('[data-test=creature-dialog]', l => l.length), 1, 'one dialog');
-    equal(await ex.$$eval('[data-test=creature-species] option', o => o.map(x => x.value + ' ' + x.textContent)), ['wyvern Wyvern', 'griffin Griffin', 'dire_wolf Dire Wolf', 'buckbear Buckbear', 'fellcat Fellcat']);
+    equal(await ex.$$eval('[data-test=creature-species] option', o => o.map(x => x.value + ' ' + x.textContent)), ['wyvern Wyvern', 'griffin Griffin', 'dire_wolf Dire Wolf', 'buckbear Buckbear', 'fellcat Fellcat', 'sabrecat Sabrecat']);
     equal(await ex.$$eval('[data-test=creature-dialog] .tsi-modal__foot button', l => l.map(b => b.textContent)), ['Cancel', 'Grant']);
     const body = await bare(ex, '[data-test=creature-dialog] .tsi-modal__body');
-    assert(/^Grant the Ironbow a wyvern, a griffin, a dire wolf, a buckbear or a fellcat when the party has won one\. The Bastion holds it, waiting for a home, until the Beast Pen houses it \(House Beast Here: 3 days\)\. The Beast Pen keeps one beast of each kind\./.test(body), body);
+    assert(/^Grant the Ironbow a wyvern, a griffin, a dire wolf, a buckbear, a fellcat or a sabrecat when the party has won one\. The Bastion holds it, waiting for a home, until the Beast Pen houses it \(House Beast Here: 3 days\)\. The Beast Pen keeps as many beasts of each kind as you grant\./.test(body), body);
     equal(body.split('Beast Pen').length - 1, 2, '"the Beast Pen" is said once in the sentence about the home and once about the limit, never five times');
     equal((await H.layoutCheck(ex, ['[data-test=creature-dialog]'])).outOfView, [], 'the dialog fits the laptop');
     await ex.click('[data-test=creature-dialog] .tsi-modal__foot button:text-is("Cancel")');
@@ -438,17 +438,17 @@ async function clickPop(page, label) {
   });
 
   /* ------------------------------------------------------------------ */
-  section('One of each kind');
+  section('More than one of a kind (Harry, 3 November 2026: the Pen has no limit)');
 
-  await check('a second griffin, Stormfeather, waits: House Beast Here says "The Beast Pen keeps one griffin at a time: Swiftwing lives here."; a buckbear and a fellcat are housed beside the griffin and wolf', async () => {
+  await check('a second griffin, Stormfeather, can be housed beside Swiftwing (no "kind is full"); a buckbear and a fellcat are housed beside the griffin and wolf', async () => {
     await grant(ex, 'griffin', 'Stormfeather', '');
     await ba.waitForFunction(() => TSI.bastion.debug.state().creatures.length === 3, null, { timeout: 8000 });
     await H.dismissNotices(ba);
     storm = (await bas(ba)).creatures[2].id;
     await openTile(ba, 'beast_pen');
     equal(await ba.$$eval('[data-test=sel-' + HOUSE + '] option', o => o.map(x => x.textContent)), ['Stormfeather (Griffin)']);
-    equal(await orderState(ba, HOUSE), { button: 'Kind is full', off: true, why: 'The Beast Pen keeps one griffin at a time: Swiftwing lives here.' });
-    equal((await panelCreatures(ba)).stalls.griffin, [['Swiftwing', 'At the Beast Pen. Not acclimatised yet'], ['Stormfeather', 'Waiting for a home at the Beast Pen.']], 'it waits in the griffin stall, never sent away');
+    equal(await orderState(ba, HOUSE), { button: 'Issue Order', off: false, why: '' });
+    equal((await panelCreatures(ba)).stalls.griffin, [['Swiftwing', 'At the Beast Pen. Not acclimatised yet'], ['Stormfeather', 'Waiting for a home at the Beast Pen.']], 'it waits in the griffin stall until the DM houses it');
     equal(await ba.$('[data-test=creature-release-' + storm + ']') !== null, true, 'and can be released while it waits');
     await closeAll(ba);
     await grant(ex, 'buckbear', 'Bramble', '');
@@ -471,12 +471,12 @@ async function clickPop(page, label) {
     await closeAll(ba);
   });
 
-  await check('3 camps later (Day 28) the buckbear and the fellcat live there too; four kinds are full, and the wyvern stall is empty; Release asks first and the griffin that waited goes', async () => {
+  await check('3 camps later (Day 28) the buckbear and the fellcat live there too; four kinds have a beast, and the wyvern and sabrecat stalls are empty; Release asks first and the griffin that waited goes', async () => {
     await passDays(ex, ba, 3);
     const s = await bas(ba);
     equal(register(s).map(r => r.slice(1)), [['griffin', 'Swiftwing', 'housed', 'beast_pen'], ['dire_wolf', '', 'housed', 'beast_pen'], ['griffin', 'Stormfeather', 'waiting', ''], ['buckbear', 'Bramble', 'housed', 'beast_pen'], ['fellcat', 'Lichen', 'housed', 'beast_pen']]);
     await openTile(ba, 'beast_pen');
-    equal(await ba.$$eval('[data-test^=stall-state-]', n => n.map(x => x.getAttribute('data-test').slice(12) + ':' + x.textContent)), ['wyvern:Empty', 'griffin:Full', 'dire_wolf:Full', 'buckbear:Full', 'fellcat:Full']);
+    equal(await ba.$$eval('[data-test^=stall-state-]', n => n.map(x => x.getAttribute('data-test').slice(12) + ':' + x.textContent)), ['wyvern:Empty', 'griffin:1 housed', 'dire_wolf:1 housed', 'buckbear:1 housed', 'fellcat:1 housed', 'sabrecat:Empty']);
     await ba.click('[data-test=creature-release-' + storm + ']');
     await ba.waitForSelector('.tsi-modal__foot button:text-is("Release")');
     assert(/Release Stormfeather\?/.test(await lastModal(ba)), await lastModal(ba));
@@ -587,7 +587,7 @@ async function clickPop(page, label) {
   /* ------------------------------------------------------------------ */
   section('The TV (1920 × 1080)');
 
-  await check('the Beast Pen\'s panel, with all five kinds and a long name, and the Grant dialog fit the TV, with nothing scrolling sideways', async () => {
+  await check('the Beast Pen\'s panel, with all six kinds and a long name, and the Grant dialog fit the TV, with nothing scrolling sideways', async () => {
     await ex.close();
     await ba.close();
     const tv = await context(browser, 'tv');

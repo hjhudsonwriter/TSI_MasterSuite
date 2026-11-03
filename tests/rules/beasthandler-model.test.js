@@ -48,7 +48,7 @@
     t.equal(M.artFor(art, 'wyvern', 'widowspine').src, 'ws.png');
     t.equal(M.artFor(art, 'wyvern', 'bleakhook').src, 'w.png');
     t.equal(M.artFor(art, 'wyvern', '').src, 'w.png');
-    t.same(Object.keys(T.beastArt.species), ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat']);
+    t.same(Object.keys(T.beastArt.species), ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat', 'sabrecat']);
     /* 22 October 2026: Blacktide and the first Buckbear and Fellcat pictures; the rest of the two new kinds have none yet. */
     t.equal(M.artFor(T.beastArt, 'dire_wolf', 'blacktide').src, 'dire-wolf/blacktide.webp');
     t.equal(M.artFor(T.beastArt, 'buckbear', 'broadcrown').src, 'buckbear/broadcrown.webp');
@@ -345,7 +345,7 @@
   });
 
   test('every kind\'s varieties are found by name, so the staged roll can land on each of them (all of them are listed)', function (t) {
-    ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat'].forEach(function (k) {
+    ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat', 'sabrecat'].forEach(function (k) {
       var list = M.revealVarieties(T.beastProfile, k);
       t.same(list.map(function (v) { return v.id; }), T.beastProfile.species[k].regional.map(function (r) { return r.id; }), k + ' lists all its varieties');
       list.forEach(function (v) {

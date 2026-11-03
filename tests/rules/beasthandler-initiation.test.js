@@ -7,9 +7,9 @@
   var P = TSI.beasthandler.projection;
   var T = window.TSI_DATA;
   var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
-  var KINDS = ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat'];
-  var FIXED = { wyvern: 'bloodcrest', griffin: 'dawnmantle', dire_wolf: 'blacktide', buckbear: 'broadcrown', fellcat: 'lichenback' };
-  var NAMES = { bloodcrest: 'Bloodcrest', dawnmantle: 'Dawnmantle', blacktide: 'Blacktide', broadcrown: 'Broadcrown', lichenback: 'Lichenback' };
+  var KINDS = ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat', 'sabrecat'];
+  var FIXED = { wyvern: 'bloodcrest', griffin: 'dawnmantle', dire_wolf: 'blacktide', buckbear: 'broadcrown', fellcat: 'lichenback', sabrecat: 'fenstalker' };
+  var NAMES = { bloodcrest: 'Bloodcrest', dawnmantle: 'Dawnmantle', blacktide: 'Blacktide', broadcrown: 'Broadcrown', lichenback: 'Lichenback', fenstalker: 'Fenstalker' };
 
   function copy(v) { return JSON.parse(JSON.stringify(v)); }
   function world() { var b = BR.defaultState(bdata); b.day = 10; b.anchored = true; return b; }
@@ -119,8 +119,8 @@
     }
   });
 
-  testFixed('the two draft d8 tables (Buckbear, Fellcat) roll like the others', function (t) {
-    ['buckbear', 'fellcat'].forEach(function (kind) {
+  testFixed('the two draft d8 tables (Buckbear, Fellcat, Sabrecat) roll like the others', function (t) {
+    ['buckbear', 'fellcat', 'sabrecat'].forEach(function (kind) {
       var b = world();
       var c = beast(b, kind, 'Draft', 1);
       BR.rollInitiation(b, bdata, c.id, seq([0.5, face(1, 8), face(8, 8)]));

@@ -76,7 +76,7 @@
      means that one ("Slatejaw of the northern hills"). Anything else has no picture. (The DM can still type any variety in
      the Bastion; this is how the app finds its picture.) */
   function looseKey(text) { return String(text || '').toLowerCase().replace(/[^a-z]/g, ''); }
-  var SPECIES_WORDS = ['direwolf', 'wolf', 'wyvern', 'griffin', 'buckbear', 'fellcat'];
+  var SPECIES_WORDS = ['direwolf', 'wolf', 'wyvern', 'griffin', 'buckbear', 'fellcat', 'sabrecat'];
   M.regionalInfo = function (tables, speciesId, name) {
     var sp = tables && isObj(tables.species) ? tables.species[speciesId] : null;
     var list = sp && Array.isArray(sp.regional) ? sp.regional : [];
