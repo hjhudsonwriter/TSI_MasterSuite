@@ -15,7 +15,8 @@ const EXPLORER = H.fileUrl('index.html') + '?tool=explorer';
 const UPLOAD = path.join(H.ROOT, 'tools/arenas/assets/maps/middlemount_lions_crown.png');
 const info = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.explorer.debug.explored())));
 const st = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.explorer.debug.state())));
-const loadMap = async (page, id) => { await page.selectOption('[data-test=map-select]', id); await page.click('[data-test=load]'); await page.waitForTimeout(400); };
+const loadMap = async (page, id) => { await page.selectOption('[data-test=map-select]', id); await page.click('[data-test=load]'); await page.waitForTimeout(400); /* no random travel event during these checks */ await page.evaluate(() => { TSI.explorer.debug.state().travel.nextTravelEventAtMiles = 999; }); };
+const flushReload = async page => { await page.evaluate(() => TSI.store.flush()); await page.reload(); };
 const dismiss = async page => { for (let k = 0; k < 6 && await page.$('.tsi-modal'); k++) { await page.keyboard.press('Escape'); await page.waitForTimeout(250); } };
 async function hexVector(page, dq, dr) {
   return page.evaluate(([dq, dr]) => {
@@ -51,11 +52,11 @@ const pvColour = pv => pv.evaluate(() => { const i = document.querySelector('[da
     section('Fog modes and colour reveal at ' + size.width + ' x ' + size.height + ' (' + name + ')');
     const context = await H.newContext(browser, name, { acceptDownloads: true });
     await context.setOffline(true);
+    /* The "Back up your campaign" reminder sits over the bottom controls on the laptop and comes back after a reload: these checks are not about it. */
+    await context.addInitScript(() => document.addEventListener('DOMContentLoaded', () => { const st = document.createElement('style'); st.textContent = '.tsi-notice{display:none!important}'; document.head.appendChild(st); }));
     const page = await context.newPage();
     await page.goto(EXPLORER);
     await page.waitForSelector('[data-test=camp]');
-    /* The "Back up your campaign" reminder sits over the bottom controls on the laptop. */
-    await H.dismissNotices(page);
 
     await check('a new save starts in Colour reveal, and the Fog control shows it', async () => {
       equal(await page.$eval('[data-test=fog-mode]', s => s.value), 'colour');
@@ -203,7 +204,7 @@ const pvColour = pv => pv.evaluate(() => { const i = document.querySelector('[da
       equal(await page.$$('[data-test=colour-wash]').then(l => l.length), 0, 'no wash in Classic');
       const dark = await pv.evaluate(() => { const c = document.querySelector('[data-test=pv-fog]'); const x = c.getContext('2d'); const d = x.getImageData(5, 5, 1, 1).data; return d[3]; });
       assert(dark > 100, 'the players\' black fog is drawn: ' + dark);
-      await page.reload();
+      await flushReload(page);
       await page.waitForSelector('[data-test=camp]');
       equal(await page.$eval('[data-test=fog-mode]', s => s.value), 'classic', 'a reload shows Classic, the real mode');
       equal((await st(page)).fog.enabled, true);
@@ -211,14 +212,14 @@ const pvColour = pv => pv.evaluate(() => { const i = document.querySelector('[da
       await page.waitForTimeout(300);
       equal([(await info(page)).mode, (await st(page)).fog.enabled], ['off', false]);
       await pvWait(pv, () => !document.querySelector('[data-test=pv-colour]') && !document.querySelector('.tsi-xpv-map').classList.contains('tsi-xpv-map--grey'));
-      await page.reload();
+      await flushReload(page);
       await page.waitForSelector('[data-test=camp]');
       equal(await page.$eval('[data-test=fog-mode]', s => s.value), 'off');
       await page.selectOption('[data-test=fog-mode]', 'colour');
       await page.waitForTimeout(400);
       equal((await info(page)).mode, 'colour');
       await pvWait(pv, () => !!document.querySelector('[data-test=pv-colour]'));
-      await page.reload();
+      await flushReload(page);
       await page.waitForSelector('[data-test=camp]');
       equal(await page.$eval('[data-test=fog-mode]', s => s.value), 'colour');
       equal((await info(page)).flat.length > 0, true, 'what was explored survived the reload');
@@ -241,9 +242,10 @@ const pvColour = pv => pv.evaluate(() => { const i = document.querySelector('[da
       equal(await page.$eval('[data-test=clouds]', n => n.hidden), true);
       await pvWait(pv, () => document.querySelector('[data-test=pv-clouds]').hidden);
       equal((await page.evaluate(() => TSI.explorer.debug.prefs())).clouds, false);
-      await page.reload();
+      await flushReload(page);
       await page.waitForSelector('[data-test=camp]');
       equal(await page.isChecked('[data-test=clouds-on]'), false, 'saved');
+      await H.dismissNotices(page);
       await page.check('[data-test=clouds-on]');
     });
 
@@ -297,15 +299,15 @@ const pvColour = pv => pv.evaluate(() => { const i = document.querySelector('[da
         TSI.store.remove('tsi.explorer.explored'); TSI.store.remove('tsi.explorer.pinknown');
         await TSI.store.flush();
       });
-      await page.reload();
+      await flushReload(page);
       await page.waitForSelector('[data-test=camp]');
       equal(await page.$eval('[data-test=fog-mode]', s => s.value), 'classic', 'an old save with the black fog on stays Classic');
       await page.evaluate(async () => { TSI.explorer.debug.change(x => { x.fog.enabled = false; }); TSI.store.remove('tsi.explorer.explored'); await TSI.store.flush(); });
-      await page.reload();
+      await flushReload(page);
       await page.waitForSelector('[data-test=camp]');
       equal(await page.$eval('[data-test=fog-mode]', s => s.value), 'off', 'an old save with no fog stays as it was');
       await page.evaluate(async () => { TSI.store.set('tsi.explorer.explored', { version: 7, bogus: true }); await TSI.store.flush(); });
-      await page.reload();
+      await flushReload(page);
       await page.waitForSelector('[data-test=camp]');
       assert(['classic', 'colour', 'off'].includes(await page.$eval('[data-test=fog-mode]', s => s.value)), 'a damaged record does not crash it');
     });
