@@ -117,7 +117,7 @@
 
   test('the snapshot has only the listed top-level fields, and survives a structured clone shape (plain JSON)', function (t) {
     var s = snap(busy());
-    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'quests', 'dim', 'camp', 'atlas', 'reach', 'terrain', 'scene', 'tokens', 'word', 'v', 'view', 'weather'].sort());
+    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'quests', 'explored', 'clouds', 'dim', 'camp', 'atlas', 'reach', 'terrain', 'scene', 'tokens', 'word', 'v', 'view', 'weather'].sort());
     t.same(JSON.parse(JSON.stringify(s)), s);
   });
 

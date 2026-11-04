@@ -692,3 +692,38 @@
 .tsi-tool--explorer .tsi-exp-qpanel__note { width: 100%; }
 .tsi-tool--explorer .tsi-exp-qpanel__note { min-height: 110px; resize: vertical; }
 .tsi-tool--explorer .tsi-exp-qpanel__count { text-align: right; font-size: .85em; opacity: .75; }
+
+/* ---------- Colour reveal, cloud shadows and the Fog control (guide 6B, 4 November 2026) ---------- */
+.tsi-tool--explorer .tsi-exp-fogselect { font-size: 14px; }
+/* The DM's wash: a light grey over what is unexplored, cut out of the map's own layer by a soft mask (set by the Explorer). */
+.tsi-tool--explorer .tsi-exp-washhost { position: absolute; inset: 0; pointer-events: none; }
+.tsi-tool--explorer .tsi-exp-wash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(150, 156, 166, .42);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+/* Cloud shadows: a soft tile (drawn in code) drifting very slowly across the map, under the heroes and everything else. */
+.tsi-tool--explorer .tsi-exp-clouds {
+  position: absolute;
+  left: -640px;
+  top: -640px;
+  right: -640px;
+  bottom: -640px;
+  pointer-events: none;
+  opacity: .09;
+  background-size: 640px 640px;
+  background-repeat: repeat;
+  will-change: transform;
+  animation: tsi-exp-cloud-drift 300s linear infinite;
+}
+.tsi-tool--explorer .tsi-exp-clouds[hidden] { display: none; }
+@keyframes tsi-exp-cloud-drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(640px, 320px, 0); } }
+@media (prefers-reduced-motion: reduce) { .tsi-tool--explorer .tsi-exp-clouds { display: none; } }
+.tsi-tool--explorer .tsi-exp-stage--revealing { cursor: crosshair; }
+.tsi-tool--explorer .tsi-exp-knownrow { margin-top: 10px; align-items: flex-start; line-height: 1.25; }
+.tsi-tool--explorer .tsi-exp-cloudhost { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }

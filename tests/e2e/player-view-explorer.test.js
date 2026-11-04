@@ -90,6 +90,8 @@ async function openPlayer(page, size) {
     const page = await context.newPage();
     await page.goto(EXPLORER);
     await page.waitForSelector('[data-test=camp]');
+    /* These checks are about the plain view; colour reveal (the new default) has its own test, explorer-fog.test.js. */
+    await page.evaluate(() => TSI.explorer.debug.setFogMode('off'));
     await page.selectOption('[data-test=map-select]', 'the_east_isle');
     await page.click('[data-test=load]');
     await page.waitForTimeout(300);

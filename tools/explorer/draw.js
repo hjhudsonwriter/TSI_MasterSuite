@@ -137,4 +137,62 @@
     });
     c.globalCompositeOperation = 'source-over';
   };
+
+  /* ---------- Colour reveal (guide 6B, 4 November 2026) ----------
+     The explored hexes as two soft masks, as small pictures (data URLs) in board proportions, so the map's own layer can use them
+     whatever the zoom: `colour` is opaque where the party has been (the colour shows through there) and `wash` is the opposite
+     (the DM's light grey wash over what is unexplored). Only plain white shapes are drawn, never a map picture, so nothing is ever
+     read from a picture. The edge is feathered by about half a hex. hexes is the flat list [q0, r0, q1, r1, ...]. Built only when
+     the explored set, the grid or the map changes, never while dragging. */
+  D.exploredMasks = function (board, grid, hexes) {
+    var size = R.hexSize(grid);
+    var scale = Math.min(1, 900 / Math.max(1, board.w));
+    var w = Math.max(1, Math.ceil(board.w * scale)), h = Math.max(1, Math.ceil(board.h * scale));
+    var a = document.createElement('canvas');
+    a.width = w; a.height = h;
+    var c = a.getContext('2d');
+    c.scale(scale, scale);
+    /* Draw the hexes a little over size, then soften the whole edge. (A browser with no canvas filter keeps hard edges.) */
+    try { c.filter = 'blur(' + Math.max(0.5, size * 0.42 * scale).toFixed(2) + 'px)'; } catch (e) { /* hard edges */ }
+    c.fillStyle = '#fff';
+    for (var i = 0; i + 1 < hexes.length; i += 2) {
+      var p = R.axialToPixel(grid, hexes[i], hexes[i + 1]);
+      if (p.x < -2 * size || p.y < -2 * size || p.x > board.w + 2 * size || p.y > board.h + 2 * size) continue;
+      D.hexPath(c, p.x, p.y, size * 1.04);
+      c.fill();
+    }
+    var b = document.createElement('canvas');
+    b.width = w; b.height = h;
+    var d = b.getContext('2d');
+    d.fillStyle = '#fff';
+    d.fillRect(0, 0, w, h);
+    d.globalCompositeOperation = 'destination-out';
+    d.drawImage(a, 0, 0);
+    return { colour: a.toDataURL('image/png'), wash: b.toDataURL('image/png') };
+  };
+
+  /* A soft, seamless tile of cloud shadows (a data URL), drawn in code from a fixed pattern: no art file. */
+  D.cloudTile = function (size) {
+    size = size || 320;
+    var cv = document.createElement('canvas');
+    cv.width = size; cv.height = size;
+    var c = cv.getContext('2d');
+    var seed = 20261104;
+    function rnd() { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }
+    for (var i = 0; i < 16; i++) {
+      var x = rnd() * size, y = rnd() * size, r = size * (0.12 + rnd() * 0.2), a = 0.35 + rnd() * 0.5;
+      for (var ox = -1; ox <= 1; ox++) {
+        for (var oy = -1; oy <= 1; oy++) {
+          var cx = x + ox * size, cy = y + oy * size;
+          if (cx + r < 0 || cy + r < 0 || cx - r > size || cy - r > size) continue;
+          var g = c.createRadialGradient(cx, cy, 0, cx, cy, r);
+          g.addColorStop(0, 'rgba(8,10,18,' + a.toFixed(2) + ')');
+          g.addColorStop(1, 'rgba(8,10,18,0)');
+          c.fillStyle = g;
+          c.fillRect(cx - r, cy - r, r * 2, r * 2);
+        }
+      }
+    }
+    return cv.toDataURL('image/png');
+  };
 }());

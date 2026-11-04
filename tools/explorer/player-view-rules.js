@@ -19,7 +19,10 @@
                                                               sent once, apart from the snapshot, and kept by key
      weather: a video's path or null,
      grid: { enabled, r, offsetX, offsetY, opacity },
-     fog: { enabled, hexes: ['q,r', ...] },     the uncovered hexes
+     fog: { enabled, hexes: ['q,r', ...] },     the uncovered hexes (classic fog)
+     explored: null | { hexes: [q0, r0, q1, r1, ...] },   colour reveal (guide 6B): the explored hexes of this map as one flat list of whole numbers.
+                                          Their window draws the map greyscale and dimmed, with the colour showing through those hexes, softly.
+     clouds: true/false,                    slow cloud shadows drifting over the map (the DM's switch)
      markers: [{ id, label, thumb, x, y, banner, clan }],     the town pins showing (x and y are fractions of the board); banner is the
                                           picture of the ruling clan's shield ('' for a plain nameplate) and clan its name (guide 6A)
      quests: [{ id, mapId, x, y }],        the DM's quest markers on this map, as a bare "!" each (x and y fractions of the board): never the label or note
@@ -199,11 +202,14 @@
       weather: weather,
       grid: { enabled: !!s.grid.enabled, r: num(Number(s.grid.r), 38), offsetX: num(Number(s.grid.offsetX), 0), offsetY: num(Number(s.grid.offsetY), 0), opacity: R.gridOpacity(s.grid) },
       fog: { enabled: fogOn, hexes: hexes },
-      markers: R.visibleMarkers(s, data, board).map(function (m) {
+      markers: R.visibleMarkers(s, data, board, 'players').map(function (m) {
         var b = extras.banners && typeof extras.banners === 'object' && extras.banners[m.id] && typeof extras.banners[m.id] === 'object' ? extras.banners[m.id] : {};
         return { id: str(m.id, 80), label: str(m.label, 120), thumb: str(m.thumb, 300), x: num(Number(m.x), 0), y: num(Number(m.y), 0), banner: str(b.banner, 300), clan: str(b.clanName, 60) };
       }),
-      quests: (Array.isArray(extras.quests) ? extras.quests : []).slice(0, 300).filter(function (q) { return q && typeof q === 'object'; }).map(function (q) {
+      /* Quest markers follow the fog like pins: with colour reveal or classic fog, only where the party has been (guide 6B). */
+      quests: (Array.isArray(extras.quests) ? extras.quests : []).slice(0, 300).filter(function (q) { return q && typeof q === 'object'; }).filter(function (q) {
+        return !ns.explored || ns.explored.visibleToPlayers(s, board, num(Number(q.x), 0) * board.w, num(Number(q.y), 0) * board.h);
+      }).map(function (q) {
         return { id: str(q.id, 60), mapId: str(q.mapId, 120), x: Math.min(1, Math.max(0, num(Number(q.x), 0))), y: Math.min(1, Math.max(0, num(Number(q.y), 0))) };
       }),
       tokens: s.tokens.map(function (t) {
@@ -218,6 +224,8 @@
       scene: R.cleanScene(extras.scene),
       word: R.cleanWord(extras.word),
       reach: R.cleanReach(extras.reach),
+      explored: s.explored && s.explored.mode === 'colour' && map.kind !== 'none' ? { hexes: ns.explored.snapshot(s.explored, R.mapKey(s)) } : null,
+      clouds: extras.clouds === true,
       terrain: R.cleanTerrain(extras.terrain)
     };
   };

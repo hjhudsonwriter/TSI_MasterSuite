@@ -243,9 +243,9 @@
   /* ---------- The DM's settings (30 October 2026) ----------
      The choices the DM makes on the Explorer's screen, kept in their own saved item (tsi.explorer.prefs) so they come back after a
      reload and travel in an Export, Import and Back up everything: sound on or off and its volume, the voice lines playing
-     by themselves, Click to move, and the three "show to the players" tick boxes. Not kept: which heroes are picked, the zoom. */
+     by themselves, Click to move, the three "show to the players" tick boxes, and the cloud shadows (guide 6B). Not kept: which heroes are picked, the zoom. */
   R.defaultPrefs = function () {
-    return { sfxOn: true, sfxVolume: 0.8, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: false };
+    return { sfxOn: true, sfxVolume: 0.8, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: false, clouds: true };
   };
   R.cleanPrefs = function (raw) {
     var d = R.defaultPrefs();
@@ -267,6 +267,9 @@
         if (problem) return 'This file\'s journey isn\'t in the right form, so it wasn\'t imported. ' + problem + ' Nothing was changed.';
       }
       if (r.key === 'tsi.explorer.mapImage' && !R.isMapImage(r.value)) return 'This file\'s map picture isn\'t in the right form, so it wasn\'t imported. Nothing was changed.';
+      /* The explored map, the known towns, the town clans and the quest markers (guides 6A and 6B): each must be in its own form. */
+      var shapes = { 'tsi.explorer.explored': ns.explored && ns.explored.isSaved, 'tsi.explorer.pinknown': ns.explored && ns.explored.isKnown, 'tsi.explorer.townclans': ns.pins && ns.pins.isTownClans, 'tsi.explorer.markers': ns.pins && ns.pins.isMarkers };
+      if (shapes[r.key] && !shapes[r.key](r.value)) return 'This file\'s ' + r.key.replace('tsi.explorer.', '') + ' isn\'t in the right form, so it wasn\'t imported. Nothing was changed.';
     }
     return null;
   };
@@ -629,17 +632,24 @@
   /* The one rule for whether a pin (and so its town banner) shows (guide 6A, 4 November 2026; guide 6B changes it here):
      a pin with no town map stays hidden (E10), unless it is a port that is waiting for its picture (show: true,
      19 October 2026); with fog on, only pins in uncovered hexes show. */
-  R.isPinVisible = function (state, data, board, m) {
+  R.isPinVisible = function (state, data, board, m, audience) {
     if ((!m.submapImage || !String(m.submapImage).trim()) && m.show !== true) return false;
+    /* Colour reveal (guide 6B): the DM sees every pin; the players see a pin only once its hex is explored, or when the DM has
+       marked the town "Known to players". (With classic fog or none, as it always was.) */
+    var E = ns.explored;
+    if (audience === 'players' && E && state.explored && state.explored.mode === 'colour') {
+      if (E.isKnownPin(state.knownPins, m.id)) return true;
+      return E.visibleToPlayers(state, board, (Number(m.x) || 0) * board.w, (Number(m.y) || 0) * board.h);
+    }
     return R.markerRevealed(state, board, m);
   };
-  /* Only preset maps have pins. */
-  R.visibleMarkers = function (state, data, board) {
+  /* Only preset maps have pins. audience: 'players' for the players' window; otherwise the DM's. */
+  R.visibleMarkers = function (state, data, board, audience) {
     var mapId = state.mapPresetId || '';
     if (!mapId) return [];
     var list = data.markersByMapId[mapId];
     if (!Array.isArray(list) || !list.length) return [];
-    return list.filter(function (m) { return R.isPinVisible(state, data, board, m); });
+    return list.filter(function (m) { return R.isPinVisible(state, data, board, m, audience); });
   };
 
   /* ---------- Travel ---------- */
