@@ -1,7 +1,7 @@
 # How the Crest's sigils were made
 
 The suite never loads anything in this folder. It holds the tools that turned
-twenty-five public-domain heraldic drawings into `../data/sigils.js`, so a later
+twenty-eight public-domain heraldic drawings into `../data/sigils.js`, so a later
 session can change a sigil and rebuild the file.
 
 ## The steps
@@ -64,3 +64,10 @@ file page: public domain or CC0 only, never CC BY-SA), add a row to
 the result. Add `"debug": "check.png"` to the settings to save a picture of
 the layers (accent in red) while choosing seeds and outlines. Then credit it
 in `licences/README.md` and `docs/ASSETS.md`.
+
+More settings, added for the Rose Leaf, the Plain Sun and the Waves (3 November 2026):
+
+- `"crop": [x0, y0, x1, y1]` keeps one box of the picture (in pixels of the downloaded picture).
+- `"mask": [[[fx, fy], ...]]` keeps only the area inside these outlines (fractions of the cropped picture) and empties the rest. The Rose Leaf is one leaf of the rose drawing: a crop and a mask.
+- `"erase": [[cx, cy, r]]` paints a circle (centre as fractions of the picture's width and height, radius as a fraction of its width) over in the colour it mostly holds, taking out detail. The Plain Sun is the Sun in Splendour with its face erased.
+- The Waves are not on Commons. They are drawn by `waves.py` (`python3 waves.py` writes `waves/waves.svg`; run it from this folder after making a `waves` folder) and turned into a picture with `node render-svg.js waves/waves.svg <pictures folder>/waves.png` (it needs Playwright). In `sigils.tsv` its file is `local:waves.svg`, which `fetch.py` skips.

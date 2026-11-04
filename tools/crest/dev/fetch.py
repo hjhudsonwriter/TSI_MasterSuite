@@ -12,6 +12,8 @@ for line in open(os.path.join(here, 'sigils.tsv'), encoding='utf-8'):
     if line.startswith('#') or not line.strip():
         continue
     sid, name, width, _ = line.rstrip('\n').split('\t')
+    if name.startswith('local:'):
+        continue   # made for the suite: see README (waves)
     out = os.path.join(folder, name[:-4] + '.png')
     if os.path.exists(out):
         continue

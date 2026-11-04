@@ -13,6 +13,7 @@ for line in open(os.path.join(here, 'sigils.tsv'), encoding='utf-8'):
         continue
     sid, name, width, settings = line.rstrip('\n').split('\t')
     cfg = json.loads(settings); cfg['id'] = sid
+    name = name.replace('local:', '')   # a drawing made for the suite (waves.svg) has its picture in the folder, not on Commons
     subprocess.run([sys.executable, os.path.join(here, 'trace.py'), os.path.join(pics, name[:-4] + '.png'),
                     os.path.join(work, sid + '.json'), json.dumps(cfg)], check=True)
 subprocess.run([sys.executable, os.path.join(here, 'compose.py'), os.path.join(work, 'sword.json'),
@@ -48,13 +49,18 @@ S = [
  ('horse', 'Stallion Salient', 'A stallion leaping forward (salient), hooves in the accent colour: nobility, speed and the spirit of the riders’ clans.', 'Gustav Völker', 'Coa_Illustration_Elements_Animal_Horse_Salient.svg'),
  ('wyvern', 'Wyvern Rampant', 'A wyvern, the two-legged dragon, reared up with its wing and tail fin in the accent colour: war, pestilence and a fierce guardian.', FD, 'Coa_Illustration_Elements_Animal_Wyvern_Rampant.svg'),
  ('phoenix', 'Phoenix', 'The phoenix rising from its flames, the fire in the accent colour: rebirth, renewal and a house that rises again.', FD, 'Coa_Illustration_Elements_Phoenix.svg'),
+ ('leaf', 'Rose Leaf', 'A single leaf and stalk, the rose’s own leaf, no accent: growth, the green of the Isles, and a house that puts down roots.', FD + ', one leaf cut from the rose drawing', 'Coa_Illustration_Elements_Plant_Rose_Slipped_and_Leaved.svg'),
+ ('plainsun', 'Plain Sun', 'The sun without a face, its rays straight and wavy in turn: light, warmth and the fire of Aurush, drawn plain.', FD + ', the face taken out of the Sun in Splendour', 'Coa_Illustration_Elements_Planet_Sun_in_his_Splendor.svg'),
+ ('waves', 'Waves', 'Four wavy bars, every second one in the accent colour, as heralds draw water: the sea, Pelagos and the tides.', 'Drawn for the Scarlett Isles suite (tools/crest/dev/waves.py)', 'local:waves.svg'),
 ]
+# licences other than public domain
+LICENCES = {'horse': 'CC0 (public domain dedication)', 'waves': 'Made for the suite'}
 def q(s):
     return "'" + s.replace('\\', '\\\\').replace("'", "\\'") + "'"
 def num(v):
     return ('%.1f' % v).rstrip('0').rstrip('.')
 out = []
-out.append('''/* Clan Crest Creator — the twenty-five sigils (charges).
+out.append('''/* Clan Crest Creator — the twenty-eight sigils (charges).
 
    Each sigil is traced from a public-domain heraldic drawing on Wikimedia
    Commons (most from A. C. Fox-Davies' A Complete Guide to Heraldry, 1909),
@@ -86,8 +92,8 @@ for i, (sid, name, note, credit, src) in enumerate(S):
     lines.append('      name: %s,' % q(name))
     lines.append('      note: %s,' % q(note))
     lines.append('      credit: %s,' % q(credit))
-    lines.append("      licence: 'Public domain',")
-    lines.append('      source: %s,' % q(C + src))
+    lines.append('      licence: %s,' % q(LICENCES.get(sid, 'Public domain')))
+    lines.append('      source: %s,' % q('' if src.startswith('local:') else C + src))
     lines.append('      box: [%s],' % ', '.join(num(v) for v in r['box']))
     lines.append('      art: [')
     for j, p in enumerate(parts):
