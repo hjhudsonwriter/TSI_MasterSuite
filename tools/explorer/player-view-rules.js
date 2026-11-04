@@ -238,7 +238,9 @@
       reach: R.cleanReach(extras.reach),
       explored: s.explored && s.explored.mode === 'colour' && map.kind !== 'none' ? { hexes: ns.explored.snapshot(s.explored, R.mapKey(s)) } : null,
       clouds: extras.clouds === true,
-      terrain: R.cleanTerrain(extras.terrain)
+      terrain: R.cleanTerrain(extras.terrain),
+      /* The Evidence Board: only what the players may see (shared/js/evidence-rules.js, snapshot); never the prepared clues. */
+      evidence: TSI.evidenceRules ? TSI.evidenceRules.cleanSnapshot(extras.evidence) : null
     };
   };
 }());

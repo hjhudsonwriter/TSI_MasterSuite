@@ -4469,3 +4469,7 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 ### CUE-01 · Cue buttons (4 November 2026)
 - Before: the Quest box was plain text only. After: it opens in **Read** once it has text, with tags as buttons; **Edit** shows the raw text. Press Edit to type.
 - Left alone: a cue clicked in the pop-out DM doc needs the Explorer open in some window (it says so and offers to open it). Voice lines auto-play only if the Explorer's "Auto-play voice lines" is on. Sound cues respect the Sound panel's on/off.
+
+### EVID-01 · The Evidence Board (4 November 2026)
+- The players' window can now change the board (and only the board): see docs/PLAYER-VIEW-PLAN.md. Before: Player Views never changed a save. After: the board's edits go to the Explorer window, which saves them.
+- Left alone: the pin sound (`pin.mp3`) was not supplied, so notes drop in silently; the board's pictures for the oak, parchment and pin are drawn in code (no art supplied); the board is a panel over the TV picture (not a separate window). The Explorer must be open for the board's edits on the TV to be saved (without it, the TV window shows the last picture and says so).

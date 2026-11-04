@@ -495,6 +495,10 @@
     parts.push(sub('Where the party is', 'dmdoc-where', where));
 
     parts.push(editsBlock(sum));
+    parts.push(sub('Evidence Board', 'dmdoc-evidence', [
+      el('p', { class: 'tsi-dmdoc__note', text: 'Pin a note for the players. It does not open the board or change the TV; it is there the next time the board is opened.' }),
+      el('button', { type: 'button', class: 'tsi-btn tsi-btn--small', 'data-test': 'dmdoc-evidence-edit', onclick: TSI.oneAtATime(function () { return evidenceDialog(); }) }, 'Edit Evidence Board')
+    ]));
 
     parts.push(sub('Threads', 'dmdoc-threads', [el('p', { class: 'tsi-dmdoc__note', 'data-test': 'dmdoc-threads-count', text: threadsNote(sum) })].concat(sum.threads.length
       ? [el('ul', { class: 'tsi-dmdoc__effects' }, sum.threads.map(function (t) {
@@ -507,6 +511,46 @@
       }))]
       : [])));
     return parts;
+  }
+
+
+  /* ---------- Edit Evidence Board (guide 2): a small box that adds a note to the board and nothing else ---------- */
+  function evidenceDialog() {
+    var ER = TSI.evidenceRules;
+    var ta = el('textarea', { class: 'tsi-input', rows: '4', maxlength: String(ER.MAX_TEXT), 'aria-label': 'The note’s words', 'data-test': 'dmdoc-evidence-text', placeholder: 'The first line is the heading. Up to ' + ER.MAX_TEXT + ' characters.' });
+    var count = el('span', { class: 'tsi-dmdoc__muted', 'data-test': 'dmdoc-evidence-count' });
+    var msg = el('p', { class: 'tsi-dmdoc__note', role: 'status', 'data-test': 'dmdoc-evidence-msg' });
+    function upd() { count.textContent = ta.value.length + ' of ' + ER.MAX_TEXT; }
+    ta.addEventListener('input', function () { upd(); msg.textContent = ''; });
+    upd();
+    var add = el('button', { type: 'button', class: 'tsi-btn tsi-btn--primary tsi-btn--small', 'data-test': 'dmdoc-evidence-add' }, 'Add to board');
+    add.addEventListener('click', function () {
+      var text = ta.value.trim();
+      if (!text) { msg.textContent = 'Write something first.'; ta.focus(); return; }
+      add.disabled = true;
+      TSI.evidence.apply(function (s) { return ER.addNote(s, { text: text, from: 'dm-doc', day: TSI.evidence.day() }); }, { log: true }).then(function (r) {
+        add.disabled = false;
+        if (!r.note) { msg.textContent = 'The board is full, so that note was not added.'; return; }
+        ta.value = ''; upd();
+        msg.textContent = 'Pinned to the board ✓';
+        ta.focus();
+      });
+    });
+    var copy = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-btn--ghost', 'data-test': 'dmdoc-evidence-copy' }, 'Copy the board as text');
+    copy.addEventListener('click', function () {
+      TSI.evidence.read().then(function (s) {
+        var text = ER.copyText(s);
+        var done = function () { msg.textContent = 'Copied ' + s.notes.length + ' notes.'; };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { msg.textContent = 'Your browser would not copy.'; });
+        else msg.textContent = 'Your browser would not copy.';
+      });
+    });
+    return TSI.modal.open({
+      title: 'Edit Evidence Board',
+      body: [ta, el('div', { class: 'tsi-dmdoc__quest-cuemsg' }, [count, add]), msg, copy],
+      actions: [{ label: 'Cancel', value: 'cancel' }],
+      escValue: 'cancel'
+    });
   }
 
   /* ---------- Putting the three read-only panels on screen ----------
@@ -791,7 +835,10 @@
   }
   function setLive(id) { liveId = typeof id === 'string' ? id : ''; applyLive(); }
 
-  function cueData() { return CR.catalogue(window.TSI_DATA); }
+  function cueData() {
+    var b = TSI.evidence ? TSI.evidence.peek() : { prepared: [], notes: [] };
+    return CR.catalogue(window.TSI_DATA, b.prepared, b.notes.map(function (n) { return n.ref || n.id; }));
+  }
 
   function cueNode(cue, res) {
     var kindLabel = { card: 'Card', deck: 'Deck', cast: 'Cast' };

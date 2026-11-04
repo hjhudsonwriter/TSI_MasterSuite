@@ -152,12 +152,13 @@
         name: 'ScarlettExplorerPlayers',
         keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
-        getState: function () { return R.playerSnapshot(state, DATA, { atlas: pvAtlas, view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, banners: bannerMap(), clouds: prefs.clouds && !reducedMotion(), quests: PINS.markersForMap(quests, R.mapKey(state)), dim: pvDim(), camp: pvCamp, scene: pvScene, word: pvWord, reach: pvReach(), terrain: pvTerrain() }); },
+        getState: function () { return R.playerSnapshot(state, DATA, { atlas: pvAtlas, view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, banners: bannerMap(), clouds: prefs.clouds && !reducedMotion(), quests: PINS.markersForMap(quests, R.mapKey(state)), dim: pvDim(), camp: pvCamp, scene: pvScene, word: pvWord, reach: pvReach(), terrain: pvTerrain(), evidence: TSI.evidenceRules.snapshot(evBoard) }); },
         onStatus: function (st) {
           pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvStatus.classList.toggle('is-connected', st === 'connected');
         },
         onMessage: function (type, payload) {
+          if (type === 'evidence') { evidenceOp(payload); return; }
           if (type === 'needmap' && uploadUrl && state.mapUploadKey && payload && payload.key === R.mapKey(state)) {
             pvLink.send('map', { key: R.mapKey(state), dataUrl: uploadUrl });
           }
@@ -172,6 +173,7 @@
       var pvNightUntil = 0;
       /* The scene card the players see (the Absent Tide decks): a plain card object, or null for the map. */
       var pvScene = null;
+      var evBoard = null;     /* the Evidence Board as last read (guide 2); only its snapshot goes to the TV */
       /* "The Ironbow sends word…", while its pop-up is open: the days and lines the pop-up shows (and nothing else). */
       var pvWord = null;
       /* The reach of the heroes the DM has picked (R.reachFor): drawn on the DM's map, and sent to the TV unless the DM has
@@ -2171,6 +2173,14 @@
           return '';
         },
         camp: function () { return makeCamp().then(function () { return ''; }); },
+        /* {clue: id} puts a prepared clue on the Evidence Board; {clue: other words} pins those words. The TV is not touched
+           (the board is only shown there when the players open it). */
+        clue: function (res) {
+          if (res.already) return 'That clue is already on the board.';
+          var E = TSI.evidenceRules, day = state.travel.day;
+          return TSI.evidence.apply(function (s) { return res.isId ? E.award(s, res.arg, { day: day }) : E.addNote(s, { text: res.arg, from: 'cue', day: day }); }, { log: true })
+            .then(function (r) { return r.note ? '' : 'That note could not be added.'; });
+        },
         sound: function (name) {
           var r = sfx.cue(name);
           return r === 'muted' ? 'Sound effects are switched off in the Sound panel.' : r === 'none' ? 'There is no such sound.' : '';
@@ -2178,7 +2188,7 @@
       };
       var cues = ns.cues.create({
         life: life,
-        data: function () { return TSI.cueRules.catalogue(window.TSI_DATA); },
+        data: function () { var b = TSI.evidence.peek(); return TSI.cueRules.catalogue(window.TSI_DATA, b.prepared, b.notes.map(function (n) { return n.ref || n.id; })); },
         cast: function () { return window.TSI_DATA.cast || []; },
         actions: cueActions,
         notify: function (text) { TSI.notify(text, { type: 'info', id: 'tsi-exp-cue', timeout: 7000 }); }
@@ -2187,6 +2197,28 @@
       /* A moment after the screen is built, so a cue left waiting finds everything ready. */
       life.setTimeout(function () { cues.listen(); }, 300);
       life.on(window, 'pagehide', function () { noteLive(''); });
+
+      /* ---------- The Evidence Board (guide 2; shared/js/evidence.js, evidence-rules.js) ----------
+         The board is drawn in the players' window and can be changed there. That window never writes anything itself: its
+         edits come here as messages (op: add, edit, move, remove, tie, untie), and this window applies each to the latest
+         saved board (so a note added from the DM doc at the same moment is not lost) and sends the new picture back. */
+      evBoard = TSI.evidence.peek();
+      TSI.evidence.read().then(function (s) { evBoard = s; queuePlayerSync(); });
+      life.onStop(TSI.evidence.onChange(function (s) { evBoard = s; queuePlayerSync(); }));
+      TSI.evidence.listen(life, function (s) { evBoard = s; queuePlayerSync(); });
+      function evidenceOp(p) {
+        if (!p || typeof p !== 'object') return;
+        var E = TSI.evidenceRules, day = state.travel.day;
+        var sid = function (v) { return typeof v === 'string' ? v.slice(0, 60) : ''; };
+        var change = null, log = false;
+        if (p.op === 'add' && typeof p.text === 'string') { change = function (s) { return E.addNote(s, { text: p.text, image: typeof p.image === 'string' ? p.image : '', from: 'board', day: day }); }; log = true; }
+        else if (p.op === 'edit' && typeof p.text === 'string') change = function (s) { return E.editNote(s, sid(p.id), { text: p.text, image: typeof p.image === 'string' ? p.image : undefined }); };
+        else if (p.op === 'move') change = function (s) { return E.moveNote(s, sid(p.id), Number(p.x), Number(p.y)); };
+        else if (p.op === 'remove') change = function (s) { return E.removeNote(s, sid(p.id)); };
+        else if (p.op === 'tie') change = function (s) { return E.tie(s, sid(p.a), sid(p.b)); };
+        else if (p.op === 'untie') change = function (s) { return E.untie(s, sid(p.id)); };
+        if (change) TSI.evidence.apply(change, { log: log });
+      }
 
       function openEvent(kind, event) {
         if (event && event.deck) return openDeck(event);
@@ -3543,6 +3575,7 @@
         showWord: function (news) { return showEvents([{ kind: 'word', news: news }]); },
         deck: function () { return deckDebug; },
         cues: function () { return cues.handled(); },
+        evidence: function () { return evBoard; },
         scene: function () { return pvScene ? JSON.parse(JSON.stringify(pvScene)) : null; },
         preload: function (kind, src) { pvPreload(kind, src); },
         state: function () { return state; },

@@ -65,9 +65,9 @@
        - file: the start of backup file names */
     spaceNames: function (space) {
       if (space === 'test') {
-        return { space: 'test', db: 'tsi.test', local: 'tsi.test:', tabs: 'tsi.test:tabs', tabId: 'tsi.test:tab-id', flash: 'tsi.test:flash', dmdocOpen: 'tsi.test:dmdoc-open', dmdocDraft: 'tsi.test:dmdoc-quest-draft', replaced: 'tsi.test:replaced', lastBackup: 'tsi.test:last-backup', handoff: 'tsi.test:handoff', handback: 'tsi.test:handback', handoffCrest: 'tsi.test:handoff-crest', handoffCue: 'tsi.test:handoff-cue', handoffLive: 'tsi.test:handoff-live', lock: 'tsi.test:lock.', file: 'tsi-test-' };
+        return { space: 'test', db: 'tsi.test', local: 'tsi.test:', tabs: 'tsi.test:tabs', tabId: 'tsi.test:tab-id', flash: 'tsi.test:flash', dmdocOpen: 'tsi.test:dmdoc-open', dmdocDraft: 'tsi.test:dmdoc-quest-draft', replaced: 'tsi.test:replaced', lastBackup: 'tsi.test:last-backup', handoff: 'tsi.test:handoff', handback: 'tsi.test:handback', handoffCrest: 'tsi.test:handoff-crest', handoffCue: 'tsi.test:handoff-cue', handoffLive: 'tsi.test:handoff-live', handoffEvidence: 'tsi.test:handoff-evidence', lock: 'tsi.test:lock.', file: 'tsi-test-' };
       }
-      return { space: 'suite', db: 'tsi.suite', local: '', tabs: 'tsi.suite.tabs', tabId: 'tsi.suite.tab-id', flash: 'tsi.suite.flash', dmdocOpen: 'tsi.suite.dmdoc-open', dmdocDraft: 'tsi.suite.dmdoc-quest-draft', replaced: 'tsi.suite.replaced', lastBackup: 'tsi.suite.last-backup', handoff: 'tsi.suite.handoff', handback: 'tsi.suite.handback', handoffCrest: 'tsi.suite.handoff-crest', handoffCue: 'tsi.suite.handoff-cue', handoffLive: 'tsi.suite.handoff-live', lock: 'tsi.suite.lock.', file: 'tsi-' };
+      return { space: 'suite', db: 'tsi.suite', local: '', tabs: 'tsi.suite.tabs', tabId: 'tsi.suite.tab-id', flash: 'tsi.suite.flash', dmdocOpen: 'tsi.suite.dmdoc-open', dmdocDraft: 'tsi.suite.dmdoc-quest-draft', replaced: 'tsi.suite.replaced', lastBackup: 'tsi.suite.last-backup', handoff: 'tsi.suite.handoff', handback: 'tsi.suite.handback', handoffCrest: 'tsi.suite.handoff-crest', handoffCue: 'tsi.suite.handoff-cue', handoffLive: 'tsi.suite.handoff-live', handoffEvidence: 'tsi.suite.handoff-evidence', lock: 'tsi.suite.lock.', file: 'tsi-' };
     },
 
     /* The fallback-storage key for a save, and back again (null if it isn't one of this space's). */

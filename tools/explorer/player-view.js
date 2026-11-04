@@ -37,7 +37,23 @@
     var gold = pill('Gold', 'pv-gold');
     /* The map of the Scarlett Isles: a small icon at the right of the row, and a panel (below) it opens. */
     var mapBtn = el('button', { type: 'button', class: 'tsi-xpv-mapbtn', 'data-test': 'pv-mapbtn', 'aria-label': 'Open the map of the Scarlett Isles', title: 'Open the map of the Scarlett Isles', 'aria-expanded': 'false' }, mapIcon());
-    var row = el('div', { class: 'tsi-xpv-row', 'data-test': 'pv-row' }, [day.node, travel.node, gold.node, mapBtn]);
+    /* The Evidence Board (guide 2): a button beside the map icon, and a panel (tools/explorer/evidence-board.js). */
+    var boardBtn = el('button', { type: 'button', class: 'tsi-xpv-mapbtn tsi-xpv-boardbtn', 'data-test': 'pv-boardbtn', 'aria-label': 'Open the Evidence Board', title: 'Open the Evidence Board', 'aria-expanded': 'false' }, boardIcon());
+    var row = el('div', { class: 'tsi-xpv-row', 'data-test': 'pv-row' }, [day.node, travel.node, gold.node, boardBtn, mapBtn]);
+    function boardIcon() {
+      var NS = 'http://www.w3.org/2000/svg';
+      var svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('class', 'tsi-xpv-mapicon');
+      svg.setAttribute('aria-hidden', 'true');
+      [['M4 5h16v14H4z', 'tsi-xpv-mapicon__sheet'], ['M8 9l5 0M8 12.5l8 0M8 16l4 0', 'tsi-xpv-mapicon__fold'], ['M17 5l0 3', 'tsi-xpv-mapicon__fold']].forEach(function (d) {
+        var path = document.createElementNS(NS, 'path');
+        path.setAttribute('d', d[0]);
+        path.setAttribute('class', d[1]);
+        svg.appendChild(path);
+      });
+      return svg;
+    }
     function mapIcon() {
       var NS = 'http://www.w3.org/2000/svg';
       var svg = document.createElementNS(NS, 'svg');
@@ -121,6 +137,9 @@
       atlasScroll
     ]));
     stage.appendChild(atlasHost);
+    var boardHost = el('div', { class: 'tsi-xpv-evhost', 'data-test': 'pv-board-panel', hidden: true });
+    stage.appendChild(boardHost);
+    var board = TSI.explorer.evidenceBoard.create({ api: api, host: boardHost, button: boardBtn, reducedMotion: reducedMotion });
     var atlasOpen = false;
     var lastAtlas = null;
     function setAtlas(on) {
@@ -567,6 +586,7 @@
         drawDim();
         drawWord();
         drawScene();
+        board.update(snap.evidence);
         /* The DM's button overrides a click here whenever it changes (and sets the panel when this window first hears). */
         if (snap.atlas !== lastAtlas) { lastAtlas = snap.atlas; setAtlas(snap.atlas); }
       },

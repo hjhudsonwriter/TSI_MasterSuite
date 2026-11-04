@@ -278,3 +278,63 @@
 @keyframes tsi-xpv-cloud-drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(640px, 320px, 0); } }
 @media (prefers-reduced-motion: reduce) { .tsi-xpv-clouds { display: none; } }
 .tsi-xpv-cloudhost { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+
+/* ---------- The Evidence Board (guide 2): the button beside the map icon, and the oak board with its pinned notes ---------- */
+.tsi-xpv-boardbtn { right: calc(clamp(10px, 1.4vw, 26px) + clamp(30px, 4.2vh, 46px) + clamp(8px, 1vw, 16px)); }
+.tsi-xpv-evhost { position: absolute; inset: 0; z-index: 36; background: rgba(5, 3, 4, .78); pointer-events: auto; display: grid; }
+.tsi-xpv-evhost[hidden] { display: none; }
+.tsi-xpv-ev { position: relative; display: flex; flex-direction: column; min-height: 0; padding: 1vh 1.6vw 1.2vh; }
+.tsi-xpv-ev__head { flex: 0 0 auto; position: relative; display: flex; justify-content: center; align-items: center; padding-bottom: .6vh; }
+.tsi-xpv-ev__title { margin: 0; font: 600 clamp(16px, 2.6vh, 28px) var(--tsi-font-display); letter-spacing: .08em; color: var(--tsi-gold-text); }
+.tsi-xpv-ev__close { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: clamp(30px, 4.2vh, 44px); aspect-ratio: 1; border-radius: 999px; border: 1px solid var(--tsi-line-control); background: rgba(8, 5, 6, .7); color: var(--tsi-gold-text); font-size: clamp(18px, 3vh, 30px); line-height: 1; cursor: pointer; }
+.tsi-xpv-ev__close:hover { border-color: var(--tsi-gold); }
+.tsi-xpv-ev__area { flex: 1 1 0; min-height: 0; min-width: 0; display: grid; place-items: center; overflow: hidden; position: relative; }
+/* Dark oak planks, drawn in code. 1em is 1% of the board's width. */
+.tsi-xpv-ev__surface {
+  position: relative; overflow: hidden; border-radius: 6px; border: .5em solid #2a1a0e; box-sizing: border-box; box-shadow: 0 0 0 1px #6b4a24, 0 1.2em 4em #000;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, .0) 0 12.4%, rgba(0, 0, 0, .55) 12.5% 12.9%, rgba(0, 0, 0, .0) 13% 25%),
+    repeating-linear-gradient(0deg, rgba(255, 220, 160, .035) 0 .35em, rgba(0, 0, 0, .06) .35em .7em),
+    linear-gradient(100deg, #3a2412 0%, #4a2f18 22%, #3b2513 47%, #523319 70%, #3a2412 100%);
+  touch-action: none; user-select: none;
+}
+.tsi-xpv-ev__strings { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
+.tsi-xpv-ev__line { stroke: #b3202c; stroke-width: 3px; stroke-linecap: round; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .7)); pointer-events: none; }
+.tsi-xpv-ev__line.is-selected { stroke: #ff5a66; stroke-width: 5px; }
+.tsi-xpv-ev__hit { stroke: transparent; stroke-width: 16px; pointer-events: stroke; cursor: pointer; }
+.tsi-xpv-ev__notes { position: absolute; inset: 0; z-index: 1; }
+.tsi-xpv-ev__note {
+  position: absolute; transform: translate(-50%, -50%) rotate(var(--tilt, 0deg)); box-sizing: border-box; padding: 2.3em 1em .9em; min-height: 9em;
+  font: 400 1.25em/1.25 "IM Fell English", var(--tsi-font-body), serif; color: #2a1c10; cursor: grab; text-align: left;
+  background: radial-gradient(ellipse at 30% 20%, #f1e3bd 0%, #e6d3a2 55%, #d6bf88 100%);
+  clip-path: polygon(0 1%, 7% 0, 18% 1.4%, 34% 0, 52% 1.2%, 70% 0, 88% 1.4%, 100% 0, 99% 22%, 100% 48%, 98.6% 74%, 100% 100%, 84% 98.6%, 62% 100%, 40% 98.8%, 20% 100%, 0 98.6%, 1.2% 70%, 0 44%, 1% 20%);
+  filter: drop-shadow(.25em .4em .35em rgba(0, 0, 0, .55));
+}
+.tsi-xpv-ev__note:active { cursor: grabbing; }
+.tsi-xpv-ev__note.is-selected { outline: none; background: radial-gradient(ellipse at 30% 20%, #fff3c9 0%, #f0dca0 55%, #e2c97c 100%); filter: drop-shadow(0 0 .5em rgba(255, 205, 90, .95)) drop-shadow(.25em .4em .35em rgba(0, 0, 0, .55)); z-index: 3; }
+.tsi-xpv-ev__note.is-tying { filter: drop-shadow(0 0 .6em rgba(255, 90, 100, .95)); }
+.tsi-xpv-ev__note:focus-visible { outline: .18em solid var(--tsi-gold); outline-offset: .2em; }
+.tsi-xpv-ev__pin { position: absolute; left: 50%; top: .55em; width: 1.5em; height: 1.5em; margin-left: -.75em; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #9a9a9a, #3c3c3c 60%, #151515); box-shadow: .1em .15em .2em rgba(0, 0, 0, .7); }
+.tsi-xpv-ev__head1 { display: block; font-weight: 400; font-size: 1.12em; line-height: 1.15; margin-bottom: .25em; color: #1c1008; }
+.tsi-xpv-ev__body { display: block; font-size: .95em; white-space: pre-wrap; }
+.tsi-xpv-ev__pic { display: block; width: 100%; max-height: 7em; object-fit: cover; margin: 0 0 .4em; filter: sepia(.35) contrast(.95); }
+.tsi-xpv-ev__note.is-new { animation: tsi-xpv-ev-drop .55s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes tsi-xpv-ev-drop { from { opacity: 0; transform: translate(-50%, -80%) rotate(calc(var(--tilt, 0deg) - 6deg)) scale(1.25); } to { opacity: 1; transform: translate(-50%, -50%) rotate(var(--tilt, 0deg)) scale(1); } }
+.tsi-xpv-ev__empty { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: #cdb98a; font: italic 1.9em "IM Fell English", serif; }
+.tsi-xpv-ev__empty[hidden] { display: none; }
+.tsi-xpv-ev__bar { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: .8vw; align-items: center; justify-content: center; padding-top: .8vh; min-height: clamp(34px, 5vh, 52px); }
+.tsi-xpv-ev__btn { pointer-events: auto; padding: .5em 1.1em; border-radius: 999px; border: 1px solid var(--tsi-line-control); background: rgba(8, 5, 6, .75); color: var(--tsi-gold-text); font: 600 clamp(12px, 1.9vh, 18px) var(--tsi-font-display); letter-spacing: .06em; cursor: pointer; }
+.tsi-xpv-ev__btn:hover:not(:disabled) { border-color: var(--tsi-gold); }
+.tsi-xpv-ev__btn:disabled { opacity: .4; cursor: default; }
+.tsi-xpv-ev__btn[hidden] { display: none; }
+.tsi-xpv-ev__btn--primary { background: var(--tsi-crimson, #7a0f1a); border-color: var(--tsi-gold); color: #f6ead0; }
+.tsi-xpv-ev__btn--small { padding: .25em .8em; font-size: clamp(11px, 1.6vh, 15px); }
+.tsi-xpv-ev__status { color: #cdb98a; font: italic clamp(13px, 2vh, 20px) "IM Fell English", serif; min-width: 12em; }
+.tsi-xpv-ev__form { position: absolute; z-index: 5; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, 80%); display: flex; flex-direction: column; gap: 1vh; }
+.tsi-xpv-ev__paper { background: radial-gradient(ellipse at 30% 20%, #f1e3bd, #dcc690); padding: 1.6vh 1.4vw; border-radius: 3px; box-shadow: 0 .8em 2.4em #000; color: #2a1c10; display: flex; flex-direction: column; gap: 1vh; }
+.tsi-xpv-ev__text { width: 100%; box-sizing: border-box; resize: none; background: rgba(255, 255, 255, .35); border: 1px solid #9c8450; border-radius: 3px; color: #1c1008; font: 400 clamp(17px, 2.8vh, 26px)/1.3 "IM Fell English", serif; padding: .5em .6em; }
+.tsi-xpv-ev__formrow { display: flex; gap: .8vw; align-items: center; flex-wrap: wrap; }
+.tsi-xpv-ev__formrow--end { justify-content: flex-end; }
+.tsi-xpv-ev__count, .tsi-xpv-ev__picname { font: 400 clamp(12px, 1.8vh, 16px) var(--tsi-font-body); color: #5a4630; }
+.tsi-xpv-ev__q { margin: 0; font: 400 clamp(20px, 3.2vh, 30px) "IM Fell English", serif; text-align: center; }
+@media (prefers-reduced-motion: reduce) { .tsi-xpv-ev__note.is-new { animation: none; } }

@@ -39,7 +39,7 @@
     FORMAT: 'tsi-backup',
     VERSION: 1,
     /* The tools that save as one campaign. */
-    CAMPAIGN: ['explorer', 'bastion'],
+    CAMPAIGN: ['explorer', 'bastion', 'evidence'],
     CAMPAIGN_NAME: 'the campaign (the Scarlett Isles Explorer and The Ironbow Bastion Manager)',
 
     inCampaign: function (toolId) { return rules.CAMPAIGN.indexOf(toolId) !== -1; },
