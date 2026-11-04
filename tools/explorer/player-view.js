@@ -55,7 +55,10 @@
 
     /* The map area, as the DM's stage: the picture and tokens sit on the board (scaled and centred), the rest on the area. */
     var mapImg = el('img', { class: 'tsi-xpv-map', alt: 'The map', draggable: 'false', 'data-test': 'pv-map-img' });
-    var mapLayer = el('div', { class: 'tsi-xpv-world tsi-xpv-world--map' }, mapImg);
+    /* Colour reveal (guide 6B): the full colour copy of the map, shown through the explored hexes; and the cloud shadows. */
+    var colourHost = el('div', { class: 'tsi-xpv-colourhost', 'data-test': 'pv-colour-host' });
+    var cloudEl = el('div', { class: 'tsi-xpv-clouds', 'data-test': 'pv-clouds', hidden: true, 'aria-hidden': 'true' });
+    var mapLayer = el('div', { class: 'tsi-xpv-world tsi-xpv-world--map' }, [mapImg, colourHost, el('div', { class: 'tsi-xpv-cloudhost' }, cloudEl)]);
     var video = el('video', { class: 'tsi-xpv-weather', muted: true, playsinline: true, loop: true, preload: 'auto', 'data-test': 'pv-weather' });
     video.muted = true;
     var gridCanvas = el('canvas', { class: 'tsi-xpv-canvas tsi-xpv-canvas--grid', 'data-test': 'pv-grid' });
@@ -301,6 +304,50 @@
       }
     }
 
+    /* Colour reveal: with an explored list in the snapshot the base map is greyscale and dimmed, and a full colour copy shows through the
+       explored hexes with a soft edge. The masks are built only when the explored hexes, the grid or the map change; the new colour
+       fades in over about 600 ms (at once under reduced motion). */
+    var colourSig = '';
+    var colourTile = '';
+    function reducedMotion() { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } }
+    function showColour() {
+      var ex = snap.explored;
+      if (!ex || mapImg.hidden || !mapImg.getAttribute('src')) {
+        mapImg.classList.remove('tsi-xpv-map--grey');
+        if (colourHost.firstChild) TSI.clear(colourHost);
+        colourSig = '';
+        return;
+      }
+      mapImg.classList.add('tsi-xpv-map--grey');
+      var g = snap.grid;
+      var sum = 0;
+      for (var i = 0; i < ex.hexes.length; i++) sum = (sum * 31 + ex.hexes[i] + 7) % 1000000007;
+      var sig = [mapImg.getAttribute('src').length, ex.hexes.length, sum, g.r, g.offsetX, g.offsetY, snap.board.w, snap.board.h].join('|');
+      if (sig === colourSig && colourHost.firstChild) return;
+      colourSig = sig;
+      var masks = D.exploredMasks({ w: snap.board.w, h: snap.board.h }, g, ex.hexes);
+      var img = el('img', { class: 'tsi-xpv-colour', alt: '', draggable: 'false', 'data-test': 'pv-colour' });
+      img.setAttribute('src', mapImg.getAttribute('src'));
+      img.style.setProperty('-webkit-mask-image', 'url("' + masks.colour + '")');
+      img.style.setProperty('mask-image', 'url("' + masks.colour + '")');
+      while (colourHost.childNodes.length > 1) colourHost.removeChild(colourHost.firstChild);
+      var old = colourHost.lastChild;
+      if (!old || reducedMotion()) { TSI.clear(colourHost); colourHost.appendChild(img); return; }
+      img.style.opacity = '0';
+      colourHost.appendChild(img);
+      void img.offsetWidth;
+      img.style.transition = 'opacity 600ms ease';
+      img.style.opacity = '1';
+      setTimeout(function () { while (colourHost.childNodes.length > 1) colourHost.removeChild(colourHost.firstChild); }, 650);
+    }
+    function showClouds() {
+      var on = snap.clouds === true && !reducedMotion();
+      cloudEl.hidden = !on;
+      if (on && !colourTile) { colourTile = D.cloudTile(320); cloudEl.style.backgroundImage = 'url("' + colourTile + '")'; }
+      cloudEl.style.animationPlayState = document.hidden ? 'paused' : 'running';
+    }
+    document.addEventListener('visibilitychange', showClouds);
+
     function showWeather() {
       if (!snap.weather) {
         if (video.getAttribute('src')) { video.pause(); video.removeAttribute('src'); video.load(); }
@@ -323,6 +370,8 @@
 
       var board = { w: snap.board.w, h: snap.board.h };
       showMap();
+      showColour();
+      showClouds();
       showWeather();
       /* The DM's zoom and pan: the region of the map their window shows, fitted into this window's shape and centred.
          A change glides over a fraction of a second (at once under reduced motion). */

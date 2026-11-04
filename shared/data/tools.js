@@ -181,6 +181,7 @@ window.TSI_DATA.tools = [
         'tools/bastion/data/creatures-data.js',
         'tools/explorer/rules.js',
         'tools/explorer/pins-rules.js',
+        'tools/explorer/explored-rules.js',
         'tools/explorer/draw.js',
         'tools/explorer/player-view-rules.js',
         'tools/explorer/journey.js',

@@ -241,3 +241,38 @@
 @media (prefers-reduced-motion: reduce) {
   .tsi-xpv-quest { animation: none; }
 }
+
+/* ---------- Colour reveal and cloud shadows (guide 6B, 4 November 2026) ---------- */
+/* Unexplored ground is greyscale and dimmed; the full colour copy shows through the explored hexes, softly. */
+.tsi-xpv-map--grey { filter: grayscale(1) brightness(.6) contrast(1.05); }
+.tsi-xpv-colourhost { position: absolute; inset: 0; pointer-events: none; }
+.tsi-xpv-colour {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+.tsi-xpv-clouds {
+  position: absolute;
+  left: -640px;
+  top: -640px;
+  right: -640px;
+  bottom: -640px;
+  pointer-events: none;
+  opacity: .09;
+  background-size: 640px 640px;
+  background-repeat: repeat;
+  will-change: transform;
+  animation: tsi-xpv-cloud-drift 300s linear infinite;
+}
+.tsi-xpv-clouds[hidden] { display: none; }
+@keyframes tsi-xpv-cloud-drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(640px, 320px, 0); } }
+@media (prefers-reduced-motion: reduce) { .tsi-xpv-clouds { display: none; } }
+.tsi-xpv-cloudhost { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }

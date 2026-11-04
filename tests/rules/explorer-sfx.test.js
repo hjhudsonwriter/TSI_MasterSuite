@@ -46,8 +46,11 @@
 
   var R = TSI.explorer.rules;
   test('the DM\'s settings are tidied: unknown or wrong-typed values fall back to the defaults', function (t) {
-    t.same(R.cleanPrefs(null), { sfxOn: true, sfxVolume: 0.8, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: false });
-    t.same(R.cleanPrefs({ sfxOn: false, sfxVolume: 9, showReach: 'yes', showTerrain: true, junk: 1 }), { sfxOn: false, sfxVolume: 1, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: true });
+    t.same(R.cleanPrefs(null), { sfxOn: true, sfxVolume: 0.8, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: false, clouds: true, dmFog: true, leftCollapsed: false, closedSections: [] });
+    t.same(R.cleanPrefs({ sfxOn: false, sfxVolume: 9, showReach: 'yes', showTerrain: true, junk: 1 }), { sfxOn: false, sfxVolume: 1, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: true, clouds: true, dmFog: true, leftCollapsed: false, closedSections: [] });
+    t.same(R.cleanPrefs({ closedSections: ['map', 'map', 'Bad Name!', 5, 'fog'], leftCollapsed: true, dmFog: false }).closedSections, ['map', 'fog'], 'only real section names, once each');
+    t.same([R.cleanPrefs({ leftCollapsed: true, dmFog: false }).leftCollapsed, R.cleanPrefs({ leftCollapsed: true, dmFog: false }).dmFog], [true, false]);
+    t.same(R.cleanPrefs({ closedSections: 'map' }).closedSections, [], 'not a list');
     t.same(R.cleanPrefs('x'), R.defaultPrefs());
   });
 }());

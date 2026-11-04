@@ -692,3 +692,59 @@
 .tsi-tool--explorer .tsi-exp-qpanel__note { width: 100%; }
 .tsi-tool--explorer .tsi-exp-qpanel__note { min-height: 110px; resize: vertical; }
 .tsi-tool--explorer .tsi-exp-qpanel__count { text-align: right; font-size: .85em; opacity: .75; }
+
+/* ---------- Colour reveal, cloud shadows and the Fog control (guide 6B, 4 November 2026) ---------- */
+.tsi-tool--explorer .tsi-exp-fogselect { font-size: 14px; }
+/* The DM's wash: a light grey over what is unexplored, cut out of the map's own layer by a soft mask (set by the Explorer). */
+.tsi-tool--explorer .tsi-exp-washhost { position: absolute; inset: 0; pointer-events: none; }
+.tsi-tool--explorer .tsi-exp-wash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(150, 156, 166, .42);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+/* Cloud shadows: a soft tile (drawn in code) drifting very slowly across the map, under the heroes and everything else. */
+.tsi-tool--explorer .tsi-exp-clouds {
+  position: absolute;
+  left: -640px;
+  top: -640px;
+  right: -640px;
+  bottom: -640px;
+  pointer-events: none;
+  opacity: .09;
+  background-size: 640px 640px;
+  background-repeat: repeat;
+  will-change: transform;
+  animation: tsi-exp-cloud-drift 300s linear infinite;
+}
+.tsi-tool--explorer .tsi-exp-clouds[hidden] { display: none; }
+@keyframes tsi-exp-cloud-drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(640px, 320px, 0); } }
+@media (prefers-reduced-motion: reduce) { .tsi-tool--explorer .tsi-exp-clouds { display: none; } }
+.tsi-tool--explorer .tsi-exp-stage--revealing { cursor: crosshair; }
+.tsi-tool--explorer .tsi-exp-knownrow { margin-top: 10px; align-items: flex-start; line-height: 1.25; }
+.tsi-tool--explorer .tsi-exp-cloudhost { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+
+/* ---------- Folding the left panel, "Fog on my view", and markers shown to the players (4 November 2026) ---------- */
+.tsi-tool--explorer .tsi-exp-controlhead { display: flex; align-items: flex-start; gap: 8px; }
+.tsi-tool--explorer .tsi-exp-controlhead .tsi-exp-intro { flex: 1 1 auto; }
+.tsi-tool--explorer .tsi-exp-controlhead__hide { flex: 0 0 auto; white-space: nowrap; }
+.tsi-tool--explorer .tsi-exp-wrap--noleft { grid-template-columns: minmax(0, 1fr) 292px; }
+.tsi-tool--explorer .tsi-exp-wrap--noleft > .tsi-exp-controls { display: none; }
+.tsi-tool--explorer .tsi-exp-wrap--bare.tsi-exp-wrap--noleft { grid-template-columns: minmax(0, 1fr); }
+.tsi-tool--explorer .tsi-exp-showleft { position: absolute; left: 10px; top: 10px; z-index: 50; }
+.tsi-tool--explorer .tsi-exp-showleft[hidden] { display: none; }
+.tsi-tool--explorer .tsi-exp-section-title--fold { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; }
+.tsi-tool--explorer .tsi-exp-section-title--fold::before { content: '▾'; font-size: 11px; transition: transform var(--tsi-dur-fast, .15s) var(--tsi-ease, ease); }
+.tsi-tool--explorer .tsi-exp-section-title--fold:focus-visible { outline: none; box-shadow: var(--tsi-focus-ring); border-radius: 4px; }
+.tsi-tool--explorer .tsi-exp-section--closed > .tsi-exp-section-title--fold::before { transform: rotate(-90deg); }
+.tsi-tool--explorer .tsi-exp-section--closed > :not(.tsi-exp-section-title):not(.tsi-exp-section-head) { display: none; }
+.tsi-tool--explorer .tsi-exp-section--closed > .tsi-exp-section-head ~ * { display: none; }
+.tsi-tool--explorer .tsi-exp-dmfogrow { align-self: flex-start; }
+/* A marker the DM has shown to the players: a thin white ring. */
+.tsi-tool--explorer .tsi-exp-qmark.is-shown { outline: 2px solid rgba(255, 255, 255, .85); outline-offset: 2px; }
+.tsi-tool--explorer .tsi-exp-banner--known .tsi-exp-banner__name::after { content: ' ◉'; font-size: 10px; color: #7a1d1d; }
+.tsi-tool--explorer .tsi-exp-section-head .tsi-exp-dmfogrow { margin-left: auto; font-size: 11px; white-space: nowrap; }

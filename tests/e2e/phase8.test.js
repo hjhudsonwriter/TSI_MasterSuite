@@ -444,8 +444,8 @@ function serve(dir) {
 
     await check('fog on: the map is dark except two hexes round the hero; pins hide', async () => {
       equal(await page.$$eval('.tsi-exp-pin', ps => ps.map(p => p.title)), ['The River Rook', 'Middlemount']);
-      await page.click('[data-test=fog]');
-      equal(await text(page, 'fog'), 'Fog of War: On');
+      await page.selectOption('[data-test=fog-mode]', 'classic');
+      equal(await page.$eval('[data-test=fog-mode]', n => n.value), 'classic', 'the Fog control says Classic');
       const s = await st(page);
       equal(Object.keys(s.fog.revealedByMapKey['preset:midland_province']).length, 19);
       equal(await page.$$('.tsi-exp-pin').then(p => p.length), 0);
@@ -474,7 +474,7 @@ function serve(dir) {
       await page.waitForSelector('[data-test=camp]');
       equal(Object.keys((await st(page)).fog.revealedByMapKey['preset:midland_province']).length, midCells);
       const fogOn = (await st(page)).fog.enabled;
-      equal(await text(page, 'fog'), 'Fog of War: ' + (fogOn ? 'On' : 'Off'), 'the button follows the saved fog');
+      equal(await page.$eval('[data-test=fog-mode]', n => n.value), fogOn ? 'classic' : 'colour', 'the control follows the saved fog');
       equal(await page.$$('.tsi-exp-pin').then(p => p.length), 1);
     });
 
@@ -1088,7 +1088,7 @@ function serve(dir) {
     await page.evaluate(() => { TSI.explorer.debug.state().travel.nextTravelEventAtMiles = 99; });
     await dragHex(page, 'kaelen', 2, 0);
     await dragHex(page, 'magnus', 0, 1);
-    await page.click('[data-test=fog]');
+    await page.selectOption('[data-test=fog-mode]', 'classic');
     await page.click('[data-test=hex-up]');
 
     await check('everything survives reopening, heroes\' miles included (EXP-03)', async () => {

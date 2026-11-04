@@ -36,6 +36,8 @@ const pvWait = (pv, fn, arg) => pv.waitForFunction(fn, arg, { timeout: 6000 });
     const page = await context.newPage();
     await page.goto(EXPLORER);
     await page.waitForSelector('[data-test=camp]');
+    /* Colour reveal (guide 6B) hides unexplored towns from the players, so these checks run with the fog off; the fog's own test is explorer-fog.test.js. */
+    await page.evaluate(() => TSI.explorer.debug.setFogMode('off'));
 
     await check('all 10 province maps: every pin that shows has a banner with its town\'s name and its province\'s clan shield (a plain nameplate where Harry\'s table has no clan)', async () => {
       const want = await page.evaluate(() => TSI_DATA.townClans);

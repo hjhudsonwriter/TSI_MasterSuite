@@ -9,7 +9,7 @@
    QUEST MARKERS. Gold "!" markers the DM places by hand on a map (tsi.explorer.markers = { version: 1, markers: [...] }).
    A marker is { id, mapId, x, y, label, note, source } with x and y as fractions of its map's width and height, so it stays
    where it was whatever size the map is shown at. label and note are for the DM only: the players' snapshot carries just
-   id, mapId, x and y (P.snapshot). source is spare and always '' for now (so a later guide can add markers from the
+   id, mapId, x and y (P.snapshot). shown (guide 6B follow-up, 4 November 2026) is the DM's "Show to players" tick: it only decides whether the marker is sent at all in land the party has not explored. source is spare and always '' for now (so a later guide can add markers from the
    Notice Board without a migration).
 
    Whether a pin (and so its banner) shows is decided in one place, R.isPinVisible in rules.js; guide 6B changes the rule there. */
@@ -102,7 +102,7 @@
   P.emptyMarkers = function () { return { version: 1, markers: [] }; };
   function cleanMarker(m) {
     if (!isObj(m) || typeof m.id !== 'string' || !m.id || typeof m.mapId !== 'string' || !m.mapId) return null;
-    return { id: m.id.slice(0, 60), mapId: m.mapId.slice(0, 120), x: clamp01(m.x), y: clamp01(m.y), label: str(m.label, P.LABEL_MAX), note: typeof m.note === 'string' ? m.note.slice(0, P.NOTE_MAX) : '', source: '' };
+    return { id: m.id.slice(0, 60), mapId: m.mapId.slice(0, 120), x: clamp01(m.x), y: clamp01(m.y), label: str(m.label, P.LABEL_MAX), note: typeof m.note === 'string' ? m.note.slice(0, P.NOTE_MAX) : '', shown: m.shown === true, source: '' };
   }
   P.isMarkers = function (v) { return isObj(v) && v.version === 1 && Array.isArray(v.markers); };
   /* A tidy copy: a bad entry is dropped, positions are held between 0 and 1, text is cut to length, ids are kept unique. */
@@ -129,13 +129,15 @@
   /* Drop a marker: returns it, or null when there is no map or the list is full. */
   P.addMarker = function (mk, mapId, x, y) {
     if (typeof mapId !== 'string' || !mapId || mapId === 'none' || mk.markers.length >= P.MARKERS_MAX) return null;
-    var m = { id: P.newMarkerId(mk), mapId: mapId, x: clamp01(x), y: clamp01(y), label: '', note: '', source: '' };
+    var m = { id: P.newMarkerId(mk), mapId: mapId, x: clamp01(x), y: clamp01(y), label: '', note: '', shown: false, source: '' };
     mk.markers.push(m);
     return m;
   };
-  P.editMarker = function (mk, id, label, note) {
+  /* shown (optional): true shows the marker to the players even in land they have not explored; leave it out to keep it as it is. */
+  P.editMarker = function (mk, id, label, note, shown) {
     var m = P.markerById(mk, id);
     if (!m) return false;
+    if (typeof shown === 'boolean') m.shown = shown;
     m.label = str(label, P.LABEL_MAX);
     m.note = typeof note === 'string' ? note.replace(/\r\n/g, '\n').slice(0, P.NOTE_MAX) : '';
     return true;
