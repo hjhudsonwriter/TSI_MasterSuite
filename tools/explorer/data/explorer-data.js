@@ -105,7 +105,7 @@ window.TSI_DATA.explorer = {
     the_east_isle: [
       { id: 'swyth', label: 'Swyth', x: 0.5091, y: 0.4578, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: 'tools/explorer/assets/submaps/swyth.png' },                  /* old 0.5076, 0.4578 */
       { id: 'greymyr', label: 'Greymyr', x: 0.5509, y: 0.1024, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: 'tools/explorer/assets/submaps/greymyr.png' },            /* old 0.5424, 0.1024 */
-      { id: 'port_brawdlyn', label: 'Port Brawdlyn', x: 0.1858, y: 0.8997, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: '', show: true }                                          /* old 0.2662, 0.8997 (windowed) */
+      { id: 'port_brawdlyn', label: 'Port Brawdlyn', x: 0.1858, y: 0.8997, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: 'tools/explorer/assets/submaps/port_brawdlyn.webp', show: true }                                          /* old 0.2662, 0.8997 (windowed) */
     ],
 
     the_north_isle: [
@@ -116,8 +116,8 @@ window.TSI_DATA.explorer = {
     ],
 
     midland_province: [
-      { id: 'river_rook', label: 'The River Rook', x: 0.7775, y: 0.742, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: '', show: true },
-      { id: 'middlemount', label: 'Middlemount', x: 0.5293, y: 0.188, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: 'tools/explorer/assets/submaps/middlemount.png' }, /* old 0.5244, 0.188 */
+      { id: 'river_rook', label: 'The River Rook', x: 0.7775, y: 0.742, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: 'tools/explorer/assets/submaps/the_river_rook.webp', show: true },
+      { id: 'middlemount', label: 'Middlemount', x: 0.5293, y: 0.188, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: 'tools/explorer/assets/submaps/middlemount.webp' }, /* old 0.5244, 0.188 */
       { id: 'pearlsmore', label: 'Pearlsmore', x: 0.3088, y: 0.3648, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: '' },                                            /* old 0.3407, 0.3648 */
       { id: 'midacre', label: 'Midacre', x: 0.1178, y: 0.0792, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: '' },                                                  /* old 0.1815, 0.0792 */
       { id: 'colver', label: 'Colver', x: 0.5215, y: 0.6864, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: '' },                                                    /* old 0.5179, 0.6864 */
@@ -132,7 +132,7 @@ window.TSI_DATA.explorer = {
 
     eastern_province_south: [
       { id: 'moorcastle', label: 'Moorcastle', x: 0.4762, y: 0.3227, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: 'tools/explorer/assets/submaps/moorcastle.png' }, /* old 0.4802, 0.3227 */
-      { id: 'steelport', label: 'Steelport', x: 0.7208, y: 0.634, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: '', show: true },                                            /* old 0.684, 0.634 */
+      { id: 'steelport', label: 'Steelport', x: 0.7208, y: 0.634, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: 'tools/explorer/assets/submaps/steelport.webp', show: true },                                            /* old 0.684, 0.634 */
       { id: 'alum_rest', label: 'Alum Rest', x: 0.1459, y: 0.1367, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: '' },                                           /* old 0.2049, 0.1367 */
       { id: 'bretan', label: 'Bretan', x: 0.36, y: 0.6576, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: 'tools/explorer/assets/submaps/bretan.png' }             /* old 0.3833, 0.6576 */
     ],

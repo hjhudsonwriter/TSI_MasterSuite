@@ -242,7 +242,7 @@ All 43 media files from the old Explorer. 41 are copied into `tools/explorer/ass
 | `submaps/coldpass.png` | `tools/explorer/assets/submaps/coldpass.png` | 5.07 MB, 2048 × 1536 | Yes: the Coldpass town map (its pin opens it) |
 | `submaps/goldport.png` | `tools/explorer/assets/submaps/goldport.png` | 5.97 MB, 2048 × 1536 | Yes: the Goldport town map (its pin opens it) |
 | `submaps/greymyr.png` | `tools/explorer/assets/submaps/greymyr.png` | 3.29 MB, 2048 × 1536 | Yes: the Greymyr town map (its pin opens it) |
-| `submaps/middlemount.png` | `tools/explorer/assets/submaps/middlemount.png` | 5.67 MB, 2048 × 1536 | Yes: the Middlemount town map (its pin opens it) |
+| `submaps/middlemount.webp` | `tools/explorer/assets/submaps/middlemount.webp` | 0.45 MB, 2000 × 1500 | Yes: the Middlemount town map (its pin opens it). **Replaced 4 November 2026** by Harry's new painting (the old `middlemount.png` was removed). |
 | `submaps/moorcastle.png` | `tools/explorer/assets/submaps/moorcastle.png` | 5.17 MB, 2048 × 1536 | Yes: the Moorcastle town map (its pin opens it) |
 | `submaps/nightwood.png` | `tools/explorer/assets/submaps/nightwood.png` | 5.06 MB, 2048 × 1536 | Yes: the Nightwood town map (its pin opens it) |
 | `submaps/slades_muster.png` | `tools/explorer/assets/submaps/slades_muster.png` | 5.37 MB, 2048 × 1536 | Yes: the Slade’s Muster town map (its pin opens it) |
@@ -647,3 +647,6 @@ Harry's first two Sabrecat paintings and videos (his files are named `SC_` for S
 | `tools/beasthandler/assets/sabrecat/barkhide.webp` / `.mp4` | Barkhide (Northern Province forests; `SC_Barkhide.mp4`) |
 
 Plainsmane, Ashmark and Boltback have no picture yet and show the honest blank frame.
+
+### New town pictures (4 November 2026)
+Harry's new town paintings, 2000 x 1500, stored exactly as he sent them (WebP, about 0.4 MB each, far lighter than the older 5 MB PNGs): `tools/explorer/assets/submaps/port_brawdlyn.webp` (Port Brawdlyn), `the_river_rook.webp` (The River Rook) and `steelport.webp` (Steelport) are new, and `middlemount.webp` replaces the old Middlemount picture. Each opens from its town pin in the Explorer.

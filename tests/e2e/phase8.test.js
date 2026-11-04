@@ -223,7 +223,7 @@ function serve(dir) {
       }
     });
 
-    await check('the 15 town pins show and open their town maps; the 6 ports still waiting for a picture show too and open a plain panel with their harbour box (19 October 2026)', async () => {
+    await check('the 18 town pins with a picture show and open their town maps; the 3 ports still waiting for a picture show too and open a plain panel with their harbour box (19 October 2026)', async () => {
       let seen = 0, waiting = 0;
       for (const id of await page.$$eval('[data-test=map-select] option', os => os.map(o => o.value).filter(Boolean))) {
         await loadMap(page, id);
@@ -237,11 +237,11 @@ function serve(dir) {
           await page.waitForFunction(() => { const i = document.querySelector('.tsi-exp-place-media img'); return !i || i.complete; }, null, { timeout: 8000 });
           const v = await page.evaluate(() => { const i = document.querySelector('.tsi-exp-place-media img'); return { t: document.querySelector('.tsi-modal .tsi-exp-event-title').textContent, has: !!i, w: i ? i.naturalWidth : 0, harbour: !!document.querySelector('[data-test=harbour]') }; });
           equal(v.t, label);
-          if (v.has) { equal(v.w, 2048); seen++; } else { waiting++; assert(v.harbour, label + ' has its harbour box'); }
+          if (v.has) { assert(v.w === 2048 || v.w === 2000, 'picture width ' + v.w); seen++; } else { waiting++; assert(v.harbour, label + ' has its harbour box'); }
           await closePopup(page);
         }
       }
-      equal([seen, waiting], [15, 6]);
+      equal([seen, waiting], [18, 3], 'three ports (Port Brawdlyn, The River Rook, Steelport) have their picture now');
     });
 
     await check('nothing reached for the internet, and nothing failed', async () => {
