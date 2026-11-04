@@ -1639,7 +1639,10 @@
         tidalStop();
       });
 
-      setActivePuzzle('memory');
+      /* A cue tag in the DM doc ({puzzle: tidal} or {puzzle: marker}) opens this tool with ?puzzle=tidal or ?puzzle=marker. */
+      var wantedPuzzle = '';
+      try { wantedPuzzle = new URLSearchParams(location.search).get('puzzle') || ''; } catch (e) { wantedPuzzle = ''; }
+      setActivePuzzle(wantedPuzzle === 'tidal' ? 'tidal' : 'memory');
 
       /* For the click-through tests. */
       pel.debug = {

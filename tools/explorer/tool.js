@@ -51,6 +51,8 @@
       var JDEFS = window.TSI_DATA.journeyEvents;
       var F = ns.fights;
       var FDATA = window.TSI_DATA.fights;
+      /* The decks (absent-tide-scenes.js and session-decks.js, loaded by index.html for the DM doc) join the Main Campaign list. */
+      (window.TSI_DATA.decks || []).forEach(function (d) { if (!DATA.mainEvents.some(function (e) { return e.id === d.id; })) DATA.mainEvents.push(d); });
       function rand() { return Math.random(); }
 
       /* ---------- Saves ---------- */
@@ -456,7 +458,8 @@
         row([btnFreeMove, btn('Reset to Day 1', resetTravel, '', 'reset-travel')]),
         row([btnRollNow]),
         section('Main campaign', [
-          row([mainSelect, btn('Queue', queueMainEvent, '', 'queue')], 'tsi-exp-row--select')
+          row([mainSelect, btn('Queue', queueMainEvent, '', 'queue')], 'tsi-exp-row--select'),
+          row([btn('Cast…', function () { cues.castDialog(); }, '', 'cast-open')])
         ]),
         sectionWith('Travel bags', el('span', { class: 'tsi-exp-hdrbtns' }, [expedBtn, btn('+ Add', addToBags, 'tsi-exp-mini', 'bags-add')]), [bagsList, row([btnChart]), chartWhy, ironbowBox, expedBox]),
         section('Active Effects', [effectsList]),
@@ -1781,6 +1784,7 @@
           pvCamp++;
           pvNightUntil = Date.now() + 4000;
           sfx.campStart();
+          tableLog({ kind: 'camp', ref: 'day-' + state.travel.day, label: 'Camp, Day ' + state.travel.day });
           saveNow();
           /* A moment worth keeping a snapshot of (shared/js/snapshots.js). */
           if (TSI.snapshots) TSI.snapshots.take('Make Camp, Day ' + state.travel.day);
@@ -1858,6 +1862,7 @@
       function loadAutoplay() { return prefs.autoplayVoice; }
       function saveAutoplay(on) { setPref('autoplayVoice', !!on); }
       var deckVoice = null;           /* the one audio element of the open deck */
+      var deckApi = null;             /* the open deck pop-up, for cue tags: { id, show(cardId), hide() } */
       function openDeck(deck) {
         var cards = R.deckCards(deck);
         var status = cards.map(function (c) { return { media: 'checking', still: 'checking', voice: c.voice ? 'checking' : 'none' }; });
@@ -1991,6 +1996,7 @@
           if (st === 'still') message.textContent = 'The clip file is missing, so the TV shows its still.';
           var st2 = deck.steps[i];
           setPvScene(R.stepScene(st2, { stillOnly: st === 'still' }));
+          noteCard(deck, st2);
           setTv(true, 'On the TV now: ' + c.name);
           /* The next card's picture or clip is sent ahead on its own, so it is ready. */
           var nx = cards[i + 1];
@@ -2004,15 +2010,26 @@
         function hideTv() {
           stopVoice();
           setPvScene(null);
+          noteLive('');
           setTv(false, 'The TV is showing the map.');
           message.textContent = '';
         }
         function cleanup() {
           setPvScene(null);
+          noteLive('');
+          deckApi = null;
           if (deckVoice) { try { deckVoice.pause(); } catch (e) { /* nothing */ } deckVoice.removeAttribute('src'); deckVoice.load(); deckVoice = null; }
           probes.forEach(function (m) { try { m.removeAttribute('src'); m.load(); } catch (e) { /* nothing */ } });
           deckDebug = null;
         }
+        deckApi = {
+          id: deck.id,
+          show: function (cardId) {
+            for (var k = 0; k < deck.steps.length; k++) if (deck.steps[k].id === cardId) { showCard(k); return true; }
+            return false;
+          },
+          hide: hideTv
+        };
         deckDebug = {
           cur: function () { return cur; },
           status: function () { return JSON.parse(JSON.stringify(status)); },
@@ -2049,6 +2066,127 @@
         return pr.then(function (v) { cleanup(); return v; });
       }
       var deckDebug = null;
+
+      /* ---------- Cue tags and the Cast list (guide 1; tools/explorer/cues.js, shared/js/cue-rules.js) ----------
+         A card, a cast portrait or a name card goes on the TV straight away, with no pop-up. What is on the TV now is
+         announced so the DM doc, in whichever window it is, can light that button. Each thing shown is also noted in the
+         table log (what the players were shown, for the recap). */
+      function tableLog(entry) {
+        if (!TSI.tablelog) return;
+        TSI.tablelog.add(Object.assign({ day: state.travel.day }, entry));
+      }
+      function noteLive(id) {
+        if (TSI.handoff) TSI.handoff.write('live', { id: id, at: Date.now() });
+        if (TSI.dmDoc && TSI.dmDoc.setLive) TSI.dmDoc.setLive(id);
+      }
+      function noteCard(deck, step) {
+        var CRU = TSI.cueRules;
+        tableLog({ kind: 'card', ref: CRU.shortDeckId(deck.id) + '/' + step.id, label: step.name || (step.portrait && step.portrait.name) || step.id, image: step.image || '' });
+        noteLive('card:' + deck.id + '/' + step.id);
+      }
+      var cueAudio = null;
+      function cueVoice(src) {
+        if (!src) return;
+        if (!cueAudio) cueAudio = life.audio(null, { preload: 'none' });
+        cueAudio.setAttribute('src', TSI.path(src));
+        try { cueAudio.currentTime = 0; } catch (e) { /* not loaded yet */ }
+        var p = cueAudio.play();
+        if (p && p.catch) p.catch(function () { /* the browser may refuse; nothing else is lost */ });
+      }
+      function cueVoiceStop() { if (cueAudio) { try { cueAudio.pause(); } catch (e) { /* nothing */ } } }
+      function probePicture(src, done) {
+        var im = new Image();
+        im.onload = function () { done(true); };
+        im.onerror = function () { done(false); };
+        im.src = TSI.path(src);
+      }
+      var cueActions = {
+        card: function (deckId, stepId) {
+          var deck = R.mainEvent(DATA, deckId);
+          if (!deck) return 'There is no such deck.';
+          if (deckApi && deckApi.id === deck.id) { deckApi.show(stepId); return ''; }
+          var step = null;
+          deck.steps.forEach(function (s) { if (s.id === stepId) step = s; });
+          if (!step || !(step.image || step.video)) return 'That card has no picture.';
+          return new Promise(function (resolve) {
+            probePicture(step.image || step.video, function (ok) {
+              if (!life.alive) return resolve('');
+              if (!ok) return resolve('This card’s file is missing, so the TV has not changed.');
+              cueVoiceStop();
+              setPvScene(R.stepScene(step, {}));
+              noteCard(deck, step);
+              if (step.voice && prefs.autoplayVoice) cueVoice(step.voice);
+              resolve('');
+            });
+          });
+        },
+        deck: function (deckId) {
+          var deck = R.mainEvent(DATA, deckId);
+          if (!deck) return 'There is no such deck.';
+          if (deckApi && deckApi.id === deck.id) return '';
+          openDeck(deck);
+          return '';
+        },
+        cast: function (id) {
+          var m = null;
+          (window.TSI_DATA.cast || []).forEach(function (c) { if (c.id === id) m = c; });
+          if (!m) return 'There is no such person in the cast list.';
+          return new Promise(function (resolve) {
+            function show(noImage) {
+              if (!life.alive) return resolve('');
+              cueVoiceStop();
+              setPvScene(R.castScene(m, { noImage: noImage }));
+              tableLog({ kind: 'cast', ref: m.id, label: m.name, image: noImage ? '' : (m.image || '') });
+              noteLive('cast:' + m.id);
+              if (m.voice && prefs.autoplayVoice) cueVoice(m.voice);
+              resolve(noImage && m.image ? m.name + '’s picture is missing, so the TV shows a name card.' : '');
+            }
+            if (!m.image) return show(false);
+            probePicture(m.image, function (ok) { show(!ok); });
+          });
+        },
+        hide: function () {
+          cueVoiceStop();
+          if (deckApi) deckApi.hide();
+          setPvScene(null);
+          noteLive('');
+          return '';
+        },
+        fight: function (encounterId) {
+          var region = state.travel.provinceId;
+          var id = 'fight-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+          var h = F.build(FDATA, {
+            encounter: encounterId, region: region, regionName: R.provinceLabel(DATA, region), levelInfo: levelInfo,
+            event: { id: 'cue', code: '', title: 'Fight ' + encounterId, step: '', day: state.travel.day },
+            surprised: [], id: id, at: new Date().toISOString()
+          });
+          if (!h) return 'That fight could not be set up.';
+          if (!TSI.handoff.write('fight', h)) return 'The browser wouldn’t pass the fight on. Set it up in the Combat Tracker by hand.';
+          tableLog({ kind: 'fight', ref: encounterId, label: 'Fight ' + encounterId });
+          if (TSI.tabGuard && TSI.tabGuard.isOpenElsewhere('encounter')) {
+            TSI.notify('The Combat Tracker is already open in another window: the fight is waiting there. Choose Load the fight.', { type: 'ok', title: 'Fight sent.', id: 'tsi-exp-fight-sent', timeout: 9000 });
+          } else {
+            TSI.shell.openWindow('encounter');
+          }
+          return '';
+        },
+        camp: function () { return makeCamp().then(function () { return ''; }); },
+        sound: function (name) {
+          var r = sfx.cue(name);
+          return r === 'muted' ? 'Sound effects are switched off in the Sound panel.' : r === 'none' ? 'There is no such sound.' : '';
+        }
+      };
+      var cues = ns.cues.create({
+        life: life,
+        data: function () { return TSI.cueRules.catalogue(window.TSI_DATA); },
+        cast: function () { return window.TSI_DATA.cast || []; },
+        actions: cueActions,
+        notify: function (text) { TSI.notify(text, { type: 'info', id: 'tsi-exp-cue', timeout: 7000 }); }
+      });
+      TSI.cueRunner = { alive: function () { return life.alive; }, run: function (tag, id) { return cues.run(tag, id); } };
+      /* A moment after the screen is built, so a cue left waiting finds everything ready. */
+      life.setTimeout(function () { cues.listen(); }, 300);
+      life.on(window, 'pagehide', function () { noteLive(''); });
 
       function openEvent(kind, event) {
         if (event && event.deck) return openDeck(event);
@@ -3404,6 +3542,7 @@
         setScene: function (card) { setPvScene(card); },
         showWord: function (news) { return showEvents([{ kind: 'word', news: news }]); },
         deck: function () { return deckDebug; },
+        cues: function () { return cues.handled(); },
         scene: function () { return pvScene ? JSON.parse(JSON.stringify(pvScene)) : null; },
         preload: function (kind, src) { pvPreload(kind, src); },
         state: function () { return state; },

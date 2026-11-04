@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <title>Deck check · The Scarlett Isles</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font: 16px/1.5 Georgia, serif; background: #140d0b; color: #efe3c8; margin: 0; padding: 24px; }
+    h1, h2 { font-family: 'Cinzel', Georgia, serif; color: #d6b36a; font-weight: 600; }
+    table { border-collapse: collapse; width: 100%; margin: 8px 0 28px; }
+    th, td { text-align: left; padding: 5px 10px; border-bottom: 1px solid #3a2a22; vertical-align: top; }
+    code { background: #2a1a14; padding: 1px 6px; border-radius: 4px; color: #f0d79a; user-select: all; }
+    .ok { color: #8fd18f; } .miss { color: #ff9b8f; font-weight: 700; }
+    .none { color: #9a8c74; }
+    p.sum { font-size: 18px; }
+  </style>
+</head>
+<body>
+  <h1>Deck check</h1>
+  <p>Every deck, card and cast member, whether each file is there, and the tag to copy. Double-click a tag to select it.
+     Nothing here changes anything. How to add a deck: <code>docs/ADDING-A-SESSION-DECK.md</code>.</p>
+  <p class="sum" id="sum">Checking…</p>
+  <div id="out"></div>
+
+  <script src="../shared/js/cue-rules.js"></script>
+  <script src="../tools/explorer/data/absent-tide-scenes.js"></script>
+  <script src="../tools/explorer/data/session-decks.js"></script>
+  <script src="../tools/explorer/data/cast-data.js"></script>
+  <script>
+    (function () {
+      var CR = TSI.cueRules, out = document.getElementById('out'), total = 0, missing = 0, pending = 0;
+      function cell(text, cls) { var td = document.createElement('td'); if (cls) td.className = cls; td.textContent = text; return td; }
+      function tagCell(tag) { var td = document.createElement('td'); var c = document.createElement('code'); c.textContent = tag; td.appendChild(c); return td; }
+      function probe(td, src, kind) {
+        if (!src) { td.textContent = '—'; td.className = 'none'; return; }
+        total++; pending++;
+        td.textContent = 'checking…';
+        function done(ok) { td.textContent = ok ? 'found' : 'MISSING: ' + src; td.className = ok ? 'ok' : 'miss'; if (!ok) missing++; if (--pending === 0) summary(); }
+        var m;
+        if (kind === 'image') { m = new Image(); m.onload = function () { done(true); }; m.onerror = function () { done(false); }; }
+        else { m = kind === 'video' ? document.createElement('video') : new Audio(); m.preload = 'metadata'; m.addEventListener('loadedmetadata', function () { done(true); }); m.addEventListener('error', function () { done(false); }); }
+        m.src = '../' + src;
+      }
+      function summary() { document.getElementById('sum').textContent = missing ? missing + ' of ' + total + ' files are missing (marked in red).' : 'All ' + total + ' files are there.'; document.getElementById('sum').className = 'sum ' + (missing ? 'miss' : 'ok'); }
+      function table(title, heads) {
+        var h = document.createElement('h2'); h.textContent = title; out.appendChild(h);
+        var t = document.createElement('table'), r = document.createElement('tr');
+        heads.forEach(function (x) { var th = document.createElement('th'); th.textContent = x; r.appendChild(th); });
+        t.appendChild(r); out.appendChild(t); return t;
+      }
+      (TSI_DATA.decks || []).forEach(function (d) {
+        var t = table('Deck: ' + (d.title || d.id) + '  (' + d.id + ')', ['Card', 'Name', 'Picture', 'Clip', 'Voice', 'Tag to copy']);
+        var open = document.createElement('tr'); open.appendChild(cell('(deck)')); open.appendChild(cell('Open the pop-up')); open.appendChild(cell('')); open.appendChild(cell('')); open.appendChild(cell('')); open.appendChild(tagCell('{deck: ' + CR.shortDeckId(d.id) + '}')); t.appendChild(open);
+        (d.steps || []).forEach(function (s) {
+          var r = document.createElement('tr');
+          r.appendChild(cell(s.id)); r.appendChild(cell(s.name || (s.portrait && s.portrait.name) || ''));
+          var a = cell(''), b = cell(''), c = cell(''); probe(a, s.image, 'image'); probe(b, s.video, 'video'); probe(c, s.voice, 'audio');
+          r.appendChild(a); r.appendChild(b); r.appendChild(c); r.appendChild(tagCell('{card: ' + CR.shortDeckId(d.id) + '/' + s.id + '}'));
+          t.appendChild(r);
+        });
+      });
+      var t = table('Cast', ['Id', 'Name', 'Picture', 'Voice', 'Tag to copy']);
+      (TSI_DATA.cast || []).forEach(function (c) {
+        var r = document.createElement('tr'); r.appendChild(cell(c.id)); r.appendChild(cell(c.name));
+        var a = cell(''), b = cell('');
+        if (c.image) probe(a, c.image, 'image'); else { a.textContent = 'name card (no picture)'; a.className = 'none'; }
+        probe(b, c.voice, 'audio');
+        r.appendChild(a); r.appendChild(b); r.appendChild(tagCell('{cast: ' + c.id + '}')); t.appendChild(r);
+      });
+      if (!pending) summary();
+    }());
+  </script>
+</body>
+</html>

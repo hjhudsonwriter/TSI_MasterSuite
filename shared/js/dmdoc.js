@@ -636,6 +636,7 @@
       quest.known = { text: stored.text, at: stored.at };
       quest.dirty = true;
       questCount();
+      refreshReader();
       questNote('info', 'The last words you typed before the window closed were put back.');
       commitQuest();
     }, function () { /* can't read the saved text just now: the copy stays for next time */ });
@@ -688,6 +689,7 @@
     quest.dirty = true;
     quest.typedAt = Date.now();
     questCount();
+    refreshReader();
     return commitQuest();
   }
 
@@ -768,6 +770,198 @@
     });
   }
 
+  /* ---------- Cue buttons (guide 1; the tags' rules are shared/js/cue-rules.js) ----------
+     In Read, each {tag} in the Quest text is a button. A click does it on the TV: straight away if the Explorer is in this
+     window, otherwise by a hand-off (TSI.handoff 'cue') to the window that has the Explorer open. The text is never changed. */
+  var MODE_KEY = 'tsi.dmdoc.questmode';   /* per window (sessionStorage) */
+  var CR = TSI.cueRules;
+  var liveId = '';                        /* what the Explorer has on the TV now: 'card:<deck>/<card>', 'cast:<id>' or '' */
+  var lastFire = { tag: '', at: 0 };
+  var find = { q: '', matches: [], i: -1 };
+
+  function readLive() { var v = TSI.handoff && TSI.handoff.read('live'); return v && typeof v.id === 'string' ? v.id : ''; }
+  function liveOf(res) { return res.kind === 'card' ? 'card:' + res.deck + '/' + res.step : res.kind === 'cast' ? 'cast:' + res.cast : ''; }
+  function applyLive() {
+    if (!quest) return;
+    Array.prototype.forEach.call(quest.reader.querySelectorAll('[data-live-id]'), function (n) {
+      var on = !!liveId && n.getAttribute('data-live-id') === liveId;
+      n.classList.toggle('is-live', on);
+      if (on) n.setAttribute('aria-current', 'true'); else n.removeAttribute('aria-current');
+    });
+  }
+  function setLive(id) { liveId = typeof id === 'string' ? id : ''; applyLive(); }
+
+  function cueData() { return CR.catalogue(window.TSI_DATA); }
+
+  function cueNode(cue, res) {
+    var kindLabel = { card: 'Card', deck: 'Deck', cast: 'Cast' };
+    if (res.soon) return el('span', { class: 'tsi-dmdoc-cue tsi-dmdoc-cue--soon', 'data-test': 'cue-soon', title: 'This is built in a later update.', text: res.label });
+    if (!res.ok) {
+      return el('span', { class: 'tsi-dmdoc-cue tsi-dmdoc-cue--bad', 'data-test': 'cue-bad', 'data-tag': '', title: res.problem, role: 'note' }, [
+        el('span', { 'aria-hidden': 'true', text: '⚠ ' }), el('span', { text: res.problem })
+      ]);
+    }
+    var label = kindLabel[res.kind] ? kindLabel[res.kind] + ': ' + res.label : res.label;
+    return el('button', {
+      type: 'button', class: 'tsi-dmdoc-cue tsi-dmdoc-cue--' + res.kind, 'data-test': 'cue-' + res.kind, 'data-kind': res.kind,
+      'data-arg': res.arg || '', 'data-tag': CR.tagText(res.kind, res.arg || ''), 'data-live-id': liveOf(res), title: CR.tagText(res.kind, res.arg || '')
+    }, label);
+  }
+
+  /* Draw the Read view. mark: { start, end } of the match to highlight. */
+  function renderReader(mark) {
+    if (!quest) return;
+    var text = quest.box.value;
+    var cues = CR.parseCues(text);
+    var data = cueData();
+    var host = quest.reader;
+    TSI.clear(host);
+    quest.spans = [];
+    var pos = 0;
+    function addText(from, to) {
+      if (to <= from) return;
+      if (mark && mark.start >= from && mark.start < to) {
+        var ms = mark.start, me = Math.min(mark.end, to);
+        host.appendChild(document.createTextNode(text.slice(from, ms)));
+        var m = el('mark', { class: 'tsi-dmdoc__find', 'data-test': 'dmdoc-quest-mark' }, text.slice(ms, me));
+        host.appendChild(m);
+        quest.markNode = m;
+        host.appendChild(document.createTextNode(text.slice(me, to)));
+      } else {
+        host.appendChild(document.createTextNode(text.slice(from, to)));
+      }
+    }
+    cues.forEach(function (c) {
+      addText(pos, c.start);
+      var node = cueNode(c, CR.resolveCue(c, data));
+      host.appendChild(node);
+      if (mark && mark.start >= c.start && mark.start < c.end) quest.markNode = node;
+      pos = c.end;
+    });
+    addText(pos, text.length);
+    applyLive();
+  }
+  function refreshReader() { if (quest && quest.mode === 'read') renderReader(null); }
+
+  function setQuestMode(mode, quiet) {
+    if (!quest) return;
+    quest.mode = mode === 'read' ? 'read' : 'edit';
+    try { sessionStorage.setItem(MODE_KEY, quest.mode); } catch (e) { /* the choice is just not remembered */ }
+    var reading = quest.mode === 'read';
+    quest.box.hidden = reading;
+    quest.reader.hidden = !reading;
+    quest.readBtn.setAttribute('aria-pressed', reading ? 'true' : 'false');
+    quest.editBtn.setAttribute('aria-pressed', reading ? 'false' : 'true');
+    quest.readBtn.classList.toggle('is-on', reading);
+    quest.editBtn.classList.toggle('is-on', !reading);
+    if (reading) renderReader(null);
+    if (find.q) findRun(true);
+  }
+
+  /* ----- Find ----- */
+  function findRun(keep) {
+    if (!quest) return;
+    find.q = quest.find.value;
+    find.matches = CR.findMatches(quest.box.value, find.q);
+    if (!keep || find.i >= find.matches.length) find.i = find.matches.length ? 0 : -1;
+    findShow();
+  }
+  function findStep(by) {
+    if (!quest) return;
+    if (quest.find.value !== find.q) findRun();
+    if (!find.matches.length) return;
+    find.i = (find.i + by + find.matches.length) % find.matches.length;
+    findShow();
+  }
+  function findShow() {
+    if (!quest) return;
+    quest.findCount.textContent = !find.q.trim() ? '' : find.matches.length ? (find.i + 1) + ' of ' + find.matches.length : 'No match';
+    if (find.i < 0 || !find.matches.length) { if (quest.mode === 'read') renderReader(null); return; }
+    var start = find.matches[find.i], end = start + find.q.trim().length;
+    if (quest.mode === 'read') {
+      quest.markNode = null;
+      renderReader({ start: start, end: end });
+      var n = quest.markNode;
+      if (n && n.getBoundingClientRect) {
+        var hostBox = quest.reader.getBoundingClientRect(), nBox = n.getBoundingClientRect();
+        quest.reader.scrollTop += nBox.top - hostBox.top - Math.min(60, hostBox.height / 4);
+      }
+    } else {
+      var box = quest.box;
+      var typing = document.activeElement === quest.find;
+      box.focus({ preventScroll: false });
+      box.setSelectionRange(start, end);
+      if (typing) quest.find.focus({ preventScroll: true });
+      /* Put the match in view: scroll by its share of the text. */
+      var frac = start / Math.max(1, box.value.length);
+      box.scrollTop = Math.max(0, frac * box.scrollHeight - box.clientHeight / 3);
+    }
+  }
+
+  /* ----- Clicks ----- */
+  function cueNote(text, action) {
+    if (!quest) return;
+    TSI.clear(quest.cueMsg);
+    if (!text) return;
+    quest.cueMsg.appendChild(el('span', { text: text }));
+    if (action) quest.cueMsg.appendChild(el('button', { type: 'button', class: 'tsi-btn tsi-btn--small', 'data-test': 'dmdoc-cue-action', onclick: action.onClick }, action.label));
+  }
+  function onReaderClick(event) {
+    var b = event.target && event.target.closest ? event.target.closest('button[data-tag]') : null;
+    if (!b || !quest || !quest.reader.contains(b)) return;
+    fireCue(b.getAttribute('data-kind'), b.getAttribute('data-arg'), b.getAttribute('data-tag'));
+  }
+  function fireCue(kind, arg, tag) {
+    var now = Date.now();
+    if (lastFire.tag === tag && now - lastFire.at < 700) return;       /* a quick second click does it once */
+    lastFire = { tag: tag, at: now };
+    cueNote('');
+    if (kind === 'puzzle') return openPuzzle(arg);
+    if (kind === 'camp') {
+      return TSI.modal.confirm({ title: 'Make camp now?', message: 'This passes a day in the Explorer.', okLabel: 'Make camp', cancelLabel: 'Cancel' }).then(function (yes) { if (yes) sendCue(tag); });
+    }
+    sendCue(tag);
+  }
+  function sendCue(tag) {
+    /* The Explorer is in this window: do it here. */
+    if (TSI.cueRunner && TSI.cueRunner.alive()) { TSI.cueRunner.run(tag); return; }
+    var id = 'cue-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    var value = { id: id, at: Date.now(), tag: tag };
+    if (TSI.tabGuard && TSI.tabGuard.isOpenElsewhere('explorer')) {
+      if (!TSI.handoff.write('cue', value)) { cueNote('The browser would not pass that on to the Explorer.'); return; }
+      cueNote('Sent to the Explorer window.');
+      return;
+    }
+    cueNote('The Explorer is not open in any window, so there is nowhere to show that.', {
+      label: 'Open the Explorer',
+      onClick: function () {
+        value.at = Date.now();
+        TSI.handoff.write('cue', value);       /* the Explorer picks it up as it opens (if it is under half a minute old) */
+        if (docked) TSI.shell.openWindow('explorer'); else TSI.shell.go('explorer');
+        cueNote('');
+      }
+    });
+  }
+  function openPuzzle(arg) {
+    var which = arg === 'tidal' ? 'tidal' : 'marker';
+    var extra = '&puzzle=' + which;
+    var current = TSI.shell && TSI.shell.current ? TSI.shell.current() : null;
+    var here = current && current.info ? current.info.id : '';
+    if (docked) {
+      return TSI.modal.confirm({ title: 'Open the Puzzle Trials?', message: 'This opens the Pelagosi Puzzle Trials in a new window, on the ' + (which === 'tidal' ? 'tidal' : 'marker') + ' puzzle.', okLabel: 'Open', cancelLabel: 'Cancel' })
+        .then(function (yes) { if (yes) TSI.shell.openWindow('pelagosi', extra); });
+    }
+    return TSI.modal.confirm({ title: 'Open the Puzzle Trials?', message: 'This will reload the page. The TV window stays open.', okLabel: 'Open', cancelLabel: 'Cancel' }).then(function (yes) {
+      if (!yes) return;
+      if (here === 'pelagosi') {
+        try { history.replaceState(null, '', location.pathname + '?tool=pelagosi' + extra); } catch (e) { /* the page reloads without it */ }
+        TSI.shell.reload();
+      } else {
+        TSI.shell.go('pelagosi', extra);
+      }
+    });
+  }
+
   function questPanel(shell) {
     var initial = R.cleanQuest(TSI.store.get(R.QUEST_KEY, null));
     var q = quest = { known: { text: initial.text, at: initial.at }, dirty: false, unsaved: false, timer: null, mirrorTimer: null, typedAt: 0, state: 'saved' };
@@ -810,11 +1004,33 @@
         }).then(function (yes) {
           if (!yes) return;
           questNote('', '');
+          setQuestMode('edit');
           return setQuestText('');
         });
       })
     }, 'Clear');
     q.tools = el('div', { class: 'tsi-dmdoc__quest-tools' }, [q.importBtn, q.exportBtn, q.clearBtn]);
+
+    /* Read / Edit (guide 1, Cue buttons): Read shows the text with each {tag} as a button; Edit is the box as it always was.
+       The saved text is the same either way. */
+    q.mode = 'edit';
+    q.reader = el('div', {
+      class: 'tsi-input tsi-dmdoc__quest-read', tabindex: '0', role: 'document', 'aria-label': 'Quest notes, with cue buttons', 'data-test': 'dmdoc-quest-read', hidden: true,
+      onclick: onReaderClick
+    });
+    q.readBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small', 'data-test': 'dmdoc-quest-mode-read', 'aria-pressed': 'false', onclick: function () { setQuestMode('read'); } }, 'Read');
+    q.editBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small', 'data-test': 'dmdoc-quest-mode-edit', 'aria-pressed': 'true', onclick: function () { setQuestMode('edit'); } }, 'Edit');
+    q.find = el('input', { type: 'search', class: 'tsi-input tsi-dmdoc__quest-find', 'aria-label': 'Find in the notes', placeholder: 'Find (try 4.4)…', 'data-test': 'dmdoc-quest-find' });
+    q.findCount = el('span', { class: 'tsi-dmdoc__quest-findcount', 'data-test': 'dmdoc-quest-findcount', role: 'status' });
+    q.findPrev = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-btn--ghost', 'aria-label': 'Previous match', 'data-test': 'dmdoc-quest-find-prev', onclick: function () { findStep(-1); } }, '↑');
+    q.findNext = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-btn--ghost', 'aria-label': 'Next match', 'data-test': 'dmdoc-quest-find-next', onclick: function () { findStep(1); } }, '↓');
+    q.find.addEventListener('input', function () { findRun(); });
+    q.find.addEventListener('keydown', function (event) { if (event.key === 'Enter') { event.preventDefault(); findStep(event.shiftKey ? -1 : 1); } });
+    q.cueMsg = el('div', { class: 'tsi-dmdoc__quest-cuemsg', 'data-test': 'dmdoc-cue-msg', role: 'status', 'aria-live': 'polite' });
+    q.modebar = el('div', { class: 'tsi-dmdoc__quest-modebar' }, [
+      el('span', { class: 'tsi-dmdoc__quest-modes', role: 'group', 'aria-label': 'Read or edit' }, [q.readBtn, q.editBtn]),
+      q.find, q.findPrev, q.findNext, q.findCount
+    ]);
 
     q.box.addEventListener('input', typedQuest);
     q.box.addEventListener('blur', function () {
@@ -825,9 +1041,9 @@
     shell.head.appendChild(q.status);
     shell.body.classList.add('tsi-dmdoc__quest');
     TSI.append(shell.body, [
-      q.tools, q.box,
+      q.tools, q.modebar, q.box, q.reader,
       el('div', { class: 'tsi-dmdoc__quest-foot' }, [q.count]),
-      q.msg
+      q.msg, q.cueMsg
     ]);
     if (TSI.store.mode === 'memory') {
       questState('failed', 'this browser is not saving');
@@ -836,6 +1052,11 @@
       questState('saved');
     }
     questCount();
+    liveId = readLive();
+    /* Read is the first view once there is text (remembered for this window). */
+    var wanted = '';
+    try { wanted = sessionStorage.getItem(MODE_KEY) || ''; } catch (e) { wanted = ''; }
+    setQuestMode(wanted === 'edit' || wanted === 'read' ? wanted : (initial.text.trim() ? 'read' : 'edit'), true);
     pickUpDraft();
     return q;
   }
@@ -921,7 +1142,7 @@
   }
 
   /* options.returnFocus: put keyboard focus back on the top bar's button. */
-  function close(options) {
+  function close(options) { console.log('DMDOC-CLOSE ' + new Error().stack.split('\n').slice(1,5).join(' | '));
     if (!opened) return;
     finishDrag();
     commitQuestNow();
@@ -1046,7 +1267,9 @@
     /* Another window did a Restore or an Import: look again at what is saved. */
     var replacedKey = TSI.storeRules.spaceNames(TSI.space).replaced;
     var draftKeyName = draftKey();
+    var liveKey = TSI.storeRules.spaceNames(TSI.space).handoffLive;
     window.addEventListener('storage', function (event) {
+      if (event.key === liveKey) { var lv = null; try { lv = JSON.parse(event.newValue); } catch (e) { /* none */ } setLive(lv && typeof lv.id === 'string' ? lv.id : ''); }
       if (event.key === replacedKey && opened) { loadQuest(); refresh(); }
       /* Another window is closing with typing the browser may not finish saving: this window, if its DM doc has been opened, saves it. */
       if (event.key === draftKeyName && event.newValue && quest) {
@@ -1115,6 +1338,8 @@
       });
     },
 
+    /* What the Explorer has on the TV now (the Explorer calls this; other windows hear it through TSI.handoff 'live'). */
+    setLive: setLive,
     open: function () { open({ focus: true }); },
     close: function () { close({ returnFocus: false }); },
     toggle: toggle,

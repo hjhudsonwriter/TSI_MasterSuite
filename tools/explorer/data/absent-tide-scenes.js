@@ -88,5 +88,12 @@
     }
   ];
 
-  decks.forEach(function (deck) { D.mainEvents.push(deck); });
+  /* The decks are listed in TSI_DATA.decks, which the DM doc reads in every window (so a cue tag can be checked even where the
+     Explorer is not open). The Explorer adds each to its Force Main Campaign Event list as it starts (tool.js). When the
+     Explorer's own data is already here (the test pages), they go in at once. */
+  window.TSI_DATA.decks = window.TSI_DATA.decks || [];
+  decks.forEach(function (deck) {
+    window.TSI_DATA.decks.push(deck);
+    if (D && D.mainEvents) D.mainEvents.push(deck);
+  });
 }());

@@ -1,0 +1,285 @@
+Session 4 Flow: The Absent Tide
+Oct 30, 2026 · @Harry
+How to use this
+This is the table-reading version: read-aloud text, what to say to the party, NPC lines, and checks with DCs. Nothing else. Every scene has a number (1.1, 4.3 and so on) that matches the same number in the DM Session Detail, which holds the clues, hints, tables and rules for it. Print the Detail and keep it beside this one.
+Conventions: a block quote is read aloud word for word. Ask: is a question to put to the table. Say: is an NPC line. Check: is a roll and its DC. Detail 1.2 points to the matching page of the DM Session Detail.
+Act
+Scenes
+Where
+Time
+Opening
+0.1
+Recap
+10 min
+1
+1.1 to 1.5
+Tidepool House, Swyth
+20 min
+2
+2.1 to 2.5
+Swyth
+40 min
+3
+3.1 to 3.3
+The road to Middlemount
+20 min
+4
+4.1 to 4.6
+Middlemount
+40 min
+5
+5.1 to 5.3
+The Sunken Archive
+25 min
+6
+6.1 to 6.6
+The Tidal Sequence
+40 min
+7
+7.1 to 7.4
+The hidden chamber and the Absence
+15 min
+Opening
+0.1 Where we left off
+Ask: "What was the last thing your character saw before the sea went quiet?" Let each player answer first, then fill the gaps with this.
+The break in the Marker was no accident. Someone cut it, and faint sunbursts are scarred around the wound. You followed the passage down through the pooling caverns to a seabed lair, put an end to the Dragon-Turtle that nested there, and Kaelen came away with its egg. The driftglass shard fitted. Water ran into the spirals, the bay fell silent, and then a pulse crossed the sea. Black sky. Towers of water miles high. Stone markers strung across the ocean like a web, holding something down. A voice: "The chains weaken." The Marker sank. You came back to Swyth with news for Maerys Vell, and found Tidepool House too quiet.
+Detail 0.1
+Act 1: Tidepool House
+1.1 The quiet house  {card: act1/outside} {card: act1/inside}
+The wind chimes on the porch turn slowly, though the air is still. Inside, the curtains hang as they should and every chair sits where it always sat. A cup of tea stands on the writing desk beside an unfinished letter. A pair of boots waits by the door. There is no blood and no sign of a struggle. There are no servants and no guards. The house has the stillness of a room someone fully expects to return to.
+Ask: "What is the first thing your character touches?" Let them lead.
+Detail 1.1
+1.2 What the party searches  {card: act1/chambers}
+A menu, not a sequence. Give each result in a sentence.
+Search
+Check
+The tea
+Perception DC 10
+The unfinished letter
+Free
+The route map
+Investigation DC 10
+Blue-grey sand in the rug and boots
+Nature or Investigation DC 15
+Pelagosi rune residue
+Arcana or Religion DC 15 (DC 20 to make out two runes)
+The letter left for the party
+Free (see 1.3)
+Detail 1.2
+1.3 Maerys's letter  {card: act1/letter}
+Hand it over or read it aloud. A voice clip reads it for the table.
+Friends... witnesses,
+I'm on route to Middlemount at the request of the Warden-Archivist. She needs help investigating some strange happenings beneath the temple. You need not follow me yet. I shouldn't be gone long. If three days passes without word from me, however, I bid you ignore that instruction.
+M.V
+Say: how many days have passed since she left (two or four), then ask: "Maerys says you needn't follow yet. What does the party do?"
+Detail 1.3
+1.4 The neighbours
+Two neighbours lean over the gate. They disagree, and each is certain.
+Check: Persuasion DC 10 to draw them out.
+Old woman: "Yesterday. I watched her go down the lane with her bag. Same cough as always."
+Fishmonger: "Last week. I remember because the mackerel were still running."
+If pressed: "I'm certain." Then, quieter, from the other: "So is she. That's the odd thing."
+Detail 1.4
+1.5 Moving on
+Whatever they decide, the Tide-Guard's bell rings from the harbour, or the party sets out for Swyth's streets. Go to Act 2.
+Detail 1.5
+Act 2: Swyth after the silence
+2.1 Swyth is unsettled
+Say: Fishing boats stay in harbour. Dogs bark at the water. People keep asking the same question: "Did you feel that?" The party can visit the three stops in any order.
+Detail 2.1
+2.2 The Salt-Ring: Dren Marr  {cast: dren-marr}
+The arena smells of sand, sweat and sea air. Dren Marr is mid-argument with a ledger, bearded and loud, but his face changes when he sees you. "The wyvern people! Good. Maerys was in here asking if anyone had brought driftglass through Swyth. She wasn't herself. Wouldn't sit. Wouldn't drink." His eyes drop to Kaelen's pack, then back up. "What have you got in there?"
+If asked about Maerys: "Driftglass. Not lamp oil, not salt cod. Driftglass, like she'd dropped something and couldn't remember what. I told her nobody had. She wrote it down anyway."
+If Kaelen shows the egg: "Gods. It's warm, isn't it? I can feel it from here. Don't tell me where. Let me guess. No, don't." Then, lower: "I'd keep it safe for you. Truly."
+If he is refused: "Fair. The offer stands. Everything stands, these days, whether you want it or not."
+Ask Kaelen's player: "Dren is a good man with a bad interest. What does Kaelen say?"
+Detail 2.2
+2.3 The Tide-Guard Barracks: Captain Seris Thane  {cast: seris-thane}
+Opening: "You're the ones from the Marker. Sit. I'll tell you what I can, and it will be exactly what the paper says."
+The claim: "The Voice of the Tide left Swyth under written authority from the Middlemount liaison office. I have the writ. I had no reason to doubt it until this week."
+If pressed: "Are you telling me I let the Voice of the Tide walk out on a forged page?" A beat. "I would like to be told if I did."
+If accused: (cold) "The liaison office keeps the records. Take it up with them."
+Check
+DC
+Spot the signature
+Investigation 15
+Compare with her sample
+History or Investigation 15
+Notice the date
+Investigation 20
+Get her to admit she never saw it delivered
+Persuasion 15
+Detail 2.3
+2.4 The Temple of Pelagos: Linnet  {cast: linnet}
+A young acolyte in a large robe, nervous, half-finishing her sentences.
+The water: "The font runs from the sea to the cistern. It always has. It has been running back for days." She checks the door. "I'm supposed to say 'unsettled'. Not 'wrong'."
+The twist: "Then, when the bay went quiet, it ran true. Just for one breath. And then it turned again, like it had remembered it wasn't allowed."
+The omen: "The old saying is 'Something beneath remembers movement differently.' I didn't think it was meant for us."
+If asked why: "Nobody knows. Please don't ask the High Tide. He'll say I said too much."
+Check: Persuasion or Religion DC 10, otherwise the Temple closes ranks.
+Detail 2.4
+2.5 Leaving Swyth  {hide}
+Whatever the order, end on the shared advice, then cut.
+Three people, three answers, one direction. The paper, the ledger and the water all point inland. Middlemount keeps the records.
+Ask each player: "What does your character take from Swyth?" Then say how many days have passed against the three-day clause, and set out on the Eastlake Causeway.
+Detail 2.5
+Act 3: The road to Middlemount
+3.1 The causeway and the dream
+The causeway runs straight and dry, but the rivers beside it are wrong. One has stopped against its own bank like a held breath. A pool ripples with no wind. A little further on, the air tastes of salt, a hundred miles from the sea. That night each of you dreams the Marker's runes lighting one after another. In every dream, one place in the sequence goes dark, and none of you can say which.
+Detail 3.1
+3.2 The road: a skill challenge
+DC 15. The party needs 3 successes before 3 failures. Each player says how their character helps, rolls, and you narrate the result as a sentence.
+Say the three problems, one at a time:
+The ford: a drovers' caravan and a family of salt-pickers are stranded on the far bank, and the river will not carry a crossing.
+The salt wind: it spooks the mounts and sickens the pack animals.
+The dreams: the camp wakes frightened, and the drovers want to turn back.
+Approach
+Skill
+The ford: read the stalled river, find a crossing for the stranded
+Survival or Nature
+The dreams: keep the camp calm so the drovers stay
+Religion, Insight or Persuasion
+The ford and the wind: move stock and gear across unstable ground
+Athletics or Acrobatics
+The salt wind: notice what is wrong with the salt, birds and water
+Perception or Arcana
+A success: "The river is stopped, but not still. You can see the current wanting to move. You step where it would have gone."
+A failure: "The ford looks sound. Halfway across, the water decides it has already crossed, and your footing is where it was a minute ago."
+Three successes: they arrive on time and rested, and notice every stopped river points the same way, inland.
+Three failures: they lose a day and supplies, and arrive tired.
+Detail 3.2
+3.3 The gate
+Say: the dream fades. The causeway ends at Middlemount's gate.
+Detail 3.3
+Act 4: Middlemount
+Play this act quiet. Short sentences. Repeat a line without explaining it. Let silences sit. No combat.
+4.1 The gate
+The gate warden answers, then a few minutes later says the same words in the same tone, with the same cough.
+Gate warden: "Two days ago. I'd swear on it." (Later, same voice, same cough:) "Two days ago. I'd swear on it." He frowns. "Why am I saying that?"
+Detail 4.1
+4.2 The market and Tovin Ash  {card: act4/arrival-clip} {cast: tovin-ash}
+Middlemount climbs the cliff as if it grew there: terraces, stairs, tunnels and balconies, with the First Temple of Telluria set into the rock like a root. Merchants shout over each other, and Blackstone colours watch from a gatehouse. Tovin Ash, an archivist, spots you across the market and lights up. "You're back! You only arrived yesterday—" He stops. "No. I'm sorry. That isn't right, is it?"
+Tovin is the party's guide up to the Temple.
+Tovin: "Walk with me. If I say something that doesn't fit, tell me. I would rather be corrected than be right."
+The merchant (counting coins that were not there a moment ago): "Last week. Lamp oil and chalk, a lot of chalk. She said she had to mark a way back."
+Detail 4.2
+4.3 The foot of the Temple stair
+Temple clerk (glancing at a clock that is behind): "She isn't due until tomorrow. Don't look at me like that. I wrote it down. I wrote it down yesterday."
+Tovin points out the liaison court on the way up.
+Detail 4.3
+4.4 The liaison office: Pell Ardwick  {card: act4/wall-notes} {cast: pell-ardwick} {card: act4/writ} {card: act4/ledger}
+Halfway up the Temple stair, a narrow court opens off the steps. Shutters stand open on a small office. Paper is pinned to every wall, in a dozen hands, and a thin man at a desk is writing without looking up.
+The clerk looks at Seris's writ for a long moment.
+Pell: "That's my hand." He swallows. "I haven't written it yet." (Let that sit.)
+If pressed: "I know what I did this morning. I know what I'll do tomorrow. It is only the middle that won't hold still."
+A note on the wall, dated tomorrow, in his own hand: "Five visitors asked after Maerys Vell. They were frightened. Do not tell them the date."
+Another note: "Do not trust yesterday."
+If they ask him the date, very quietly: "Please don't."
+Ask the table: "Do you believe him?" Then wait.
+Check: Insight DC 15 (optional, after the quill moment): he is sincere and frightened.
+Detail 4.4
+4.5 The Temple and the Warden-Archivist  {cast: isla-tarrow}
+The Temple stair climbs between walls of pale stone until the street noise thins. The great doors are carved as roots, thick as ships' ropes, and they stand open on a cool green light. Inside, the air smells of wet earth and old paper. Ahead, a lower stair is closed off by a rope and a brass stand. Beside it waits a tall woman in dark green with a ring of keys at her belt. She has clearly been waiting for visitors, and she does not look surprised to see you.
+Warden-Archivist (Ilsa Tarrow): "The stair is closed for your safety. A tremor, you understand. The Temple has kept this place for a thousand years. We would like to keep it a little longer."
+If the party mentions Maerys (a pause too long, then careful): "She came. She was shown down. Beyond that I would be guessing, and in this city guessing is how people lose days." She admits she wrote to Maerys about the water beneath the Temple. She never asks what the party knows.
+Detail 4.5
+4.6 Getting past the barrier
+Route
+Check
+Invoke the Heartwood
+Persuasion DC 10
+Show a Blackstone writ or ask the Blackstone observers
+Persuasion DC 10
+Ask Tovin Ash for help (he lends a key)
+Persuasion DC 10
+Persuade the Warden-Archivist directly
+Persuasion or Religion DC 15
+Slip in through the old drains
+Stealth DC 20
+On a failure: the Archive is sealed for a day, and Tovin's key is the way back.
+Say: whichever door the party uses, the stair goes down, the sounds of the market fall away, and the air turns cold.
+Detail 4.6
+Act 5: The Sunken Archive
+5.1 The chamber
+The stair ends at a door cut to the same pattern as the First Temple's glyphs. Beyond it, a chamber lies half under water. Overhead the water hangs in great arcs, held in the air like glass, and light moves through it in slow ripples. Pelagosi spirals and Tellurian blocks lock together in the walls as though neither came first. Where runes should run along the stone, there are cuts. Around each, the rock is cracked and crazed. At the centre stands a low pedestal, waist high, its spiral channels dry. The silence is the same silence you heard at the Marker.
+Detail 5.1
+5.2 Who has been here?
+Let the party examine the walls. Give each result in a sentence.
+What they examine
+Check
+The cuts themselves
+Investigation or History DC 15
+The crazed stone around each cut
+Nature or Arcana DC 15
+The view from the pedestal
+Free if they stand there, otherwise Perception DC 20
+Ask the Warden-Archivist
+Persuasion DC 10
+The newest cuts
+History DC 20
+Ask the table: "Who do you think has been here, and why would they cut runes out of a wall?" Write down what they say.
+Detail 5.2
+5.3 The chamber wakes
+Say: the pedestal has four stone pillars set round it in a square and a basin at its heart. As the party steps near, the dry channels begin, slowly, to fill. The chamber wakes, and it wants something. Go to Act 6.
+Detail 5.3
+Act 6: The Tidal Sequence
+6.1 The briefing  {puzzle: tidal}
+Show the TV, hand out the five cards face down, then read this once.
+Four stone pillars stand round a basin in the middle of the floor. Each is carved with a rune ring and an arrow, and each can be turned to send the water one way or another. On the wall behind them, five lines were once carved and have been scoured away. Only scars remain. The screen shows all of it. I run the controls, and you tell me what to set. Each of you takes one pillar, and the last of you takes the basin. Study your seat, tell me how you do it, and roll. A good reading makes the wall give up a line, and a private fact for you. A poor one, and the chamber hears you. Then tell me what each pillar should carry, and which way it should send it. I will check, and the water will show you. Wrong answers make the chamber less patient. Too many, and it will surge. Your aim is to make the water move the way it remembers, then decide what belongs at the centre. You may ask the chamber for help. It will answer, but it will cost you.
+Detail 6.1
+6.2 The readings
+Each player describes how they study their seat, then rolls. You press the result.
+Seat
+Skills (any one)
+Top-left pillar: the First Voice
+Arcana, Religion
+Top-right pillar: Memory
+History, Investigation
+Bottom-right pillar: the Deep
+Nature, Survival, Perception
+Bottom-left pillar: Stone
+Athletics, Perception
+The basin: the Keeper
+Insight, Religion
+Results: 15 or more is a full reading. 10 to 14 is a fragment. Below 10 is a misread: say "The chamber hears the wrong word." A second player may help if they describe how.
+Detail 6.2
+6.3 Setting the pillars
+Say: "Tell me what each pillar carries, and which way it sends the water." Set what they call, then press Check Alignment when they are ready.
+If a Check fails: read the pressure effect the tool shows.
+Reversing: everyone makes a Strength save, DC 13, against being pulled.
+Surge: a Dexterity save, DC 14, 2d6 damage, and the puzzle resets.
+Ask the Chamber: any player may ask. It costs one step of pressure and reveals one more wall line. It will not answer once pressure reaches Reversing.
+Detail 6.3
+6.4 The basin wakes
+When the outer ring closes, play it slowly.
+The four pillars stop grinding. The water, which has been climbing the walls all this time, stops. The basin brightens from beneath, and in the middle of it, on a worn grey stone, there is a rune you have not turned: the Anchor. It looks as if it has been there longer than the room.
+Detail 6.4
+6.5 The dilemma
+Ask the table: "The room is asking you to take it out. Do you?" Let them argue. Do not hint at the answer.
+If they choose Current and confirm:
+The Anchor slides free of its socket. The sound is not loud. It is the sound of something that has been held for a very long time, being let go.
+The ring of water rises above the basin. A narrow door of wet stone stands open beside the pedestal. Go to 7.1.
+Detail 6.5
+6.6 If they leave the Anchor in
+The basin is content to hold. They have not failed; they have simply chosen what the basin already was. Go to 7.4.
+Detail 6.6
+Act 7: The hidden chamber and the Absence
+7.1 The hidden chamber
+The chamber is small and dry. A spear lies on the floor, snapped in two. Its shaft is Rowthorn work, and you know whose it is. Beside it is a sliver of driftglass and a torn page, damp at one edge. There is no one here. Somewhere very far below, you feel the stone listen.
+Hand the page to a player to read aloud:
+…the third chamber. The runes have been cut away, and not once. Someone has gone back over the work several times, each hand certain it was the first. The sunbursts are the newest cuts and the shallowest. Whether they are the last hand or a hand set down to be found, I cannot tell from the stone.
+I would name the Sun, if I were a lazier woman. I would name the Sea, if I were a prouder one. I am neither, which is why I am still reading.
+I expected to feel watched. It was worse. I felt expected. Something below knew I was coming.
+Ask the table: "What does your character do with the page?" Let them take their time. When the last player has finished reading, go to 7.2.
+Detail 7.1
+7.2 The Absence
+Press Release the Absence. Do not speak during the cinematic, and do not roll. About 25 seconds: water fades, silence, three slow knocks, silence, the water runs backward.
+Detail 7.2
+7.3 The cliffhanger
+After the water has run backward, read this, or say nothing:
+The knocking does not come a fourth time. Whatever made it is waiting.
+The party can leave, search further, or try to find a way down. If someone looks, they find only that the floor of the hidden chamber is warm. End the session.
+Detail 7.3
+7.4 If they refuse to take the Anchor out
+The basin holds and the inner door does not open. As they climb the stair, press Play the Absence anyway. Then read the cliffhanger from 7.3.
+Detail 7.4

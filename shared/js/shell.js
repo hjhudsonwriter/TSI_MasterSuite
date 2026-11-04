@@ -77,7 +77,7 @@
      noopener matters: without it the browser copies this window's
      sessionStorage into the new one, and with it this tab's id for the
      "Already open" warning. */
-  function openWindow(toolId) {
+  function openWindow(toolId, extra) {
     var info = typeof toolId === 'string' && toolId ? TSI.toolInfo(toolId) : null;
     if (!info || !info.built) return;
     var s = window.screen || {};
@@ -88,7 +88,7 @@
     var top = whole(s.availTop, 0);
     var features = 'noopener,popup,left=' + left + ',top=' + top + ',width=' + width + ',height=' + height;
     try {
-      window.open(pageUrl(info.id), '_blank', features);
+      window.open(pageUrl(info.id) + (extra || ''), '_blank', features);
     } catch (err) {
       TSI.reportError(err, 'opening ' + TSI.the(info.name) + ' in a new window');
     }
@@ -136,14 +136,15 @@
   }
 
   /* Go to a tool, or home (null). */
-  function go(toolId) {
+  /* extra: more for the address, such as '&puzzle=tidal' (a cue tag opens the Puzzle Trials on one puzzle). */
+  function go(toolId, extra) {
     if (navigating) return Promise.resolve(false);
     if (current && toolId === current.info.id) return Promise.resolve(false);
     return askToLeave().then(function (ok) {
       if (!ok) return false;
       navigating = true;
       return stopTool().then(function () {
-        location.href = pageUrl(toolId);
+        location.href = pageUrl(toolId) + (extra || '');
         return true;
       });
     });

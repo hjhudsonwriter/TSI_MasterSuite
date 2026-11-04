@@ -12,6 +12,10 @@
    - 'crest' (tsi.suite.handoff-crest): { id, at, name, dataUrl, design },
      from the Crest Creator: a 512-pixel PNG of the crest and the Creator's
      design (the Bastion overhaul, Build 3, Harry, 8 October 2026).
+   - 'cue' (tsi.suite.handoff-cue): { id, at, tag }, a cue button clicked in the
+     DM doc's own window, for the Explorer to carry out (shared/js/cue-rules.js);
+   - 'live' (tsi.suite.handoff-live): { id, at }, what the Explorer has on the TV now ('card:<deck>/<card>', 'cast:<id>' or ''),
+     so the DM doc can highlight that button, in whichever window it is.
    A window with the other tool open hears at once (the browser's "storage"
    event); a tool opened later reads it as it starts. Only the latest of
    each is kept. They aren't saves, so they're not in backups. The test
@@ -22,7 +26,7 @@
 
   var TSI = window.TSI;
   var NAMES = TSI.storeRules.spaceNames(TSI.space);
-  var KEYS = { fight: NAMES.handoff, result: NAMES.handback, crest: NAMES.handoffCrest };
+  var KEYS = { fight: NAMES.handoff, result: NAMES.handback, crest: NAMES.handoffCrest, cue: NAMES.handoffCue, live: NAMES.handoffLive };
 
   function key(kind) {
     if (!KEYS[kind]) throw new Error('There is no hand-off called ' + kind + '.');
