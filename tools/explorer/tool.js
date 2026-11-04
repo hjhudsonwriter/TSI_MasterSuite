@@ -143,7 +143,7 @@
       /* The DM's cursor on the players' map (shared/js/pointer-mirror.js): on unless this box is cleared. */
       var cursorBox = el('input', { type: 'checkbox', id: 'tsi-exp-cursor-on', 'data-test': 'cursor-on' });
       cursorBox.checked = prefs.showCursor;
-      var cursorRow = el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-cursor-on' }, [cursorBox, el('span', { text: 'Show my cursor to players' })]);
+      var cursorRow = el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-cursor-on' }, [cursorBox, el('span', { text: 'My cursor' })]);
       var pvStatus = el('span', { class: 'tsi-exp-pvstatus', 'data-test': 'player-view-status', role: 'status', text: 'Not open' });
       var pvLink = ctx.playerLink({
         view: 'explorer',
@@ -244,7 +244,7 @@
       /* Show the players where the picked party can reach today (29 October 2026): on by default. */
       var reachBox = el('input', { type: 'checkbox', id: 'tsi-exp-reach-on', 'data-test': 'reach-on' });
       reachBox.checked = prefs.showReach;
-      var reachRow = el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-reach-on' }, [reachBox, el('span', { text: 'Show reach to players' })]);
+      var reachRow = el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-reach-on' }, [reachBox, el('span', { text: 'Reach' })]);
       zoomBox.appendChild(reachRow);
       /* Terrain painted on the hexes (29 October 2026): costs miles, can block the way. Seen by the players only if ticked. */
       var terrainEdit = false, terrainBrush = 'forest', terrainStroke = null;
@@ -252,7 +252,7 @@
       btnTerrain.title = 'Paint forests, hills, roads and so on onto the hexes. They change what a hex costs to cross, and some stop the party.';
       var terrainBox = el('input', { type: 'checkbox', id: 'tsi-exp-terrain-on', 'data-test': 'terrain-show' });
       terrainBox.checked = prefs.showTerrain;
-      var terrainRow = el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-terrain-on' }, [terrainBox, el('span', { text: 'Show terrain to players' })]);
+      var terrainRow = el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-terrain-on' }, [terrainBox, el('span', { text: 'Terrain' })]);
       zoomBox.appendChild(btnTerrain);
       zoomBox.appendChild(terrainRow);
       /* Quest markers (guide 6A): the DM drops a gold "!" on the map; the players see only the "!". */
@@ -268,7 +268,7 @@
       var revealPanel = el('div', { class: 'tsi-exp-terrainpanel tsi-exp-revealpanel', hidden: true, 'data-test': 'reveal-panel' });
       var cloudsBox = el('input', { type: 'checkbox', id: 'tsi-exp-clouds-on', 'data-test': 'clouds-on' });
       cloudsBox.checked = prefs.clouds;
-      zoomBox.appendChild(el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-clouds-on' }, [cloudsBox, el('span', { text: 'Cloud shadows' })]));
+      var cloudsRow = el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-clouds-on' }, [cloudsBox, el('span', { text: 'Cloud shadows' })]);
       var terrainPanel = el('div', { class: 'tsi-exp-terrainpanel', hidden: true, 'data-test': 'terrain-panel' });
       /* The Sound panel: on or off, the volume, and a Test button for each sound (it says if a file is missing). */
       var sfxPanel = el('div', { class: 'tsi-exp-sfxpanel', hidden: true, 'data-test': 'sfx-panel' });
@@ -285,6 +285,18 @@
       btnAtlas.title = 'Open or close the picture of the Scarlett Isles on the players\' window. It does not change your map.';
       btnAtlas.setAttribute('aria-pressed', 'false');
       zoomBox.appendChild(btnAtlas);
+      /* Tidy the strip (4 November 2026): two tidy rows, one for the map tools and one for what the players see. */
+      var zoomTools = el('div', { class: 'tsi-exp-zoomrow tsi-exp-zoomrow--tools' }, [
+        btnZoomOut, btnZoomIn, btnFit, el('span', { class: 'tsi-exp-zoomsep', 'aria-hidden': 'true' }),
+        btnClickMove, el('span', { class: 'tsi-exp-zoomsep', 'aria-hidden': 'true' }),
+        btnTerrain, btnQuest, btnReveal, el('span', { class: 'tsi-exp-zoomsep', 'aria-hidden': 'true' }), btnSfx
+      ]);
+      var zoomPlayers = el('div', { class: 'tsi-exp-zoomrow tsi-exp-zoomrow--players', role: 'group', 'aria-label': 'What the players see' }, [
+        el('span', { class: 'tsi-exp-zoomlabel', text: 'Players see' }), cursorRow, reachRow, terrainRow, cloudsRow, btnAtlas
+      ]);
+      TSI.clear(zoomBox);
+      zoomBox.appendChild(zoomTools);
+      zoomBox.appendChild(zoomPlayers);
       var btnHideUi = btn('Hide UI', function () { setUiHidden(!uiHidden); }, '', 'hide-ui');
       var btnGrid = btn('Hex Grid: On', function () { state.grid.enabled = !state.grid.enabled; saveNow(); renderAll(); }, '', 'grid');
       /* The Fog control (guide 6B): Classic (the black fog), Colour reveal, or Off. It shows the real saved mode from the start. */

@@ -1355,3 +1355,6 @@ Built from `TSI-build-guide-6b-colour-reveal-fog.md`, after 6A (pull request 106
 
 ## Town pictures (4 November 2026)
 Added the town pictures for Port Brawdlyn, The River Rook and Steelport (these three pins now open a picture like the other towns; they already showed as ports) and replaced Middlemount's. Stored as WebP exactly as sent (see `docs/ASSETS.md`).
+
+## The strip under the Explorer's map, tidied (4 November 2026)
+Two rows in one dark rounded bar: the map tools (− + Fit | Click to move | Edit terrain, Quest markers, Reveal map | Sound) and "Players see" (My cursor, Reach, Terrain, Cloud shadows, and the Scarlett Isles map button). Same controls, shorter tick-box names, nothing moved off the map's bottom edge.
