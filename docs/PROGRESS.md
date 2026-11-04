@@ -1352,3 +1352,6 @@ Built from `TSI-build-guide-6b-colour-reveal-fog.md`, after 6A (pull request 106
 - **Known to players** now works in every fog mode (it used to count only in Colour reveal, so in Classic fog the tick did nothing). The DM's banner shows a ◉ and a tooltip when a town is known.
 - **Fog on my view.** A saved tick box in the Fog section (`tsi.explorer.prefs.dmFog`, on by default = as before). Unticked, the DM's window has no black fog and no grey wash and shows every pin; the players' window is untouched.
 - **Folding the left panel.** `‹ Hide` / `› Controls` folds the whole panel, and each section heading folds that section; saved in prefs (`leftCollapsed`, `closedSections`).
+
+## Town pictures (4 November 2026)
+Added the town pictures for Port Brawdlyn, The River Rook and Steelport (these three pins now open a picture like the other towns; they already showed as ports) and replaced Middlemount's. Stored as WebP exactly as sent (see `docs/ASSETS.md`).
