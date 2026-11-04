@@ -4450,3 +4450,9 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - Before: only a beast still waiting for a home could be released (a button "Release…"); once housed it stayed for good.
 - After: every beast in the Beast Pen has a **Release (name)** button, even one that is housed, has a handler, bond and Chronicle, or is out on the road. It asks first ("Release Fang? … This can't be undone…"; Cancel keeps it) and the button of the box is "Release Fang", so it can't be done by a stray click. The beast and its handler, bond, Bonding Days and Chronicle are removed; the grant's receipt stays, so it never comes back by itself.
 - Left alone: a beast being housed must have its House order cancelled first, and Elara's wyvern (a story beast the Explorer can't grant again) still can't be released.
+
+### EXP-BANNER-01 · Town banners show only for pins that show (4 November 2026)
+- Before: no banners.
+- After: a banner appears under every pin that shows (21 pins today). The other 12 towns of the clan table have pins that stay hidden until they get a town map (E10), so their banners wait too. Guide 6A asked for exactly this ("a banner shows whenever its pin shows today"); the rule is one function, `R.isPinVisible`.
+- Left alone: Leatherport and The River Rook (not in the table) show a plain nameplate. The marker sound is not built (no file supplied).
+- Also: the map's bottom control strip now wraps to a second row when it is too wide (it ran past the map's edge on the laptop).

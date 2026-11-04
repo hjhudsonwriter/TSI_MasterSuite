@@ -173,10 +173,14 @@ window.TSI_DATA.tools = [
         'tools/explorer/data/hex-terrain-data.js',
         /* The Explorer's sound effects (30 October 2026). */
         'tools/explorer/data/sfx-data.js',
+        /* Town banners and quest markers (guide 6A, 4 November 2026): the seven clan shields and which clan each town shows. */
+        'tools/explorer/data/clan-shields.js',
+        'tools/explorer/data/town-clans.js',
         /* The Bastion's creatures (pull request 7): the kinds the DM can
            grant in the Explorer, and their names. */
         'tools/bastion/data/creatures-data.js',
         'tools/explorer/rules.js',
+        'tools/explorer/pins-rules.js',
         'tools/explorer/draw.js',
         'tools/explorer/player-view-rules.js',
         'tools/explorer/journey.js',
@@ -194,7 +198,7 @@ window.TSI_DATA.tools = [
     playerViews: {
       explorer: {
         css: ['tools/explorer/player-view.css'],
-        js: ['tools/explorer/data/hex-terrain-data.js', 'tools/explorer/rules.js', 'tools/explorer/draw.js', 'shared/js/pointer-mirror.js', 'tools/explorer/player-view.js']
+        js: ['tools/explorer/data/hex-terrain-data.js', 'tools/explorer/rules.js', 'tools/explorer/pins-rules.js', 'tools/explorer/draw.js', 'shared/js/pointer-mirror.js', 'tools/explorer/player-view.js']
       }
     }
   },

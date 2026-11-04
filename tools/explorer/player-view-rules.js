@@ -20,7 +20,9 @@
      weather: a video's path or null,
      grid: { enabled, r, offsetX, offsetY, opacity },
      fog: { enabled, hexes: ['q,r', ...] },     the uncovered hexes
-     markers: [{ id, label, thumb, x, y }],     the town pins showing (x and y are fractions of the board)
+     markers: [{ id, label, thumb, x, y, banner, clan }],     the town pins showing (x and y are fractions of the board); banner is the
+                                          picture of the ruling clan's shield ('' for a plain nameplate) and clan its name (guide 6A)
+     quests: [{ id, mapId, x, y }],        the DM's quest markers on this map, as a bare "!" each (x and y fractions of the board): never the label or note
      tokens: [{ id, name, initial, size, x, y }],  the heroes, as drawn: top-left corner in board units
      pin: { id, label, image, description } or null,   the town pin card the DM has open: only what the card itself shows
                                                     (its name, picture and description); never the Port Charter or
@@ -142,7 +144,7 @@
     };
   };
 
-  /* extras: { atlas: true to show the Scarlett Isles map panel, view: the DM's visible region ({ x0, y0, x1, y1 }) or none, pin: a marker's id or null, dim: 'none' | 'night' | 'event', camp: a whole number, scene: a scene card (see R.cleanScene) or null, word: the Ironbow's word (see R.cleanWord) or null, reach: the party's reach (see R.cleanReach) or null, terrain: painted hexes as [q, r, kind] to show or null }. */
+  /* extras: { banners: { <pin id>: { banner, clanName } } (the town banners' shields), quests: the DM's quest markers on this map (only id, mapId, x and y are kept), atlas: true to show the Scarlett Isles map panel, view: the DM's visible region ({ x0, y0, x1, y1 }) or none, pin: a marker's id or null, dim: 'none' | 'night' | 'event', camp: a whole number, scene: a scene card (see R.cleanScene) or null, word: the Ironbow's word (see R.cleanWord) or null, reach: the party's reach (see R.cleanReach) or null, terrain: painted hexes as [q, r, kind] to show or null }. */
   R.playerSnapshot = function (s, data, extras) {
     extras = extras && typeof extras === 'object' ? extras : {};
     var limit = R.dayLimit(s);
@@ -198,7 +200,11 @@
       grid: { enabled: !!s.grid.enabled, r: num(Number(s.grid.r), 38), offsetX: num(Number(s.grid.offsetX), 0), offsetY: num(Number(s.grid.offsetY), 0), opacity: R.gridOpacity(s.grid) },
       fog: { enabled: fogOn, hexes: hexes },
       markers: R.visibleMarkers(s, data, board).map(function (m) {
-        return { id: str(m.id, 80), label: str(m.label, 120), thumb: str(m.thumb, 300), x: num(Number(m.x), 0), y: num(Number(m.y), 0) };
+        var b = extras.banners && typeof extras.banners === 'object' && extras.banners[m.id] && typeof extras.banners[m.id] === 'object' ? extras.banners[m.id] : {};
+        return { id: str(m.id, 80), label: str(m.label, 120), thumb: str(m.thumb, 300), x: num(Number(m.x), 0), y: num(Number(m.y), 0), banner: str(b.banner, 300), clan: str(b.clanName, 60) };
+      }),
+      quests: (Array.isArray(extras.quests) ? extras.quests : []).slice(0, 300).filter(function (q) { return q && typeof q === 'object'; }).map(function (q) {
+        return { id: str(q.id, 60), mapId: str(q.mapId, 120), x: Math.min(1, Math.max(0, num(Number(q.x), 0))), y: Math.min(1, Math.max(0, num(Number(q.y), 0))) };
       }),
       tokens: s.tokens.map(function (t) {
         var spot = spots[t.id] || { x: 0, y: 0 };

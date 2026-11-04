@@ -186,3 +186,58 @@
 .tsi-xpv-word__day { margin: .4vh 0 0; font: 600 clamp(18px, 3vh, 32px) var(--tsi-font-display); color: var(--tsi-text); }
 .tsi-xpv-word__lines { margin: 0; padding-left: 1.2em; display: grid; gap: .8vh; font: 400 clamp(20px, 3.6vh, 40px)/1.3 var(--tsi-font-body); color: var(--tsi-text); }
 
+
+/* ---------- Town banners and quest markers (guide 6A, 4 November 2026): the same looks as the DM's window, view only ---------- */
+.tsi-xpv-banner {
+  position: absolute;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.tsi-xpv-banner__shield {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 31px;
+  height: 36px;
+  margin-right: -9px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .6));
+}
+.tsi-xpv-banner__name {
+  display: block;
+  padding: 4px 11px 4px 13px;
+  font: 700 13px/1.1 var(--tsi-font-display, 'Cinzel', serif);
+  letter-spacing: .02em;
+  color: #2b1a0e;
+  background: linear-gradient(180deg, #ecdfc2, #d6c397);
+  border: 1px solid var(--tsi-gold-text);
+  border-radius: 3px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(255, 255, 255, .25);
+}
+.tsi-xpv-banner--plain .tsi-xpv-banner__name { padding-left: 11px; }
+.tsi-xpv-quests { position: absolute; inset: 0; z-index: 19; pointer-events: none; }
+.tsi-xpv-quest {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #f2d27a;
+  border-radius: 999px;
+  background: radial-gradient(circle at 40% 35%, #fff0b3, #e2b53f 55%, #a87a14);
+  box-shadow: 0 0 14px 4px rgba(242, 210, 122, .65), 0 4px 10px rgba(0, 0, 0, .55);
+  font: 900 19px/1 var(--tsi-font-display, 'Cinzel', serif);
+  color: #3a1d06;
+  animation: tsi-xqmark-pulse 2.6s ease-in-out infinite;
+}
+@keyframes tsi-xqmark-pulse {
+  0%, 100% { box-shadow: 0 0 10px 2px rgba(242, 210, 122, .5), 0 4px 10px rgba(0, 0, 0, .55); }
+  50% { box-shadow: 0 0 20px 7px rgba(242, 210, 122, .8), 0 4px 10px rgba(0, 0, 0, .55); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tsi-xpv-quest { animation: none; }
+}

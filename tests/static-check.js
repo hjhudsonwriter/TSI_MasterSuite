@@ -105,6 +105,17 @@ try {
   ((temple && temple.temple && temple.temple.gods) || []).forEach(g => { if (g.art) need('facilities-data.js the Temple\'s ' + g.id, assets('facilities/' + g.art), 'picture'); });
 } catch (e) { problems.push('facilities-data.js could not be read: ' + e.message); }
 
+/* The Explorer's clan shields (guide 6A): every shield picture the data names is there, and every town clan is a known clan. */
+try {
+  const win = { TSI_DATA: {} };
+  win.window = win;
+  vm.runInNewContext(read(path.join(ROOT, 'tools/explorer/data/clan-shields.js')), win);
+  vm.runInNewContext(read(path.join(ROOT, 'tools/explorer/data/town-clans.js')), win);
+  const shields = win.TSI_DATA.clanShields, towns = win.TSI_DATA.townClans;
+  Object.keys(shields).forEach(k => ['image', 'bannerImage'].forEach(f => need('clan-shields.js ' + k + '.' + f, path.join(ROOT, shields[k][f]), 'picture')));
+  Object.keys(towns).forEach(k => { if (towns[k] !== null && !shields[towns[k]]) problems.push('town-clans.js gives ' + k + ' a clan that has no shield: ' + towns[k]); });
+} catch (e) { problems.push('the clan shield data could not be read: ' + e.message); }
+
 /* ---------- 3. Nothing refers to what the war game left behind ---------- */
 /* Pieces of the war game that no longer exist. The conversion's own file, the forecast's list of retired facilities and
    the Bastion's table of names may still name the facilities (they have to, to say goodbye to them). */

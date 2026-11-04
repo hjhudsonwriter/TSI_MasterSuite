@@ -1317,3 +1317,18 @@ Every beast in the Beast Pen now has a Release (name) button with an "Are you su
 
 ## Three more Crest sigils (4 November 2026)
 - **Rose Leaf** (one leaf cut from Fox-Davies' rose drawing), **Plain Sun** (the Sun in Splendour with its face taken out) and **Waves** (four wavy bars, every second one in the accent colour, drawn for the suite because no public-domain drawing of waves in this style exists). The Crest now has 28 sigils, still four rows. Settings (crop, mask, erase) and the wave drawing are in `tools/crest/dev/`.
+
+## Guide 6A: town banners and quest markers (4 November 2026)
+Built from Harry's guide `TSI-build-guide-6a-banners-markers.md`. Guide 6B (colour-reveal fog) comes next.
+
+- **Banners.** Each town pin that shows has a parchment nameplate (CSS) with its ruling clan's shield and the town's name in Cinzel, under the pin. Clicking it opens the town map as the pin does. The DM's **Ruled by** is a small cog on the banner (and a right-click): the seven clans or None, saved in `tsi.explorer.townclans` as overrides on top of `data/town-clans.js` (an override equal to the file's own clan is dropped). Overlapping banners are pushed apart (`P.nudgeBanners`). Which pins show is decided in one place, `R.isPinVisible` (rules.js), ready for 6B.
+- **Seeds.** `data/town-clans.js` holds Harry's table of 33 towns as written (he left "Change to" blank, so the province defaults). Not in his table, so a plain nameplate: **Leatherport** (North Isle) and **The River Rook** (Midland). **Redport** is listed twice in the Explorer's data on the Western Province (south) map (one id), so it has one clan (Farmer).
+- **Shields.** The seven 512 px files were already in `tools/explorer/assets/clans/`. Banner versions (trimmed to the outline, 128 px tall) are `<clan>-banner.png`. Listed in `docs/ASSETS.md`.
+- **Quest markers.** A **Quest markers** button (bottom of the map, with the other map controls) turns on placing; a click drops a gold ! (a disc with a soft pulse, off under reduced motion). Saved in `tsi.explorer.markers` as `{ id, mapId, x, y, label, note, source: '' }` with x and y as fractions of the map, so they stay put at any size. Click a marker for its label and note (label 60 letters, note 300 as the guide's recommended default), drag to move, Done and Delete each ask first. A marker belongs to the map it was placed on (its `R.mapKey`, so an uploaded map keeps its own).
+- **Players' window.** Banners with the same look, and a bare gold ! for each marker. Snapshot gets `markers[].banner/clan` and `quests` (docs/PLAYER-VIEW-PLAN.md). The label and note never enter it (rules test and a browser check that the players' page holds no text of them, not even a tooltip).
+- **Backups.** Both items sit in the Explorer's saved items, so an Explorer Export, a campaign file, Back up everything, Restore and snapshots carry them (tested).
+- **Not built.** The optional marker sound (`marker.mp3`): Harry did not supply a file (his A4 line was blank), so it is skipped; add one later with a sound entry in `data/sfx-data.js`.
+- **Layout.** The map's bottom control strip now wraps onto a second row when it is wider than the map (it was already running past the edge on the laptop with the Sound button).
+
+### Question for Harry
+Banners show **whenever the pin shows today**, as the guide says. Only 21 pins show (the 15 with a town map, plus the 6 ports waiting for a picture), so **12 of the 33 towns in your table will get their banner only once that town has a town map** (or you tell me to show all pins). Say if you want every town's banner shown now.
