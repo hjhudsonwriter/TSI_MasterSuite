@@ -49,7 +49,7 @@
     t.equal(window.TSI_DATA.explorerEvents, undefined, 'the old events file is switched off');
   });
 
-  test('36 town pins on 10 maps; the 15 with a town map show (E10), and so do the 6 ports still waiting for a picture (19 October 2026)', function (t) {
+  test('36 town pins on 10 maps; the 18 with a town map show (E10), and so do the 3 ports still waiting for a picture (19 October 2026)', function (t) {
     var all = 0, shown = 0, waiting = 0;
     Object.keys(D.markersByMapId).forEach(function (m) {
       D.markersByMapId[m].forEach(function (p) {
@@ -60,8 +60,8 @@
       });
     });
     t.equal(all, 36);
-    t.equal(shown, 15);
-    t.equal(waiting, 6);
+    t.equal(shown, 18);
+    t.equal(waiting, 3);
   });
 
   test('18 map-to-map entry points, all on the arriving map', function (t) {

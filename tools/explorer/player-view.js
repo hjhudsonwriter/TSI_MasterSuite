@@ -193,7 +193,11 @@
       var still = sc.kind !== 'video' || reducedMotion();
       var src = sc.kind === 'video' && still ? (sc.poster || '') : sc.src;
       var node;
-      if (sc.kind === 'video' && !still) {
+      if (sc.kind === 'namecard') {
+        /* No picture: the name, in Cinzel, on a dark parchment panel. */
+        node = el('div', { class: 'tsi-xpv-sc__namecard', 'data-test': 'pv-scene-namecard' }, el('span', { class: 'tsi-xpv-sc__namecard-text', text: sc.name }));
+        layer.ratio = 16 / 9;
+      } else if (sc.kind === 'video' && !still) {
         node = el('video', { class: 'tsi-xpv-sc__pic', muted: true, playsinline: true, preload: 'auto', 'data-test': 'pv-scene-video' });
         node.muted = true;
         if (sc.loop) node.loop = true;
@@ -217,8 +221,9 @@
         }));
       });
       layer.name.textContent = sc.kind === 'portrait' ? sc.name : '';
+      if (sc.kind === 'namecard') layer.caption.textContent = '';
       layer.caption.textContent = sc.caption;
-      layer.band.hidden = !(sc.kind === 'portrait' ? (sc.name || sc.caption) : sc.caption);
+      layer.band.hidden = sc.kind === 'namecard' ? true : !(sc.kind === 'portrait' ? (sc.name || sc.caption) : sc.caption);
       layer.sub.textContent = sc.subtitle;
       layer.sub.hidden = !sc.subtitle;
       fitBox(layer);

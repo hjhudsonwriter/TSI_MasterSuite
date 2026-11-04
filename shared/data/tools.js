@@ -162,17 +162,14 @@ window.TSI_DATA.tools = [
       css: ['tools/explorer/explorer.css'],
       js: [
         'tools/explorer/data/explorer-data.js',
-        /* The Absent Tide's scene decks (28 October 2026): added to the Main Campaign list. */
-        'tools/explorer/data/absent-tide-scenes.js',
+        /* The Absent Tide's scene decks, the session decks, the cast list, the fights and the sounds are loaded by index.html
+           (the DM doc reads them in every window); the Explorer adds the decks to its Main Campaign list as it starts. */
         /* Harry's new travel and campfire events (6 October 2026). The old
            601 events in data/events-data.js are switched off: kept, not loaded. */
         'tools/explorer/data/journey-events.js',
-        'tools/explorer/data/fights-data.js',
         'tools/explorer/data/terrain-data.js',
         /* The terrain the DM can paint on the hexes (29 October 2026). */
         'tools/explorer/data/hex-terrain-data.js',
-        /* The Explorer's sound effects (30 October 2026). */
-        'tools/explorer/data/sfx-data.js',
         /* Town banners and quest markers (guide 6A, 4 November 2026): the seven clan shields and which clan each town shows. */
         'tools/explorer/data/clan-shields.js',
         'tools/explorer/data/town-clans.js',
@@ -186,6 +183,8 @@ window.TSI_DATA.tools = [
         'tools/explorer/player-view-rules.js',
         'tools/explorer/journey.js',
         'tools/explorer/fights.js',
+        /* Cue tags and the Cast list (guide 1, 4 November 2026). */
+        'tools/explorer/cues.js',
         /* The Bastion's rules, only to check its half of a campaign file
            on Import (the Explorer and the Bastion save as one campaign). */
         'tools/bastion/rules.js',

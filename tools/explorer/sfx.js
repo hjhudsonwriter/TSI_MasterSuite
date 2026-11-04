@@ -58,6 +58,7 @@
       voices[name] = v;
       return v;
     }
+    var manual = {};          /* looping sounds the DM switched on with a cue tag, until the tag is used again */
     function clearFade(v) { if (v.fadeTimer) { life.clearInterval(v.fadeTimer); v.fadeTimer = null; } }
 
     function start(name) {
@@ -88,7 +89,7 @@
     /* Make what is playing match what is wanted now. */
     function sync() {
       var weather = S.weatherSound(want.weather);
-      var wanted = { footsteps: want.footsteps, campfire: S.campOn(camp, now()), rain: weather === 'rain', storm: weather === 'storm' };
+      var wanted = { footsteps: want.footsteps || !!manual.footsteps, campfire: S.campOn(camp, now()) || !!manual.campfire, rain: weather === 'rain' || !!manual.rain, storm: weather === 'storm' || !!manual.storm };
       ['footsteps', 'campfire', 'rain', 'storm'].forEach(function (name) {
         if (!cfgOf(name)) return;
         if (wanted[name]) start(name); else stop(name);
@@ -166,6 +167,17 @@
         api.play(name);
         settings.on = was;
         if (cfgOf(name).loop) oneShots[name] = life.setTimeout(function () { oneShots[name] = null; if (!(name === 'footsteps' ? want.footsteps : name === 'campfire' ? S.campOn(camp, now()) : S.weatherSound(want.weather) === name)) stop(name); }, 3000);
+      },
+      /* A cue tag, {sound: id}: a sound or a group plays once; a looping one is switched on, and off by the same tag again.
+         Returns 'muted' (sound is switched off in the Sound panel), 'on', 'off', 'played' or 'none' (no such sound). */
+      cue: function (name) {
+        var grp = config.groups && config.groups[name];
+        if (!grp && !cfgOf(name)) return 'none';
+        if (!settings.on) return 'muted';
+        if (grp || !cfgOf(name).loop) { api.play(name); return 'played'; }
+        manual[name] = !manual[name];
+        sync();
+        return manual[name] ? 'on' : 'off';
       },
       /* Does the file exist? Calls back 'ok' or 'missing'. */
       probe: function (name, cb) {

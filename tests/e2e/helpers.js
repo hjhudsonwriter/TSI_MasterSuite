@@ -63,7 +63,14 @@ async function newContext(browser, size, extra) {
   const options = Object.assign({}, SIZES[size || 'laptop'], extra || {});
   const backedUp = options.backedUp;
   delete options.backedUp;
+  /* The DM doc's Quest box opens in Read once it holds text (cue buttons, guide 1). Most tests type into the box, so they start in
+     Edit; the cue-button tests pass questMode: 'default' to see what Harry sees. */
+  const questMode = options.questMode;
+  delete options.questMode;
   const context = await browser.newContext(options);
+  if (questMode !== 'default') {
+    await context.addInitScript(() => { try { if (!sessionStorage.getItem('tsi.dmdoc.questmode')) sessionStorage.setItem('tsi.dmdoc.questmode', 'edit'); } catch (e) { /* no storage */ } });
+  }
   /* The "back up your campaign" reminder would sit over the buttons being
      clicked, so such a test starts as if backed up just now. (Opt in with backedUp: true, for tests that hold campaign data; the
      rest keep the first-visit state.) */

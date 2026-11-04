@@ -4465,3 +4465,7 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 ### EXP-FOG-02 · Follow-ups from the first test of colour reveal (4 November 2026)
 - Before: a quest marker in unexplored land could not be shown to the players; "Known to players" did nothing in Classic fog; the DM's window always shared the fog; the left panel could not be folded.
 - After: quest markers have a **Show to players** tick; Known to players works in every mode; **Fog on my view** lets the DM see the whole map while the players keep their fog; the left panel and each of its sections fold, and it is remembered.
+
+### CUE-01 · Cue buttons (4 November 2026)
+- Before: the Quest box was plain text only. After: it opens in **Read** once it has text, with tags as buttons; **Edit** shows the raw text. Press Edit to type.
+- Left alone: a cue clicked in the pop-out DM doc needs the Explorer open in some window (it says so and offers to open it). Voice lines auto-play only if the Explorer's "Auto-play voice lines" is on. Sound cues respect the Sound panel's on/off.

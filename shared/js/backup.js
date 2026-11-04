@@ -51,7 +51,7 @@
 
   /* Is a backup due? Something is saved (other than the DM doc's layout) and none was made in the last couple of days. */
   function backupIsDue() {
-    var has = TSI.store.keys().some(function (k) { return ['suite', 'dmdoc', 'quarantine'].indexOf(TSI.storeRules.toolOf(k)) === -1; });
+    var has = TSI.store.keys().some(function (k) { return ['suite', 'dmdoc', 'quarantine', 'tablelog'].indexOf(TSI.storeRules.toolOf(k)) === -1; });
     return rules.backupDue(readStamp(), Date.now(), has);
   }
 
@@ -200,7 +200,9 @@
       }).then(function (label) {
         if (label === null) return null;
         var snap = TSI.snapshots ? TSI.snapshots.take('Session ended', { force: true }) : Promise.resolve(null);
-        return snap.then(function () {
+        /* The table log gets its End session marker first, so it is in the backup (and the recap knows where the session stopped). */
+        var mark = TSI.tablelog ? TSI.tablelog.endSession() : Promise.resolve();
+        return Promise.all([snap, mark]).then(function () {
           return TSI.backup.backupEverything({ label: label || suggested });
         }).then(function (name) {
           if (!name) return null;

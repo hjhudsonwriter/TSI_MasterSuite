@@ -90,6 +90,15 @@
     };
   };
 
+  /* What the players are shown for a cast member (the Cast button, or a {cast: id} tag): the portrait with the name only, or
+     a name card when there is no picture. Nothing else of the entry (the voice line's words, the DM's note) goes with it. */
+  R.castScene = function (member, o) {
+    if (!member || typeof member !== 'object') return null;
+    o = o || {};
+    if (member.image && !o.noImage) return { kind: 'portrait', src: member.image, poster: '', loop: false, name: member.name || '', caption: '', overlays: [], subtitle: '' };
+    return { kind: 'namecard', src: '', poster: '', loop: false, name: member.name || '', caption: '', overlays: [], subtitle: '' };
+  };
+
   /* The reach, cleaned: whole numbers only, or null. */
   R.cleanReach = function (raw) {
     if (!raw || typeof raw !== 'object') return null;
@@ -129,9 +138,11 @@
   /* A scene card, cleaned: exactly the fields the players may see, each trimmed to a sane size, or null. */
   R.cleanScene = function (raw) {
     if (!raw || typeof raw !== 'object') return null;
-    var kind = raw.kind === 'video' || raw.kind === 'portrait' ? raw.kind : 'image';
+    var kind = raw.kind === 'video' || raw.kind === 'portrait' || raw.kind === 'namecard' ? raw.kind : 'image';
     var src = str(raw.src, 300);
-    if (!src) return null;
+    /* A name card has no picture: only the name. */
+    if (!src && !(kind === 'namecard' && str(raw.name, 80))) return null;
+    if (kind === 'namecard') src = '';
     var overlays = (Array.isArray(raw.overlays) ? raw.overlays : []).slice(0, 8).map(function (o) {
       o = o && typeof o === 'object' ? o : {};
       return {

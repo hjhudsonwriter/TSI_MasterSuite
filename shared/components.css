@@ -857,3 +857,21 @@ body.tsi-modal-open { overflow: hidden; }
   .tsi-dmdoc__panel-body.tsi-dmdoc__quest { overflow: visible; }
   .tsi-dmdoc__quest-text { flex: none; min-height: 16em; }
 }
+
+/* ---------- Cue buttons in the DM doc's Quest box (guide 1) ---------- */
+.tsi-dmdoc__quest-modebar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tsi-dmdoc__quest-modes { display: inline-flex; gap: 4px; }
+.tsi-dmdoc__quest-modes .tsi-btn.is-on { border-color: var(--tsi-gold, #c9a45a); background: rgba(201, 164, 90, .18); }
+.tsi-dmdoc__quest-find { flex: 1 1 8em; min-width: 6em; max-width: 14em; padding: 4px 8px; }
+.tsi-dmdoc__quest-findcount { font-size: 13px; color: var(--tsi-text-muted); min-width: 4.5em; }
+.tsi-dmdoc__quest-read { flex: 1 1 auto; min-height: 0; width: 100%; box-sizing: border-box; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 400 var(--tsi-fs-body-sm)/1.6 var(--tsi-font-body); }
+.tsi-dmdoc__quest-read[hidden], .tsi-dmdoc__quest-text[hidden] { display: none; }
+.tsi-dmdoc__find { background: rgba(201, 164, 90, .55); color: inherit; border-radius: 2px; }
+.tsi-dmdoc-cue { display: inline-block; margin: 1px 2px; padding: 1px 9px; border-radius: 999px; border: 1px solid var(--tsi-gold, #c9a45a); background: rgba(40, 24, 14, .9); color: var(--tsi-gold, #e0bf7a); font: 600 12px/1.5 var(--tsi-font-display); letter-spacing: .04em; white-space: normal; vertical-align: baseline; cursor: pointer; }
+.tsi-dmdoc-cue:hover, .tsi-dmdoc-cue:focus-visible { background: rgba(201, 164, 90, .28); outline: 2px solid var(--tsi-gold, #c9a45a); outline-offset: 1px; }
+.tsi-dmdoc-cue.is-live { background: var(--tsi-gold, #c9a45a); color: #1a0f08; }
+.tsi-dmdoc-cue--soon { opacity: .5; cursor: default; border-style: dashed; }
+.tsi-dmdoc-cue--bad { cursor: default; border-color: var(--tsi-danger, #d4504a); color: #f2b8b4; background: rgba(110, 20, 20, .35); font-weight: 500; letter-spacing: 0; text-transform: none; }
+.tsi-dmdoc__quest-cuemsg { flex: none; font-size: 14px; color: var(--tsi-text-muted); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tsi-dmdoc__quest-cuemsg:empty { display: none; }
+@media (prefers-reduced-motion: no-preference) { .tsi-dmdoc-cue { transition: background .15s, color .15s; } }
