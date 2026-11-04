@@ -14,10 +14,12 @@
    the creature is 'housed' there, once. Nothing makes an animal by itself
    (Elara's wyvern too: an old save that has it keeps it).
 
-   Room: the Pen keeps ONE beast of each kind (creatures-data.js "pen"). A kind
-   is full when one is housed or being housed; a creature of a full kind waits
-   for a home. The limit only blocks NEW housing: beasts already housed (an
-   older save with two griffins) all stay, and nothing is ever sent away.
+   Room: since 3 November 2026 the Pen keeps as many beasts of each kind as the DM
+   grants (creatures-data.js "pen": perKind 0 means no limit; a number from 1 to
+   20 brings a limit back). A kind is full only when it has a limit and that many
+   are housed or being housed; a creature of a full kind waits for a home. A limit
+   only blocks NEW housing: beasts already housed all stay, and nothing is ever
+   sent away.
 
    Acclimatise With Beast (R.acclimatise): a housed beast at Bond 0 is rolled
    for at the table. The handler rolls Animal Handling, the DM types the total,
@@ -111,11 +113,13 @@
   /* ---------- The Beast Pen's numbers (creatures-data.js) ---------- */
   /* The Beast Pen's id in facilities-data.js. */
   R.PEN_ID = 'beast_pen';
-  /* How many beasts of each kind the Pen keeps (1). */
+  /* How many beasts of each kind the Pen keeps: UNLIMITED (999 here) unless creatures-data.js "pen".perKind is a number from 1 to 20. */
+  R.PEN_NO_LIMIT = 999;
   R.penPerKind = function (data) {
     var p = cdata(data).pen;
-    return isObj(p) && isNum(p.perKind) ? clampInt(p.perKind, 1, 20) : 1;
+    return isObj(p) && isNum(p.perKind) && p.perKind >= 1 ? clampInt(p.perKind, 1, 20) : R.PEN_NO_LIMIT;
   };
+  R.penUnlimited = function (data) { return R.penPerKind(data) === R.PEN_NO_LIMIT; };
   /* { dc, skill, retryDays } for Acclimatise With Beast; a kind's own DC (species.<kind>.acclimatiseDC) wins. */
   R.acclimatiseData = function (data, species) {
     var a = isObj(cdata(data).acclimatise) ? cdata(data).acclimatise : {};

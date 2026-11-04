@@ -26,9 +26,9 @@ const bare = (page, sel) => page.$eval(sel, n => n.textContent.replace(/\s+/g, '
 const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.debug.state())));
 const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
 const WYVERNS = ['Widowspine', 'Bleakhook', 'Ironcrown', 'Bloodcrest', 'Shadowmount', 'Flamescale', 'Leafwing', 'Razortail'];
-const COUNT = { wyvern: 8, griffin: 8, dire_wolf: 7, buckbear: 5, fellcat: 5 };
-const FIXED = { wyvern: 'bloodcrest', griffin: 'dawnmantle', dire_wolf: 'blacktide', buckbear: 'broadcrown', fellcat: 'lichenback' };
-const NAMES = { bloodcrest: 'Bloodcrest', dawnmantle: 'Dawnmantle', blacktide: 'Blacktide', broadcrown: 'Broadcrown', lichenback: 'Lichenback' };
+const COUNT = { wyvern: 8, griffin: 8, dire_wolf: 7, buckbear: 5, fellcat: 5, sabrecat: 5 };
+const FIXED = { wyvern: 'bloodcrest', griffin: 'dawnmantle', dire_wolf: 'blacktide', buckbear: 'broadcrown', fellcat: 'lichenback', sabrecat: 'fenstalker' };
+const NAMES = { bloodcrest: 'Bloodcrest', dawnmantle: 'Dawnmantle', blacktide: 'Blacktide', broadcrown: 'Broadcrown', lichenback: 'Lichenback', fenstalker: 'Fenstalker' };
 /* A failing check leaves a picture of each open companion window, so a failure can be seen rather than guessed at. */
 const windows = [];
 let failures = 0;
@@ -89,6 +89,7 @@ const checkS = (name, fn) => check(name, async () => {
   await addBeast('cr-ashfang', 'dire_wolf', 'Ashfang', 'beast_pen');
   await addBeast('cr-tusk', 'buckbear', 'Tusk', 'beast_pen');
   await addBeast('cr-prowl', 'fellcat', 'Prowl', 'beast_pen');
+  await addBeast('cr-fang', 'sabrecat', 'Fang', 'beast_pen');
   await addBeast('cr-known', 'wyvern', 'Veteran', 'beast_pen', { regional: 'Widowspine' });
   await addBeast('cr-fresh', 'griffin', 'Newcomer', 'beast_pen', { bond: 0 });
   await ba.evaluate(() => TSI.store.flush());
@@ -321,8 +322,8 @@ const checkS = (name, fn) => check(name, async () => {
     equal((await creature('cr-swiftwing')).development.initiation.regional, 'dawnmantle', 'and the Bastion\'s answer never moved');
   });
 
-  await checkS('the fixed varieties, all five kinds: Wyvern Bloodcrest, Griffin Dawnmantle, Dire Wolf Blacktide, Buckbear Broadcrown, Fellcat Lichenback', async () => {
-    for (const [id, kind] of [['cr-stormwing', 'wyvern'], ['cr-swiftwing', 'griffin'], ['cr-ashfang', 'dire_wolf'], ['cr-tusk', 'buckbear'], ['cr-prowl', 'fellcat']]) {
+  await checkS('the fixed varieties, all six kinds: Wyvern Bloodcrest, Griffin Dawnmantle, Dire Wolf Blacktide, Buckbear Broadcrown, Fellcat Lichenback, Sabrecat Fenstalker', async () => {
+    for (const [id, kind] of [['cr-stormwing', 'wyvern'], ['cr-swiftwing', 'griffin'], ['cr-ashfang', 'dire_wolf'], ['cr-tusk', 'buckbear'], ['cr-prowl', 'fellcat'], ['cr-fang', 'sabrecat']]) {
       /* A beast already seen on this device is made new again, as if it were a new device. */
       await bh.evaluate(() => sessionStorage.clear());
       await reopen(id);

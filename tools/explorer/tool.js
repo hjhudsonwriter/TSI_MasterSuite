@@ -2181,10 +2181,10 @@
 
       /* ---------- Grant a creature (pull request 7, Harry, 14 October 2026) ----------
          The DM grants the Ironbow a beast when the party has won one: a
-         wyvern, griffin, dire wolf, buckbear or fellcat (since 22 October
-         2026), its name (optional) and what it's for (optional). The Bastion
+         wyvern, griffin, dire wolf, buckbear, fellcat or sabrecat (since 22 October
+         2026; the sabrecat from 3 November 2026), its name (optional) and what it's for (optional). The Bastion
          holds it, waiting for a home, until the Beast Pen's House Beast Here
-         order gives it one (the Pen keeps one beast of each kind). Nothing
+         order gives it one (the Pen keeps as many beasts of each kind as the DM grants). Nothing
          else changes in the Explorer (no companion, nothing in the Travel
          bags). The rule is J.grantCreature (journey.js). */
       var onCreature = TSI.oneAtATime(function () { return creatureDialog(); });
@@ -2207,7 +2207,7 @@
         var whyBox = el('input', { type: 'text', id: 'tsi-exp-creature-why', maxlength: '120', class: 'tsi-input', placeholder: 'Optional', 'data-test': 'creature-why' });
         kindSel.id = 'tsi-exp-creature-kind';
         var body = [
-          el('p', { text: 'Grant the Ironbow ' + kindsText + ' when the party has won one. The Bastion holds it, waiting for a home, until ' + homesText + ' houses it (House Beast Here: ' + houseDays + ' days).' + (homeNames.length === 1 ? ' The ' + homeNames[0] + ' keeps one beast of each kind.' : '') + ' A housed beast must pass Acclimatise With Beast with its handler before it can bond.' }),
+          el('p', { text: 'Grant the Ironbow ' + kindsText + ' when the party has won one. The Bastion holds it, waiting for a home, until ' + homesText + ' houses it (House Beast Here: ' + houseDays + ' days).' + (homeNames.length === 1 ? ' The ' + homeNames[0] + ' keeps as many beasts of each kind as you grant.' : '') + ' A housed beast must pass Acclimatise With Beast with its handler before it can bond.' }),
           el('div', { class: 'tsi-exp-creature-form' }, [
             el('label', { class: 'tsi-exp-muted', for: 'tsi-exp-creature-kind', text: 'Creature:' }), kindSel,
             el('label', { class: 'tsi-exp-muted', for: 'tsi-exp-creature-name', text: 'Its name:' }), nameBox,

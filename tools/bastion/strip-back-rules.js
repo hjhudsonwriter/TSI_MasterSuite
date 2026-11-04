@@ -800,7 +800,7 @@
        this: a creature still waiting for a home needs nothing built.
      - House orders (house_wyvern, house_griffin, house_dire_wolf and Elara's house_elara_wyvern) MOVE to the Pen's
        house_beast, keeping id, due day, cost and the creature they house; the label is written again. If the Pen has no
-       room for that kind when it completes (it keeps one of each kind), the beast keeps waiting: the report says so.
+       room for that kind when it completes (the Pen has no limit now), the beast keeps waiting: the report says so.
      - Training orders and Upgrade orders at the three buildings are cancelled, with everything they cost given back (the
        150 gp Riding Harness is the only one that cost gold).
      - Two or more of one kind housed: all stay; the report says which kind is over and that no more can be housed.
@@ -954,10 +954,10 @@
     });
 
     /* ---------- The words ---------- */
-    var poolNames = ['wyvern', 'griffin', 'dire wolf', 'buckbear', 'fellcat'];
+    var poolNames = ['wyvern', 'griffin', 'dire wolf', 'buckbear', 'fellcat', 'sabrecat'];
     if (olds.length) {
       var these = OLD_PENS.filter(function (id) { return olds.some(function (o) { return o.entry.facId === id; }); }).map(function (id) { return R.stripBackName(data, id); });
-      var keepsLine = 'It keeps one beast of each kind: ' + listText(poolNames.map(function (n) { return (/^[aeiou]/.test(n) ? 'an ' : 'a ') + n; })) + '.';
+      var keepsLine = 'It keeps as many beasts of each kind as the DM grants: ' + listText(poolNames.map(function (n) { return (/^[aeiou]/.test(n) ? 'an ' : 'a ') + n; })) + '.';
       var state = standing && standing.status === 'building' ? ' It is still being built (ready on Day ' + dayNum(standing.readyDay, day) + ').' : '';
       var freed = olds.length - (keep ? 1 : 0);
       R.stripBackSay(report, 'joined', 'The ' + listText(these) + (these.length > 1 ? ' have become one Beast Pen. ' : ' has become the Beast Pen. ') + keepsLine + state + (freed > 0 ? (freed === 1 ? ' The other slot is free.' : ' The other slots are free.') : ''));

@@ -68,6 +68,15 @@ window.TSI_DATA.beastArt = {
         lichenback: { src: 'fellcat/lichenback.webp', video: 'fellcat/lichenback.mp4' },
         smokecoat: { src: 'fellcat/smokecoat.webp', video: 'fellcat/smokecoat.mp4' }
       }
+    },
+    /* 3 November 2026: the Sabrecat. Harry's first two paintings and videos (Fenstalker and Barkhide; his files are named SC_ for
+       Sabrecat). The other three varieties have no picture yet. */
+    sabrecat: {
+      label: 'Sabrecat', alt: 'A sabrecat', default: { src: '' },
+      variants: {
+        fenstalker: { src: 'sabrecat/fenstalker.webp', video: 'sabrecat/fenstalker.mp4' },
+        barkhide: { src: 'sabrecat/barkhide.webp', video: 'sabrecat/barkhide.mp4' }
+      }
     }
   }
 };

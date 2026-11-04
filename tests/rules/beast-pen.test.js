@@ -18,6 +18,15 @@
     var i = 0;
     return function () { var v = list[i % list.length]; i++; return v; };
   }
+  /* Since 3 November 2026 the Pen has no limit by default. The tests of the old limit (one of each kind) still run, with
+     the limit put back for their duration, so the limit's own rules stay covered (creatures-data.js, pen.perKind). */
+  function ltest(name, fn) {
+    test(name, function (t) {
+      var old = CR.pen;
+      CR.pen = { perKind: 1 };
+      try { fn(t); } finally { CR.pen = old; }
+    });
+  }
   function copy(v) { return JSON.parse(JSON.stringify(v)); }
   function reload(b, data) { return BR.fromSave(copy(BR.toSave(b)), data || bdata); }
   /* A Bastion on a day that has read the Explorer's day, at party level 9, with the given facilities built. */
@@ -153,7 +162,40 @@
     t.equal(BR.penStatus(b, bdata, c).line, 'At the Beast Pen. Not acclimatised yet');
   });
 
-  test('one of each kind: a second of a kind waits, even beside a pending order for that kind; another kind is fine; several orders can run at once', function (t) {
+  group('Beast Pen: no limit on how many of a kind (Harry, 3 November 2026)');
+
+  test('the Pen has no limit: any number of one kind can be housed, and several orders for one kind can run at once', function (t) {
+    t.equal(BR.penPerKind(bdata), 999, 'no limit in the data');
+    t.equal(BR.penUnlimited(bdata), true);
+    var b = withPen();
+    var ids = [1, 2, 3, 4].map(function (n) { return grant(b, n, 'griffin', 'G' + n); });
+    t.equal(issueHouse(b, 0).ok, true, 'first order');
+    t.equal(issueHouse(b, 0).ok, true, 'a second griffin order beside the first');
+    t.equal(b.pendingOrders.length, 2, 'two orders for one kind at once');
+    b.pendingOrders.slice().forEach(function (o) { complete(b, o); });
+    t.equal(issueHouse(b, 0).ok, true, 'a third');
+    t.equal(issueHouse(b, 0).ok, true, 'a fourth');
+    b.pendingOrders.slice().forEach(function (o) { complete(b, o); });
+    t.same(names(BR.penHoused(b)), ['G1', 'G2', 'G3', 'G4'], 'all four griffins live at the Pen');
+    t.same(ids.map(function (id) { return BR.creatureById(b, id).status; }), ['housed', 'housed', 'housed', 'housed']);
+    t.equal(BR.penRoom(b, bdata, 'griffin').over, 0, 'never over');
+    t.ok(BR.penRoom(b, bdata, 'griffin').free > 100, 'still room');
+    var again = reload(b);
+    t.same(names(BR.penHoused(again)), ['G1', 'G2', 'G3', 'G4'], 'and a reload keeps them');
+  });
+
+  test('the Sabrecat is a kind like the others: grantable, housed at the Pen, and a second one beside the first', function (t) {
+    t.ok(CR.grantable.indexOf('sabrecat') !== -1);
+    var b = withPen();
+    var a = housed(b, 1, 'sabrecat', 'Reed');
+    var c = housed(b, 2, 'sabrecat', 'Bark');
+    t.same(names(BR.penHoused(b)), ['Reed', 'Bark']);
+    t.equal(BR.creatureById(b, a).species, 'sabrecat');
+    t.equal(BR.speciesName(bdata, 'sabrecat'), 'Sabrecat');
+    t.equal(BR.creatureById(b, c).status, 'housed');
+  });
+
+  ltest('one of each kind: a second of a kind waits, even beside a pending order for that kind; another kind is fine; several orders can run at once', function (t) {
     var b = withPen();
     var g1 = grant(b, 1, 'griffin', 'Swiftwing');
     var g2 = grant(b, 2, 'griffin', 'Talon');
@@ -171,22 +213,22 @@
     t.equal(why, 'The Beast Pen keeps one griffin at a time: Swiftwing lives here.');
     t.equal(issueHouse(b, 0).message, why, 'the order says the same');
     var room = BR.penSummary(b, bdata);
-    t.same(room.map(function (k) { return [k.species, k.housed.length, k.waiting.length, k.free]; }), [['wyvern', 1, 0, 0], ['griffin', 1, 1, 0], ['dire_wolf', 0, 0, 1], ['buckbear', 0, 0, 1], ['fellcat', 0, 0, 1]]);
+    t.same(room.map(function (k) { return [k.species, k.housed.length, k.waiting.length, k.free]; }), [['wyvern', 1, 0, 0], ['griffin', 1, 1, 0], ['dire_wolf', 0, 0, 1], ['buckbear', 0, 0, 1], ['fellcat', 0, 0, 1], ['sabrecat', 0, 0, 1]]);
     t.equal(BR.creatureById(b, g2).status, 'waiting', 'Talon keeps waiting: nothing is ever sent away');
     t.equal(BR.creatureById(b, g1).status, 'housed');
   });
 
-  test('every one of the five kinds can be housed, one each, and a beast waiting is never released by the limit', function (t) {
+  ltest('every one of the five kinds can be housed, one each, and a beast waiting is never released by the limit', function (t) {
     var b = withPen();
     ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat'].forEach(function (k, i) { housed(b, i + 1, k, 'B' + k); });
     t.same(BR.penHoused(b).map(function (c) { return c.species; }), ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat']);
-    t.same(BR.penSummary(b, bdata).map(function (k) { return k.free; }), [0, 0, 0, 0, 0]);
+    t.same(BR.penSummary(b, bdata).map(function (k) { return k.free; }), [0, 0, 0, 0, 0, 1]);
     grant(b, 9, 'fellcat', 'Second');
     t.equal(issueHouse(b, 0).ok, false);
     t.equal(BR.creatures(b).length, 6);
   });
 
-  test('beasts already housed stay: two of a kind (an older save) all stay and only block a third; nothing is evicted by a reload', function (t) {
+  ltest('beasts already housed stay: two of a kind (an older save) all stay and only block a third; nothing is evicted by a reload', function (t) {
     var b = withPen();
     [1, 2].forEach(function (n) {
       b.creatures.push({ id: 'old' + n, species: 'griffin', owner: '', name: 'G' + n, status: 'housed', home: PEN, grantedDay: 1, housedDay: 2, msgId: '' });
@@ -232,7 +274,7 @@
     t.equal(issueHouse(b).ok, true, 'given again');
   });
 
-  test('nothing makes Elara\'s wyvern now: a new Bastion has no beast, and no order offers her; an order that was already waiting still records her, once, if there is room', function (t) {
+  ltest('nothing makes Elara\'s wyvern now: a new Bastion has no beast, and no order offers her; an order that was already waiting still records her, once, if there is room', function (t) {
     var b = withPen();
     t.same(b.creatures, []);
     var fac = BR.facility(bdata, PEN);
@@ -289,7 +331,7 @@
     t.same([BR.creatureById(g, 'elara_wyvern').status, BR.creatureById(g, 'elara_wyvern').home], ['housed', PEN]);
   });
 
-  test('a House order from before (up to three side by side) never overfills the Pen: the beast keeps waiting and the log says so', function (t) {
+  ltest('a House order from before (up to three side by side) never overfills the Pen: the beast keeps waiting and the log says so', function (t) {
     var b = withPen();
     var a = grant(b, 1, 'wyvern', 'Ash');
     var s2 = grant(b, 2, 'wyvern', 'Skyrender');
@@ -820,7 +862,7 @@
     return Object.assign({ id: id, facId: facId, fnId: fnId, chosen: null, optionLabel: null, notes: '', label: facId + ': ' + fnId, costGP: 0, issuedDay: 10, dueDay: 15 }, extra || {});
   }
 
-  test('the heavy Bastion: the three buildings become one Pen, the House order moves, the harness is refunded and the audit is clean; converting again changes nothing', function (t) {
+  ltest('the heavy Bastion: the three buildings become one Pen, the House order moves, the harness is refunded and the audit is clean; converting again changes nothing', function (t) {
     var raw = FIX['bastion-v3-heavy'];
     var before = canon(raw);
     var res = convert(raw);
@@ -847,7 +889,7 @@
     t.ok(/^The three beast buildings became one Beast Pen; [\d,]+ gp went back into the treasury; /.test(s.migration.v4.summary), 'the summary: ' + s.migration.v4.summary);
     var otherPlaces = res.report.archived.filter(function (a) { return !/^(wyvern_roost|griffin_tower|dire_wolf_den)$/.test(a.facId); }).length;
     t.ok(otherPlaces === 0 ? !/places? removed/.test(s.migration.v4.summary) : s.migration.v4.summary.indexOf((otherPlaces === 1 ? '1 place' : otherPlaces + ' places') + ' removed') !== -1, 'the three buildings are not counted as "removed": they are the Pen (only the ' + otherPlaces + ' other places are)');
-    t.ok(/The Wyvern Roost, Griffin Tower and Dire Wolf Den have become one Beast Pen\. It keeps one beast of each kind: a wyvern, a griffin, a dire wolf, a buckbear and a fellcat\. The other slots are free\./.test(lines), lines);
+    t.ok(/The Wyvern Roost, Griffin Tower and Dire Wolf Den have become one Beast Pen\. It keeps as many beasts of each kind as the DM grants: a wyvern, a griffin, a dire wolf, a buckbear, a fellcat and a sabrecat\. The other slots are free\./.test(lines), lines);
     t.ok(/All 4 of your beasts are still here/.test(lines));
     t.ok(/A beast at Bond 1 or more counts as acclimatised: Elara's wyvern, Swiftwing and Ashfang\./.test(lines));
     t.ok(/What Swiftwing and Ashfang had learned stays in their records, out of sight\./.test(lines));
@@ -860,7 +902,7 @@
     t.equal(loaded.facilityLevels[PEN], 1);
   });
 
-  test('the moved House order still completes after the conversion: the wyvern keeps waiting because the Pen already holds Elara\'s, and a griffin order would house', function (t) {
+  ltest('the moved House order still completes after the conversion: the wyvern keeps waiting because the Pen already holds Elara\'s, and a griffin order would house', function (t) {
     var res = convert(FIX['bastion-v3-heavy']);
     var b = BR.fromSave(copy(res.save), data);
     var o = b.pendingOrders.filter(function (x) { return x.id === 'hv-27'; })[0];
@@ -977,7 +1019,7 @@
     t.equal(BR.completeSimpleOrder(b, data, e, dice([0.5]))[0][0], 'Order Completed', 'Elara\'s order records her (a wyvern waits, but none is housed yet)');
   });
 
-  test('a waiting wyvern and Elara\'s House order while the Pen already holds a wyvern: the report says plainly who waits and why, nothing is lost, and when her order completes she is kept waiting', function (t) {
+  ltest('a waiting wyvern and Elara\'s House order while the Pen already holds a wyvern: the report says plainly who waits and why, nothing is lost, and when her order completes she is kept waiting', function (t) {
     var raw = v3(function (s) {
       s.builtExtras = [old('wyvern_roost')];
       s.creatures = [creature('w1', 'wyvern', 'Ash', 'housed', 'wyvern_roost', 1), creature('w2', 'wyvern', 'Skyrender', 'waiting', '', null), creature('g1', 'griffin', 'Swiftwing', 'waiting', '', null)];
@@ -1192,7 +1234,7 @@
     t.same([pass.ok, pass.pass, dev(c, cid).acclimatise.tries], [true, true, tries + 1]);
   });
 
-  test('beasts already housed stay and still work: an over-limit beast (two griffins in an older save) can be acclimatised, taken out, and earns Bonding Days', function (t) {
+  ltest('beasts already housed stay and still work: an over-limit beast (two griffins in an older save) can be acclimatised, taken out, and earns Bonding Days', function (t) {
     var b = withPen(10);
     ['g1', 'g2'].forEach(function (id, i) {
       var c = { id: id, species: 'griffin', owner: '', name: id === 'g1' ? 'Swiftwing' : 'Talon', status: 'housed', home: PEN, grantedDay: 1, housedDay: 2, msgId: '' };

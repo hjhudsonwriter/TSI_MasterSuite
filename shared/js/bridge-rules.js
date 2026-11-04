@@ -142,7 +142,7 @@
   /* The creatures the DM can grant (pull request 7): from the Bastion's
      creatures-data.js when the page has it, otherwise these (keep them the
      same as that file). */
-  var FALLBACK_CREATURES = { wyvern: { name: 'Wyvern', home: 'beast_pen' }, griffin: { name: 'Griffin', home: 'beast_pen' }, dire_wolf: { name: 'Dire Wolf', home: 'beast_pen' }, buckbear: { name: 'Buckbear', home: 'beast_pen' }, fellcat: { name: 'Fellcat', home: 'beast_pen' } };
+  var FALLBACK_CREATURES = { wyvern: { name: 'Wyvern', home: 'beast_pen' }, griffin: { name: 'Griffin', home: 'beast_pen' }, dire_wolf: { name: 'Dire Wolf', home: 'beast_pen' }, buckbear: { name: 'Buckbear', home: 'beast_pen' }, fellcat: { name: 'Fellcat', home: 'beast_pen' }, sabrecat: { name: 'Sabrecat', home: 'beast_pen' } };
   function creatures() { var c = window.TSI_DATA && window.TSI_DATA.bastionCreatures; return isObj(c) && isObj(c.species) ? c : null; }
   B.grantable = function () {
     var c = creatures();

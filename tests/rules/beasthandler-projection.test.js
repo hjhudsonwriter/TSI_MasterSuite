@@ -84,12 +84,13 @@
     housed(b, 'dire_wolf', 'Ashfang');
     housed(b, 'buckbear', 'Bramble');
     housed(b, 'fellcat', 'Lichen');
+    housed(b, 'sabrecat', 'Fen');
     grant(b, 'griffin', 'Waiting Gryph');
     grant(b, 'dire_wolf', 'Waiting Wolf');
     var s = snap(b, '');
-    t.same(dirNames(s), ['Beast Pen: Elara\'s wyvern, Swiftwing, Ashfang, Bramble, Lichen']);
+    t.same(dirNames(s), ['Beast Pen: Elara\'s wyvern, Swiftwing, Ashfang, Bramble, Lichen, Fen']);
     t.same(s.facilities.map(function (f) { return [f.id, f.level]; }), [[PEN, 1]], 'one entry, one level');
-    t.same(pen(s).creatures.map(function (c) { return c.species.id; }), ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat']);
+    t.same(pen(s).creatures.map(function (c) { return c.species.id; }), ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat', 'sabrecat']);
     t.ok(JSON.stringify(s).indexOf('Waiting') === -1, 'nobody waiting is listed');
   });
 
@@ -473,6 +474,6 @@
     mira(b, 'wyvern', 'Stormwing', 1);
     var s = snap(b, 'Mira');
     t.same(s.facilities.map(function (f) { return f.id; }), [PEN]);
-    t.same(bdata.creatures.grantable, ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat']);
+    t.same(bdata.creatures.grantable, ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat', 'sabrecat']);
   });
 }());

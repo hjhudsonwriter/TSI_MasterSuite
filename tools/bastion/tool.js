@@ -2782,7 +2782,7 @@
       }
 
       /* ---------- The Beast Pen's beasts (pull request 7; the Beast Pen, 22 October 2026) ----------
-         The panel's beasts: one stall for each kind the DM can grant (wyvern, griffin, dire wolf, buckbear, fellcat) with
+         The panel's beasts: one stall for each kind the DM can grant (wyvern, griffin, dire wolf, buckbear, fellcat, sabrecat) with
          the beast living in it, being housed or waiting for a home, each with its handler, bond and Chronicle; and the
          Beast Handler box for the players' phones. The House Beast Here and Acclimatise With Beast orders are above, with
          the other orders; this shows the beasts. */
@@ -2790,6 +2790,7 @@
         if (facId !== R.PEN_ID) return null;
         var kinds = R.penSummary(state, data);
         var perKind = R.penPerKind(data);
+        var unlimited = R.penUnlimited(data);
         var any = R.creatures(state).length > 0;
         var stalls = kinds.map(function (k) {
           var beasts = k.housed.concat(R.creatures(state).filter(function (c) {
@@ -2798,7 +2799,7 @@
           return el('div', { class: 'tsi-bas-stall' + (k.over ? ' tsi-bas-stall--over' : ''), 'data-test': 'stall-' + k.species, 'data-count': String(k.housed.length) }, [
             el('div', { class: 'tsi-bas-stall__head' }, [
               el('b', { text: k.name }),
-              el('span', { class: 'tsi-bas-muted', 'data-test': 'stall-state-' + k.species, text: k.over ? k.housed.length + ' here: all stay, no more can be housed' : k.housed.length ? 'Full' : k.pending.length ? 'Being housed' : 'Empty' })
+              el('span', { class: 'tsi-bas-muted', 'data-test': 'stall-state-' + k.species, text: k.over ? k.housed.length + ' here: all stay, no more can be housed' : k.housed.length ? (unlimited ? k.housed.length + ' housed' + (k.pending.length ? ', ' + k.pending.length + ' being housed' : '') : 'Full') : k.pending.length ? 'Being housed' : 'Empty' })
             ]),
             beasts.length ? el('div', { class: 'tsi-bas-list' }, beasts.map(function (c) { return beastRow(c); }))
               : muted('Empty. The DM grants ' + (/^[aeiou]/i.test(k.name) ? 'an ' : 'a ') + k.name.toLowerCase() + ' in the Explorer (Grant a creature…, under Sent to the Bastion), then House Beast Here gives it a home.')
@@ -2820,7 +2821,7 @@
         }
         return el('div', { class: 'tsi-bas-facpanel__cargo tsi-bas-facpanel__creatures', 'data-test': 'creatures-' + facId }, [
           label('Beasts'),
-          el('div', { class: 'tsi-bas-creatures__room', 'data-test': 'creature-room-' + facId, text: 'The Beast Pen keeps ' + (perKind === 1 ? 'one beast of each kind' : plural(perKind, 'beast') + ' of each kind') + ': wyvern, griffin, dire wolf, buckbear and fellcat. A beast housed here must pass Acclimatise With Beast before it can go out on the road and bond with its handler.' }),
+          el('div', { class: 'tsi-bas-creatures__room', 'data-test': 'creature-room-' + facId, text: 'The Beast Pen keeps ' + (unlimited ? 'as many beasts of each kind as the DM grants' : perKind === 1 ? 'one beast of each kind' : plural(perKind, 'beast') + ' of each kind') + ': wyvern, griffin, dire wolf, buckbear, fellcat and sabrecat. A beast housed here must pass Acclimatise With Beast before it can go out on the road and bond with its handler.' }),
           el('div', { class: 'tsi-bas-stalls', 'data-test': 'creatures-housed-' + facId }, stalls),
           !any ? muted('No beast yet. The Pen houses beasts the DM grants in the Explorer; nothing here makes one.') : null,
           beastDm ? label('Beast Handler (players)') : null,
