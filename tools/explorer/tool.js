@@ -334,11 +334,8 @@
       var dmFogBox = el('input', { type: 'checkbox', id: 'tsi-exp-dmfog', 'data-test': 'dm-fog' });
       dmFogBox.checked = prefs.dmFog;
       var controls = el('aside', { class: 'tsi-exp-side tsi-exp-controls', 'aria-label': 'Map controls' }, [
-        el('div', { class: 'tsi-exp-controlhead' }, [
-          el('p', { class: 'tsi-exp-intro', text: 'Upload a map, align a hex grid, and drag your heroes around.' }),
-          btn('‹ Hide', function () { setLeftCollapsed(true); }, 'tsi-exp-mini tsi-exp-controlhead__hide', 'left-collapse')
-        ]),
-        section('Map', [
+        el('p', { class: 'tsi-exp-intro', text: 'Upload a map, align a hex grid, and drag your heroes around.' }),
+        sectionWith('Map', btn('‹ Hide panel', function () { setLeftCollapsed(true); }, 'tsi-exp-mini', 'left-collapse'), [
           row([mapSelect, btn('Load', onLoadPreset, '', 'load')], 'tsi-exp-row--select'),
           row([uploadLabel, btn('Clear map', onClearMap, '', 'clear-map')])
         ]),
@@ -350,9 +347,8 @@
           el('label', { class: 'tsi-exp-field tsi-exp-field--side' }, [el('span', { text: 'Grid opacity' }), opacity]),
           readout
         ]),
-        section('Fog and snap', [
+        sectionWith('Fog and snap', el('label', { class: 'tsi-exp-cursorrow tsi-exp-dmfogrow', for: 'tsi-exp-dmfog', title: 'Untick to see the whole map in colour on your own window, whatever the fog does to the players\' window.' }, [dmFogBox, el('span', { text: 'Fog on my view' })]), [
           row([fogSelect, btn('Reset Fog', resetFog, '', 'reset-fog')], 'tsi-exp-row--select'),
-          el('label', { class: 'tsi-exp-cursorrow tsi-exp-dmfogrow', for: 'tsi-exp-dmfog', title: 'Untick to see the whole map in colour on your own window, whatever the fog does to the players\' window.' }, [dmFogBox, el('span', { text: 'Fog on my view' })]),
           row([btnSnap, btnPick])
         ]),
         section('Heroes', [

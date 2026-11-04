@@ -747,3 +747,4 @@
 /* A marker the DM has shown to the players: a thin white ring. */
 .tsi-tool--explorer .tsi-exp-qmark.is-shown { outline: 2px solid rgba(255, 255, 255, .85); outline-offset: 2px; }
 .tsi-tool--explorer .tsi-exp-banner--known .tsi-exp-banner__name::after { content: ' ◉'; font-size: 10px; color: #7a1d1d; }
+.tsi-tool--explorer .tsi-exp-section-head .tsi-exp-dmfogrow { margin-left: auto; font-size: 11px; white-space: nowrap; }
