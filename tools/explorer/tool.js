@@ -87,6 +87,22 @@
       function setPref(key, value) { if (prefs[key] === value) return; prefs[key] = value; savePrefs(); }
       function saveNow() { R.rememberGrid(state); ctx.store.set('save', R.toSave(state)); queuePlayerSync(); }
 
+      /* Town banners and quest markers (guide 6A, 4 November 2026; tools/explorer/pins-rules.js). Both are saved in items of their
+         own (tsi.explorer.townclans and tsi.explorer.markers), so they are in an Explorer export and in a backup. */
+      var PINS = ns.pins;
+      var SHIELDS = window.TSI_DATA.clanShields || {};
+      var CLAN_SEEDS = window.TSI_DATA.townClans || {};
+      var townClans = PINS.cleanTownClans(load('townclans', PINS.isTownClans), SHIELDS);
+      var quests = PINS.cleanMarkers(load('markers', PINS.isMarkers));
+      function saveTownClans() { ctx.store.set('townclans', townClans); queuePlayerSync(); }
+      function saveQuests() { ctx.store.set('markers', quests); queuePlayerSync(); }
+      /* What each town banner shows, for the players' window: only the shield's picture and the clan's name. */
+      function bannerMap() {
+        var out = {};
+        (DATA.markersByMapId[state.mapPresetId] || []).forEach(function (m) { out[m.id] = PINS.bannerFor(townClans, CLAN_SEEDS, SHIELDS, m.id); });
+        return out;
+      }
+
       /* Sound effects (30 October 2026; data/sfx-data.js, sfx.js): played from this window only. */
       var sfx = ns.sfx.create({
         life: life,
@@ -117,7 +133,7 @@
         name: 'ScarlettExplorerPlayers',
         keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
-        getState: function () { return R.playerSnapshot(state, DATA, { atlas: pvAtlas, view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, dim: pvDim(), camp: pvCamp, scene: pvScene, word: pvWord, reach: pvReach(), terrain: pvTerrain() }); },
+        getState: function () { return R.playerSnapshot(state, DATA, { atlas: pvAtlas, view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, banners: bannerMap(), quests: PINS.snapshot(quests, R.mapKey(state)), dim: pvDim(), camp: pvCamp, scene: pvScene, word: pvWord, reach: pvReach(), terrain: pvTerrain() }); },
         onStatus: function (st) {
           pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvStatus.classList.toggle('is-connected', st === 'connected');
@@ -222,6 +238,12 @@
       var terrainRow = el('label', { class: 'tsi-exp-cursorrow', for: 'tsi-exp-terrain-on' }, [terrainBox, el('span', { text: 'Show terrain to players' })]);
       zoomBox.appendChild(btnTerrain);
       zoomBox.appendChild(terrainRow);
+      /* Quest markers (guide 6A): the DM drops a gold "!" on the map; the players see only the "!". */
+      var placing = false;
+      var btnQuest = btn('Quest markers: Off', function () { togglePlacing(); }, 'tsi-exp-zoom', 'quest-place');
+      btnQuest.title = 'Click the map to drop a gold ! quest marker. Click a marker to write its note, drag it to move it. Players see only the !.';
+      btnQuest.setAttribute('aria-pressed', 'false');
+      zoomBox.appendChild(btnQuest);
       var terrainPanel = el('div', { class: 'tsi-exp-terrainpanel', hidden: true, 'data-test': 'terrain-panel' });
       /* The Sound panel: on or off, the volume, and a Test button for each sound (it says if a file is missing). */
       var sfxPanel = el('div', { class: 'tsi-exp-sfxpanel', hidden: true, 'data-test': 'sfx-panel' });
@@ -317,13 +339,14 @@
       life.track(video);
       var gridCanvas = el('canvas', { class: 'tsi-exp-canvas tsi-exp-canvas--grid' });
       var pinLayer = el('div', { class: 'tsi-exp-pins' });
+      var questLayer = el('div', { class: 'tsi-exp-quests', 'data-test': 'quest-layer' });
       var fogCanvas = el('canvas', { class: 'tsi-exp-canvas tsi-exp-canvas--fog' });
       var terrainCanvas = el('canvas', { class: 'tsi-exp-canvas tsi-exp-canvas--terrain', 'data-test': 'terrain-canvas' });
       var reachCanvas = el('canvas', { class: 'tsi-exp-canvas tsi-exp-canvas--reach', 'data-test': 'reach-canvas' });
       var tokenLayer = el('div', { class: 'tsi-exp-world tsi-exp-world--tokens' });
       var marquee = el('div', { class: 'tsi-exp-marquee', hidden: true });
       var showUi = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-showui', hidden: true, 'data-test': 'show-ui', onclick: function () { setUiHidden(false); } }, 'Show UI');
-      var stage = el('div', { class: 'tsi-exp-stage' }, [mapLayer, video, gridCanvas, terrainCanvas, pinLayer, fogCanvas, reachCanvas, tokenLayer, marquee, showUi, zoomBox, terrainPanel, sfxPanel]);
+      var stage = el('div', { class: 'tsi-exp-stage' }, [mapLayer, video, gridCanvas, terrainCanvas, pinLayer, fogCanvas, reachCanvas, tokenLayer, questLayer, marquee, showUi, zoomBox, terrainPanel, sfxPanel]);
 
       /* The travel panel. */
       var dayLabel = el('strong', { class: 'tsi-exp-day', text: 'Day 1', 'data-test': 'day' });
@@ -497,6 +520,7 @@
 
       function renderPins() {
         TSI.clear(pinLayer);
+        var banners = [];
         R.visibleMarkers(state, DATA, board).forEach(function (m) {
           var p = R.toScreen(view, (Number(m.x) || 0) * board.w, (Number(m.y) || 0) * board.h);
           var pin = el('button', {
@@ -510,6 +534,160 @@
           pin.style.left = p.x + 'px';
           pin.style.top = p.y + 'px';
           pinLayer.appendChild(pin);
+          /* The town banner (guide 6A): clicking it does what clicking the pin does; the cog (and a right-click) is the DM's Ruled by. */
+          var b = PINS.bannerFor(townClans, CLAN_SEEDS, SHIELDS, m.id);
+          var open = el('button', {
+            type: 'button', class: 'tsi-exp-banner__open', 'data-test': 'banner-open-' + m.id,
+            'aria-label': m.label + (b.clanName ? ', ' + b.clanName : ''),
+            onclick: function (e) { e.stopPropagation(); openPlace(m); }
+          }, [
+            b.banner ? el('img', { class: 'tsi-exp-banner__shield', src: TSI.path(b.banner), alt: '', draggable: 'false' }) : null,
+            el('span', { class: 'tsi-exp-banner__name', text: m.label })
+          ]);
+          var cog = el('button', {
+            type: 'button', class: 'tsi-exp-banner__cog', title: 'Ruled by…', 'aria-label': 'Ruled by… (' + m.label + ')', 'data-test': 'banner-ruled-' + m.id, text: '⚙',
+            onclick: function (e) { e.stopPropagation(); ruledByDialog(m); }
+          });
+          var bn = el('div', { class: 'tsi-exp-banner' + (b.banner ? '' : ' tsi-exp-banner--plain'), 'data-test': 'banner-' + m.id, 'data-clan': b.clan || '', oncontextmenu: function (e) { e.preventDefault(); ruledByDialog(m); } }, [open, cog]);
+          bn.style.left = p.x + 'px';
+          bn.style.top = (p.y + 4) + 'px';
+          pinLayer.appendChild(bn);
+          banners.push({ node: bn, id: m.id, x: p.x, y: p.y });
+        });
+        /* Banners that would sit on each other are pushed apart (the lower one moves down). */
+        if (banners.length > 1) {
+          var nudged = PINS.nudgeBanners(banners.map(function (b) { return { id: b.id, x: b.x, y: b.y, w: b.node.offsetWidth, h: b.node.offsetHeight }; }));
+          banners.forEach(function (b) { var n = nudged[b.id]; if (n && n.dy) b.node.style.top = (b.y + 4 + n.dy) + 'px'; });
+        }
+        renderQuests();
+      }
+
+      /* ---------- Quest markers ---------- */
+      function renderQuests() {
+        TSI.clear(questLayer);
+        PINS.markersForMap(quests, R.mapKey(state)).forEach(function (q) {
+          var p = R.toScreen(view, q.x * board.w, q.y * board.h);
+          var mk = el('button', {
+            type: 'button', class: 'tsi-exp-qmark', 'data-test': 'quest-' + q.id, dataset: { id: q.id },
+            title: q.label || 'Quest marker', 'aria-label': 'Quest marker' + (q.label ? ': ' + q.label : ''), text: '!'
+          });
+          mk.style.left = p.x + 'px';
+          mk.style.top = p.y + 'px';
+          var drag0 = null;
+          mk.addEventListener('pointerdown', function (e) {
+            if (e.button !== 0) return;
+            e.stopPropagation();
+            drag0 = { x: e.clientX, y: e.clientY, moved: false };
+            try { mk.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+          });
+          mk.addEventListener('pointermove', function (e) {
+            if (!drag0) return;
+            if (!drag0.moved && Math.abs(e.clientX - drag0.x) + Math.abs(e.clientY - drag0.y) < 5) return;
+            drag0.moved = true;
+            mk.classList.add('is-dragging');
+            var b = pointerOnBoard(e);
+            var q2 = R.toScreen(view, Math.min(board.w, Math.max(0, b.x)), Math.min(board.h, Math.max(0, b.y)));
+            mk.style.left = q2.x + 'px';
+            mk.style.top = q2.y + 'px';
+          });
+          mk.addEventListener('pointerup', function (e) {
+            if (!drag0) return;
+            var d = drag0; drag0 = null;
+            mk.classList.remove('is-dragging');
+            try { mk.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+            if (d.moved) {
+              var b = pointerOnBoard(e);
+              PINS.moveMarker(quests, q.id, b.x / board.w, b.y / board.h);
+              saveQuests();
+              renderQuests();
+            } else {
+              questPanel(q.id);
+            }
+          });
+          mk.addEventListener('pointercancel', function () { drag0 = null; mk.classList.remove('is-dragging'); renderQuests(); });
+          mk.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); questPanel(q.id); } });
+          questLayer.appendChild(mk);
+        });
+      }
+      function setPlacing(on) {
+        on = !!on;
+        if (placing === on) return;
+        placing = on;
+        stage.classList.toggle('tsi-exp-stage--placing', on);
+        btnQuest.textContent = 'Quest markers: ' + (on ? 'On' : 'Off');
+        setOn(btnQuest, on);
+        if (on) { selected.clear(); renderTokens(); }
+      }
+      function togglePlacing() {
+        if (placing) { setPlacing(false); return; }
+        if (R.mapKey(state) === 'none') { note('Load a map first, then place quest markers on it.'); return; }
+        if (walking || drag) return;
+        if (terrainEdit) setTerrainEdit(false);
+        if (!sfxPanel.hidden) toggleSfxPanel(false);
+        setPlacing(true);
+      }
+      life.on(stage, 'pointerdown', function (e) {
+        if (!placing || e.button !== 0) return;
+        if (e.target.closest('.tsi-exp-qmark') || e.target.closest('.tsi-exp-banner') || e.target.closest('.tsi-exp-pin') || e.target.closest('.tsi-exp-showui') || e.target.closest('.tsi-exp-zoombox') || e.target.closest('.tsi-exp-terrainpanel') || e.target.closest('.tsi-exp-sfxpanel')) return;
+        e.stopImmediatePropagation();
+        var p = pointerOnBoard(e);
+        if (p.x < 0 || p.y < 0 || p.x > board.w || p.y > board.h) return;
+        var m = PINS.addMarker(quests, R.mapKey(state), p.x / board.w, p.y / board.h);
+        if (!m) { note('No more quest markers can be placed.'); return; }
+        saveQuests();
+        renderQuests();
+      }, true);
+      life.on(document, 'keydown', function (e) { if (e.key === 'Escape' && placing && !document.querySelector('.tsi-modal')) setPlacing(false); });
+      /* The panel for one marker: its label and note (for the DM only), Done, Delete. */
+      function questPanel(id) {
+        var q = PINS.markerById(quests, id);
+        if (!q) return Promise.resolve(false);
+        var label = el('input', { type: 'text', class: 'tsi-input tsi-exp-qpanel__label', maxlength: String(PINS.LABEL_MAX), value: q.label, placeholder: 'A short heading (optional)', 'data-test': 'quest-label', 'aria-label': 'Marker label' });
+        var noteBox = el('textarea', { class: 'tsi-input tsi-exp-qpanel__note', maxlength: String(PINS.NOTE_MAX), placeholder: 'Your note (optional)', 'data-test': 'quest-note', 'aria-label': 'Marker note' });
+        noteBox.value = q.note;
+        var count = el('div', { class: 'tsi-exp-qpanel__count', text: q.note.length + ' / ' + PINS.NOTE_MAX });
+        life.on(noteBox, 'input', function () { count.textContent = noteBox.value.length + ' / ' + PINS.NOTE_MAX; });
+        return TSI.modal.open({
+          title: 'Quest marker',
+          body: [
+            el('p', { class: 'tsi-exp-muted', text: 'Only you see the label and the note. The players see just the gold !. Drag the ! on the map to move it.' }),
+            label, noteBox, count
+          ],
+          escValue: false,
+          actions: [{ label: 'Delete', value: 'delete' }, { label: 'Done', value: 'done' }, { label: 'Cancel', value: false }, { label: 'Save', value: true, primary: true }],
+          onOpen: function (api) { if (api && api.dialog) api.dialog.setAttribute('data-test', 'quest-dialog'); label.focus(); }
+        }).then(function (v) {
+          if (!life.alive || !v) return false;
+          if (v === true) {
+            PINS.editMarker(quests, id, label.value, noteBox.value);
+            saveQuests(); renderQuests();
+            return true;
+          }
+          var text = v === 'done' ? 'Take this marker down?' : 'Delete this marker?';
+          return ask(text, v === 'done' ? 'Take it down' : 'Delete').then(function (yes) {
+            if (!yes || !life.alive) return false;
+            PINS.removeMarker(quests, id);
+            saveQuests(); renderQuests();
+            return true;
+          });
+        });
+      }
+      /* Ruled by (the DM only): which clan's shield a town shows. */
+      function ruledByDialog(m) {
+        var cur = PINS.clanFor(townClans, CLAN_SEEDS, SHIELDS, m.id) || '';
+        var sel = el('select', { class: 'tsi-input', 'data-test': 'ruled-by', 'aria-label': 'Ruled by' },
+          PINS.clanIds(SHIELDS).map(function (id) { return el('option', { value: id, text: SHIELDS[id].name }); }).concat([el('option', { value: '', text: 'None (a plain nameplate)' })]));
+        sel.value = cur;
+        return TSI.modal.open({
+          title: 'Ruled by • ' + m.label,
+          body: [el('p', { class: 'tsi-exp-muted', text: 'Which clan\'s shield ' + m.label + ' shows on its banner. The players\' window changes at once.' }), sel],
+          escValue: false,
+          actions: [{ label: 'Cancel', value: false }, { label: 'Save', value: true, primary: true }],
+          onOpen: function (api) { if (api && api.dialog) api.dialog.setAttribute('data-test', 'ruled-dialog'); sel.focus(); }
+        }).then(function (ok) {
+          if (!ok || !life.alive) return false;
+          if (PINS.setClan(townClans, CLAN_SEEDS, SHIELDS, m.id, sel.value === '' ? null : sel.value)) { saveTownClans(); renderPins(); }
+          return true;
         });
       }
 
@@ -972,7 +1150,7 @@
         stage.classList.toggle('tsi-exp-stage--painting', on);
         btnTerrain.textContent = 'Edit terrain: ' + (on ? 'On' : 'Off');
         setOn(btnTerrain, on);
-        if (on) { if (!sfxPanel.hidden) toggleSfxPanel(false); selected.clear(); buildTerrainPanel(); renderTokens(); updateTravelUI(); }
+        if (on) { if (placing) setPlacing(false); if (!sfxPanel.hidden) toggleSfxPanel(false); selected.clear(); buildTerrainPanel(); renderTokens(); updateTravelUI(); }
         updateReach();
       }
       function toggleTerrainEdit() {
@@ -1022,7 +1200,7 @@
 
       life.on(stage, 'pointerdown', function (e) {
         if (e.button !== 0) return;
-        if (e.target.closest('.tsi-exp-token') || e.target.closest('.tsi-exp-pin') || e.target.closest('.tsi-exp-showui') || e.target.closest('.tsi-exp-zoombox') || e.target.closest('.tsi-exp-terrainpanel') || e.target.closest('.tsi-exp-sfxpanel')) return;
+        if (e.target.closest('.tsi-exp-token') || e.target.closest('.tsi-exp-pin') || e.target.closest('.tsi-exp-banner') || e.target.closest('.tsi-exp-qmark') || e.target.closest('.tsi-exp-showui') || e.target.closest('.tsi-exp-zoombox') || e.target.closest('.tsi-exp-terrainpanel') || e.target.closest('.tsi-exp-sfxpanel')) return;
         if (pickXY) { pickAt(e); return; }
         if (walking) { stopWalk(); return; }
         prevSelection = new Set(selected);
@@ -2916,6 +3094,9 @@
       ns.debug = {
         walking: function () { return !!walking; },
         prefs: function () { return JSON.parse(JSON.stringify(prefs)); },
+        /* Town banners and quest markers (the tests). */
+        pins: function () { return { townClans: JSON.parse(JSON.stringify(townClans)), quests: JSON.parse(JSON.stringify(quests)), placing: placing, snapshot: R.playerSnapshot(state, DATA, { banners: bannerMap(), quests: PINS.snapshot(quests, R.mapKey(state)) }) }; },
+        setPlacing: function (on) { setPlacing(on); },
         sfx: function () { return sfx.debug(); },
         sfxSettings: function () { return sfx.settings(); },
         terrain: function () { return { editing: terrainEdit, brush: terrainBrush, count: R.terrainCount(state), tv: pvTerrain(), pixels: (function () { var c = terrainCanvas.getContext('2d'); var g = c.getImageData(0, 0, terrainCanvas.width, terrainCanvas.height).data; var n = 0; for (var i = 3; i < g.length; i += 4) if (g[i] > 8) n++; return n; }()) }; },

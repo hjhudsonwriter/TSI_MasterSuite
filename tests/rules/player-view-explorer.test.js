@@ -80,7 +80,7 @@
     var want = R.visibleMarkers(b, D, R.board(R.aspect(b, D))).map(function (m) { return m.id; });
     t.same(s.markers.map(function (m) { return m.id; }), want);
     t.ok(want.length > 0, 'the East Isle has pins');
-    t.same(Object.keys(s.markers[0]).sort(), ['id', 'label', 'thumb', 'x', 'y']);
+    t.same(Object.keys(s.markers[0]).sort(), ['banner', 'clan', 'id', 'label', 'thumb', 'x', 'y']);
   });
 
   test('the heroes are where the DM draws them (R.layoutTokens), in board units', function (t) {
@@ -117,7 +117,7 @@
 
   test('the snapshot has only the listed top-level fields, and survives a structured clone shape (plain JSON)', function (t) {
     var s = snap(busy());
-    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'dim', 'camp', 'atlas', 'reach', 'terrain', 'scene', 'tokens', 'word', 'v', 'view', 'weather'].sort());
+    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'quests', 'dim', 'camp', 'atlas', 'reach', 'terrain', 'scene', 'tokens', 'word', 'v', 'view', 'weather'].sort());
     t.same(JSON.parse(JSON.stringify(s)), s);
   });
 

@@ -214,6 +214,10 @@ Not from an old repo: Harry made these 16 battle maps for the Explorer's fights 
 
 In all, 16 files, about 62 MB. Harry uploaded them to the top of `main` by mistake; this branch moves them into place, so they leave the top of `main` when the pull request is merged.
 
+## Explorer clan shields (4 November 2026, guide 6A)
+
+Harry's seven clan shield paintings (512 x 512 PNG, transparent background) are in `tools/explorer/assets/clans/` (`farmer.png`, `slade.png`, `bacca.png`, `blackstone.png`, `molten.png`, `karr.png`, `rowthorn.png`). For the town banners each was trimmed to its outline and made 128 px tall: seven new files, `<clan>-banner.png`, in the same folder (made from Harry's files with Pillow; the 512 px files stay as the source). `tools/explorer/data/clan-shields.js` names them all, and `tests/static-check.js` checks every one is there. No other new picture, sound or video: the quest marker is drawn in CSS, and the optional `marker.mp3` sound was not supplied, so it is not built.
+
 ## Scarlett Isles Explorer (phase 8)
 
 All 43 media files from the old Explorer. 41 are copied into `tools/explorer/assets/` and checked byte-for-byte after copying; none of them duplicates another file. The other two, `hero.png` and `logo.png`, were already stored once in `shared/art/` in phase 1. The old tool used every file, so there's no `extras/` folder.

@@ -60,11 +60,12 @@
     video.muted = true;
     var gridCanvas = el('canvas', { class: 'tsi-xpv-canvas tsi-xpv-canvas--grid', 'data-test': 'pv-grid' });
     var pinLayer = el('div', { class: 'tsi-xpv-pins', 'data-test': 'pv-pins' });
+    var questLayer = el('div', { class: 'tsi-xpv-quests', 'data-test': 'pv-quests' });
     var fogCanvas = el('canvas', { class: 'tsi-xpv-canvas tsi-xpv-canvas--fog', 'data-test': 'pv-fog' });
     var terrainCanvas = el('canvas', { class: 'tsi-xpv-canvas tsi-xpv-canvas--terrain', 'data-test': 'pv-terrain' });
     var reachCanvas = el('canvas', { class: 'tsi-xpv-canvas tsi-xpv-canvas--reach', 'data-test': 'pv-reach' });
     var tokenLayer = el('div', { class: 'tsi-xpv-world tsi-xpv-world--tokens', 'data-test': 'pv-tokens' });
-    var stage = el('div', { class: 'tsi-xpv-stage', 'data-test': 'pv-stage' }, [mapLayer, video, gridCanvas, terrainCanvas, pinLayer, fogCanvas, reachCanvas, tokenLayer]);
+    var stage = el('div', { class: 'tsi-xpv-stage', 'data-test': 'pv-stage' }, [mapLayer, video, gridCanvas, terrainCanvas, pinLayer, fogCanvas, reachCanvas, tokenLayer, questLayer]);
 
     var full = el('button', { type: 'button', class: 'tsi-xpv-full', 'data-test': 'pv-fullscreen' }, 'Full screen');
     full.addEventListener('click', function () {
@@ -385,6 +386,7 @@
       }
 
       TSI.clear(pinLayer);
+      var banners = [];
       snap.markers.forEach(function (m) {
         var p = R.toScreen(view, m.x * board.w, m.y * board.h);
         var pin = el('div', { class: 'tsi-xpv-pin', title: m.label, 'aria-label': m.label, dataset: { id: m.id } },
@@ -392,6 +394,28 @@
         pin.style.left = p.x + 'px';
         pin.style.top = p.y + 'px';
         pinLayer.appendChild(pin);
+        /* The town banner (guide 6A): a parchment nameplate with the ruling clan's shield, under the pin. */
+        var bn = el('div', { class: 'tsi-xpv-banner' + (m.banner ? '' : ' tsi-xpv-banner--plain'), 'data-test': 'pv-banner-' + m.id, 'data-clan': m.clan || '', dataset: { id: m.id } }, [
+          m.banner ? el('img', { class: 'tsi-xpv-banner__shield', src: TSI.path(m.banner), alt: m.clan || '', draggable: 'false' }) : null,
+          el('span', { class: 'tsi-xpv-banner__name', text: m.label })
+        ]);
+        bn.style.left = p.x + 'px';
+        bn.style.top = (p.y + 4) + 'px';
+        pinLayer.appendChild(bn);
+        banners.push({ node: bn, id: m.id, x: p.x, y: p.y });
+      });
+      if (window.TSI.explorer.pins && banners.length) {
+        var nudged = window.TSI.explorer.pins.nudgeBanners(banners.map(function (b) { return { id: b.id, x: b.x, y: b.y, w: b.node.offsetWidth, h: b.node.offsetHeight }; }));
+        banners.forEach(function (b) { var n = nudged[b.id]; if (n && n.dy) b.node.style.top = (b.y + 4 + n.dy) + 'px'; });
+      }
+      /* The DM's quest markers: a bare gold "!" each, never a label or note. */
+      TSI.clear(questLayer);
+      (snap.quests || []).forEach(function (q) {
+        var p = R.toScreen(view, q.x * board.w, q.y * board.h);
+        var qn = el('div', { class: 'tsi-xpv-quest', 'data-test': 'pv-quest', dataset: { id: q.id }, 'aria-hidden': 'true' }, el('span', { text: '!' }));
+        qn.style.left = p.x + 'px';
+        qn.style.top = p.y + 'px';
+        questLayer.appendChild(qn);
       });
 
       var seen = {};

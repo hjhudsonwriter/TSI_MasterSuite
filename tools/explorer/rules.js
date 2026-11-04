@@ -626,19 +626,20 @@
     var a = R.hexAt(state.grid, (Number(m.x) || 0) * board.w, (Number(m.y) || 0) * board.h);
     return !!store[a.q + ',' + a.r];
   };
-  /* Only preset maps have pins; pins without a town map stay hidden (E10);
-     with fog on, only pins in uncovered hexes show. */
+  /* The one rule for whether a pin (and so its town banner) shows (guide 6A, 4 November 2026; guide 6B changes it here):
+     a pin with no town map stays hidden (E10), unless it is a port that is waiting for its picture (show: true,
+     19 October 2026); with fog on, only pins in uncovered hexes show. */
+  R.isPinVisible = function (state, data, board, m) {
+    if ((!m.submapImage || !String(m.submapImage).trim()) && m.show !== true) return false;
+    return R.markerRevealed(state, board, m);
+  };
+  /* Only preset maps have pins. */
   R.visibleMarkers = function (state, data, board) {
     var mapId = state.mapPresetId || '';
     if (!mapId) return [];
     var list = data.markersByMapId[mapId];
     if (!Array.isArray(list) || !list.length) return [];
-    return list.filter(function (m) {
-      /* A pin with no town map stays hidden (E10), unless it is a port that
-         is waiting for its picture (show: true, 19 October 2026). */
-      if ((!m.submapImage || !String(m.submapImage).trim()) && m.show !== true) return false;
-      return R.markerRevealed(state, board, m);
-    });
+    return list.filter(function (m) { return R.isPinVisible(state, data, board, m); });
   };
 
   /* ---------- Travel ---------- */
