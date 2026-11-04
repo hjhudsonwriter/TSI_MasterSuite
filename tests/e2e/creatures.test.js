@@ -478,14 +478,14 @@ async function clickPop(page, label) {
     await openTile(ba, 'beast_pen');
     equal(await ba.$$eval('[data-test^=stall-state-]', n => n.map(x => x.getAttribute('data-test').slice(12) + ':' + x.textContent)), ['wyvern:Empty', 'griffin:1 housed', 'dire_wolf:1 housed', 'buckbear:1 housed', 'fellcat:1 housed', 'sabrecat:Empty']);
     await ba.click('[data-test=creature-release-' + storm + ']');
-    await ba.waitForSelector('.tsi-modal__foot button:text-is("Release")');
+    await ba.waitForSelector('.tsi-modal__foot button:text-is("Release Stormfeather")');
     assert(/Release Stormfeather\?/.test(await lastModal(ba)), await lastModal(ba));
     await H.clickModal(ba, 'Cancel');
     await ba.waitForTimeout(300);
     equal((await bas(ba)).creatures.length, 5, 'Cancel keeps it');
     await ba.click('[data-test=creature-release-' + storm + ']');
-    await ba.waitForSelector('.tsi-modal__foot button:text-is("Release")');
-    await H.clickModal(ba, 'Release');
+    await ba.waitForSelector('.tsi-modal__foot button:text-is("Release Stormfeather")');
+    await H.clickModal(ba, 'Release Stormfeather');
     await ba.waitForTimeout(500);
     equal((await bas(ba)).creatures.map(c => c.name), ['Swiftwing', '', 'Bramble', 'Lichen']);
     await closeAll(ba);
@@ -524,6 +524,31 @@ async function clickPop(page, label) {
     equal([b1.creatures, b1.bridge.done, b1.treasuryGP, qty(b1, CHART)], [b0.creatures, b0.bridge.done, b0.treasuryGP, qty(b0, CHART)]);
     equal(await ba.$$eval('.tsi-notice', ns => ns.filter(n => /From the Explorer: a/.test(n.textContent)).length), 0, 'no grant notice again');
     equal(await ex.$$eval('[data-test=sent]', l => l.filter(n => /^Creature/.test(n.querySelector('strong').textContent)).map(n => n.getAttribute('data-status'))), ['applied', 'applied', 'applied', 'applied', 'applied']);
+  });
+
+  /* ------------------------------------------------------------------ */
+  section('Release a housed beast (Harry, 4 November 2026)');
+
+  await check('every beast has a "Release (name)" button; it asks first (Cancel keeps it); Release removes a housed beast with its handler and Chronicle', async () => {
+    await openTile(ba, 'beast_pen');
+    const before = (await bas(ba)).creatures;
+    const victim = before.find(c => c.status === 'housed' && c.name === 'Swiftwing');
+    assert(victim, 'Swiftwing is housed');
+    equal(await bare(ba, '[data-test=creature-release-' + victim.id + ']'), 'Release Swiftwing');
+    await ba.click('[data-test=creature-release-' + victim.id + ']');
+    await ba.waitForSelector('.tsi-modal__foot button:text-is("Release Swiftwing")');
+    const said = await lastModal(ba);
+    assert(/^Release Swiftwing\?.*Its handler, bond, Bonding Days and Chronicle go with it.*can't be undone/.test(said), said);
+    await H.clickModal(ba, 'Cancel');
+    await ba.waitForTimeout(300);
+    equal((await bas(ba)).creatures, before, 'Cancel keeps everything');
+    await ba.click('[data-test=creature-release-' + victim.id + ']');
+    await ba.waitForSelector('.tsi-modal__foot button:text-is("Release Swiftwing")');
+    await H.clickModal(ba, 'Release Swiftwing');
+    await ba.waitForTimeout(500);
+    equal((await bas(ba)).creatures.map(c => c.name), before.filter(c => c.id !== victim.id).map(c => c.name));
+    equal(await ba.$('[data-test=creature-' + victim.id + ']'), null, 'gone from the panel');
+    await closeAll(ba);
   });
 
   /* ------------------------------------------------------------------ */

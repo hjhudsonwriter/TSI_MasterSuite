@@ -1311,3 +1311,6 @@ Item 6 of the save review done. Still open, Harry's calls: save Ritual and Pelag
 - The Beast Pen no longer keeps just one beast of each kind (the limit is one number in `creatures-data.js`, now 0 = no limit).
 - New kind: the **Sabrecat**, grantable in the Explorer, housed at the Pen, shown on the Beast Handler phone page with Harry's Fenstalker and Barkhide pictures and videos. The first-meeting die shows all five varieties but always lands on Fenstalker or Barkhide.
 - Open question for Harry: the Sabrecat's two d8 tables (Attachment Cue, Instinctive Trigger) are my draft. Approve or send replacements.
+
+## Release any beast (4 November 2026)
+Every beast in the Beast Pen now has a Release (name) button with an "Are you sure" box, even a housed one with a handler. See BEAST-02 in KNOWN_ISSUES.md.

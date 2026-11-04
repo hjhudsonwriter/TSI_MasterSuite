@@ -205,7 +205,7 @@ async function notice(page) {
     const before = await panelScroll(ba);
     await ba.focus('[data-test="creature-release-cr-w"]');
     await ba.click('[data-test="creature-release-cr-w"]');
-    await H.clickModal(ba, 'Release');
+    await ba.locator('.tsi-modal').last().locator('.tsi-modal__foot .tsi-btn--primary').click();
     await ba.waitForFunction(() => !document.querySelector('[data-test="creature-cr-w"]'));
     const after = await panelScroll(ba);
     assert(Math.abs(after.top - before.top) <= 2, before.top + ' -> ' + after.top);
@@ -346,7 +346,7 @@ async function notice(page) {
     assert(await ba.$('[data-test="creature-chronicle-cr-x"]'), 'and its Chronicle is there to read');
     /* Release the waiting one. */
     await ba.click('[data-test="creature-release-cr-y"]');
-    await H.clickModal(ba, 'Release');
+    await ba.locator('.tsi-modal').last().locator('.tsi-modal__foot .tsi-btn--primary').click();
     await ba.waitForFunction(() => !document.querySelector('[data-test="creature-cr-y"]'));
     equal(await ba.$eval('[data-test="stall-other"]', n => n.getAttribute('data-count')), '1');
     await ba.evaluate(() => TSI.bastion.debug.change(s => { s.creatures = s.creatures.filter(c => c.species !== 'phoenix'); }));

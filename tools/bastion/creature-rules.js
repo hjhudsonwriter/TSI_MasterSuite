@@ -226,14 +226,13 @@
       return isObj(c) && c.status === 'waiting' && (!species || species === '*' || c.species === species) && !R.houseOrderFor(s, c.id);
     });
   };
-  /* Release a granted creature still waiting for a home (Harry, 15 October
-     2026: a grant made by mistake can be undone this way). It leaves the
-     register; its grant's receipt stays, so it never comes back by itself.
-     A creature being housed, or housed, or Elara's wyvern, can't be. */
+  /* Release a creature (Harry, 15 October 2026: a grant made by mistake can be undone this way; 4 November 2026: any
+     beast can be released, even one that is housed, has a handler, a bond and a Chronicle, or is out on the road). It
+     leaves the register with all that belongs to it; its grant's receipt stays, so it never comes back by itself.
+     A creature being housed (cancel that order first), or Elara's wyvern (a story beast), can't be. */
   R.releaseBlocker = function (s, data, c) {
     if (!isObj(c) || !R.creatureById(s, c.id)) return 'That creature isn\'t at the Ironbow any more.';
     var name = R.creatureName(data, c);
-    if (c.status !== 'waiting') return name + ' lives at the Ironbow now, and stays.';
     /* A story beast is not a grant the Explorer can send again, so it is never released. */
     if (R.creatureUnique(data, c.id)) return name + ' is part of the story, and the Explorer cannot grant it again, so it stays at the Ironbow.';
     if (R.houseOrderFor(s, c.id)) return name + ' is being housed. Cancel that order first.';
