@@ -1314,3 +1314,6 @@ Item 6 of the save review done. Still open, Harry's calls: save Ritual and Pelag
 
 ## Release any beast (4 November 2026)
 Every beast in the Beast Pen now has a Release (name) button with an "Are you sure" box, even a housed one with a handler. See BEAST-02 in KNOWN_ISSUES.md.
+
+## Three more Crest sigils (4 November 2026)
+- **Rose Leaf** (one leaf cut from Fox-Davies' rose drawing), **Plain Sun** (the Sun in Splendour with its face taken out) and **Waves** (four wavy bars, every second one in the accent colour, drawn for the suite because no public-domain drawing of waves in this style exists). The Crest now has 28 sigils, still four rows. Settings (crop, mask, erase) and the wave drawing are in `tools/crest/dev/`.

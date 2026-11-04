@@ -11,11 +11,31 @@ png, out, cfg = sys.argv[1], sys.argv[2], json.loads(sys.argv[3] if len(sys.argv
 im = Image.open(png).convert('RGBA')
 if cfg.get('crop'):
     im = im.crop(tuple(cfg['crop']))
+# "mask": [[[fx, fy], ...], ...] keep only these areas (fractions of the cropped picture); the rest becomes empty paper,
+# to take one part out of a bigger drawing (a single leaf from a spray)
+if cfg.get('mask'):
+    from PIL import ImageDraw
+    mk = Image.new('L', im.size, 0)
+    for poly in cfg['mask']:
+        ImageDraw.Draw(mk).polygon([(x * im.width, y * im.height) for x, y in poly], fill=255)
+    arr = np.asarray(im).copy()
+    arr[..., 3] = np.minimum(arr[..., 3], np.asarray(mk))
+    im = Image.fromarray(arr)
 size = cfg.get('size', 1600)
 if max(im.size) > size:
     k = size / max(im.size)
     im = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
 a = np.asarray(im).astype(np.float32)
+# "erase": [[cx, cy, r], ...] circles (fractions of the picture's width and height; r of its width) painted over with the
+# colour the circle mostly holds apart from its dark lines, to take a drawing's face (or any detail) away
+for cx, cy, rr in cfg.get('erase', []):
+    Hh0, Ww0 = a.shape[:2]
+    yy, xx = np.mgrid[0:Hh0, 0:Ww0]
+    inside = (xx - cx * Ww0) ** 2 + (yy - cy * Hh0) ** 2 <= (rr * Ww0) ** 2
+    px = a[inside]
+    light = px[(0.299 * px[:, 0] + 0.587 * px[:, 1] + 0.114 * px[:, 2] > 150) & (px[:, 3] > 200)]
+    fill = np.median(light, axis=0) if len(light) else np.array([255, 255, 255, 255.0])
+    a[inside] = fill
 rgb, al = a[..., :3], a[..., 3] / 255.0
 r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
 lum = 0.299 * r + 0.587 * g + 0.114 * b
