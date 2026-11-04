@@ -162,6 +162,29 @@
     t.equal(BR.penStatus(b, bdata, c).line, 'At the Beast Pen. Not acclimatised yet');
   });
 
+  group('Beast Pen: releasing a beast (Harry, 4 November 2026)');
+
+  test('any beast can be released: housed, with a handler, a bond and a Chronicle, or out on the road; a beast being housed and Elara\'s wyvern cannot', function (t) {
+    var b = withPen(10);
+    var id = acclimatised(b, 1, 'griffin', 'Swiftwing');
+    var keep = acclimatised(b, 2, 'wyvern', 'Ash');
+    t.equal(BR.releaseBlocker(b, bdata, BR.creatureById(b, id)), '', 'a housed, acclimatised beast with a handler can be released');
+    var away = BR.takeOut(b, bdata, keep, {});
+    t.equal(away.ok, true, 'a beast taken out on the road');
+    t.equal(BR.isAway(BR.creatureById(b, keep)), true);
+    t.equal(BR.releaseBlocker(b, bdata, BR.creatureById(b, keep)), '', 'and one that is away can go too');
+    var r = BR.releaseCreature(b, bdata, id);
+    t.same([r.ok, r.name], [true, 'Swiftwing']);
+    t.same(names(BR.creatures(b)), ['Ash'], 'Swiftwing is gone and Ash stays');
+    t.equal(BR.releaseCreature(b, bdata, id).ok, false, 'a second release finds nothing');
+    t.same(names(BR.creatures(reload(b))), ['Ash'], 'and a reload keeps it that way');
+    var w = grant(b, 3, 'dire_wolf', 'Grey');
+    t.equal(issueHouse(b, 0).ok, true);
+    t.equal(BR.releaseBlocker(b, bdata, BR.creatureById(b, w)), 'Grey is being housed. Cancel that order first.', 'a beast being housed waits for its order');
+    t.equal(BR.releaseCreature(b, bdata, w).ok, false);
+    t.equal(BR.creatures(b).length, 2);
+  });
+
   group('Beast Pen: no limit on how many of a kind (Harry, 3 November 2026)');
 
   test('the Pen has no limit: any number of one kind can be housed, and several orders for one kind can run at once', function (t) {

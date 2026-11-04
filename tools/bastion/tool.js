@@ -377,7 +377,9 @@
         var c = R.creatureById(state, id);
         var why = R.releaseBlocker(state, data, c);
         if (why) { await say(why); return; }
-        var ok = await ask('Release ' + R.creatureName(data, c) + '? It leaves the Ironbow for good: the grant isn\'t sent again, so to have it back the DM grants a new one in the Explorer.', 'Release', 'Release a creature');
+        var bn = R.creatureName(data, c);
+        var more = c.status === 'housed' ? ' Its handler, bond, Bonding Days and Chronicle go with it' + (R.isAway(c) ? ', and it is out on the road with the party now' : '') + '.' : '';
+        var ok = await ask('Release ' + bn + '? It leaves the Ironbow for good.' + more + ' This can\'t be undone: the grant isn\'t sent again, so to have a ' + R.speciesNoun(data, c.species) + ' back the DM grants a new one in the Explorer, and it starts from the beginning.', 'Release ' + bn, 'Release ' + bn + '?');
         if (!ok || !life.alive) return;
         var res = R.releaseCreature(state, data, id);
         if (!res.ok) { await say(res.message); return; }
@@ -569,6 +571,8 @@
         var prefix = 'creature';
         var name = R.creatureName(data, c);
         var st = R.penStatus(state, data, c);
+        var releasable = !R.houseOrderFor(state, c.id) && !R.creatureUnique(data, c.id);
+        var releaseBtn = btn('Release ' + name, function () { onRelease(c.id); }, 'tsi-btn--ghost', prefix + '-release-' + c.id);
         var row = el('div', {
           class: 'tsi-bas-item tsi-bas-creature tsi-bas-creature--' + st.kind, 'data-test': prefix + '-' + c.id, 'data-creature': c.id, 'data-status': st.kind,
           role: 'group', 'aria-label': name + ': ' + creatureKindLine(c) + '. ' + st.line
@@ -579,8 +583,8 @@
             el('div', { class: 'tsi-bas-creature__status', 'data-test': prefix + '-status-' + c.id, text: st.line })
           ]),
           btn('Rename…', function () { onRenameCreature(c.id); }, 'tsi-btn--ghost', prefix + '-rename-' + c.id),
-          /* Harry (15 October 2026): a granted creature still waiting for a home can be released (asks first); once housed, it stays. */
-          c.status === 'waiting' && !R.houseOrderFor(state, c.id) && !R.creatureUnique(data, c.id) ? btn('Release…', function () { onRelease(c.id); }, 'tsi-btn--ghost', prefix + '-release-' + c.id) : null
+          /* Harry (15 October 2026, widened 4 November 2026): any beast can be released, housed or not (it asks first). A beast being housed, and a story beast, cannot. */
+          c.status !== 'housed' && releasable ? releaseBtn : null
         ]);
         if (c.status !== 'housed') return row;
         var d = R.devView(state, c);
@@ -616,7 +620,9 @@
             el('summary', { text: 'Chronicle (' + chron.length + ')' }),
             el('ul', { class: 'tsi-bas-res-list' }, chron.map(function (e) { return el('li', { text: R.dayLabel(e.day) + ' · ' + e.text + (e.private ? ' (DM only)' : '') }); })),
             btn('Add a note…', function () { onChronicleNote(c.id); }, 'tsi-btn--ghost', prefix + '-note-' + c.id)
-          ])
+          ]),
+          /* Last, on its own line and away from the everyday buttons, so it is not pressed by accident (it asks first as well). */
+          releasable ? el('div', { class: 'tsi-bas-wyv__line tsi-bas-wyv__release' }, [releaseBtn]) : null
         ]);
         return el('div', { class: 'tsi-bas-creature-wrap' }, [row, detail]);
       }
