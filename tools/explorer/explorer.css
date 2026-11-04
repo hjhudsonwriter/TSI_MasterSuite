@@ -727,3 +727,23 @@
 .tsi-tool--explorer .tsi-exp-stage--revealing { cursor: crosshair; }
 .tsi-tool--explorer .tsi-exp-knownrow { margin-top: 10px; align-items: flex-start; line-height: 1.25; }
 .tsi-tool--explorer .tsi-exp-cloudhost { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+
+/* ---------- Folding the left panel, "Fog on my view", and markers shown to the players (4 November 2026) ---------- */
+.tsi-tool--explorer .tsi-exp-controlhead { display: flex; align-items: flex-start; gap: 8px; }
+.tsi-tool--explorer .tsi-exp-controlhead .tsi-exp-intro { flex: 1 1 auto; }
+.tsi-tool--explorer .tsi-exp-controlhead__hide { flex: 0 0 auto; white-space: nowrap; }
+.tsi-tool--explorer .tsi-exp-wrap--noleft { grid-template-columns: minmax(0, 1fr) 292px; }
+.tsi-tool--explorer .tsi-exp-wrap--noleft > .tsi-exp-controls { display: none; }
+.tsi-tool--explorer .tsi-exp-wrap--bare.tsi-exp-wrap--noleft { grid-template-columns: minmax(0, 1fr); }
+.tsi-tool--explorer .tsi-exp-showleft { position: absolute; left: 10px; top: 10px; z-index: 50; }
+.tsi-tool--explorer .tsi-exp-showleft[hidden] { display: none; }
+.tsi-tool--explorer .tsi-exp-section-title--fold { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; }
+.tsi-tool--explorer .tsi-exp-section-title--fold::before { content: '▾'; font-size: 11px; transition: transform var(--tsi-dur-fast, .15s) var(--tsi-ease, ease); }
+.tsi-tool--explorer .tsi-exp-section-title--fold:focus-visible { outline: none; box-shadow: var(--tsi-focus-ring); border-radius: 4px; }
+.tsi-tool--explorer .tsi-exp-section--closed > .tsi-exp-section-title--fold::before { transform: rotate(-90deg); }
+.tsi-tool--explorer .tsi-exp-section--closed > :not(.tsi-exp-section-title):not(.tsi-exp-section-head) { display: none; }
+.tsi-tool--explorer .tsi-exp-section--closed > .tsi-exp-section-head ~ * { display: none; }
+.tsi-tool--explorer .tsi-exp-dmfogrow { align-self: flex-start; }
+/* A marker the DM has shown to the players: a thin white ring. */
+.tsi-tool--explorer .tsi-exp-qmark.is-shown { outline: 2px solid rgba(255, 255, 255, .85); outline-offset: 2px; }
+.tsi-tool--explorer .tsi-exp-banner--known .tsi-exp-banner__name::after { content: ' ◉'; font-size: 10px; color: #7a1d1d; }

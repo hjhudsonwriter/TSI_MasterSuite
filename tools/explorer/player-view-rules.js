@@ -208,7 +208,8 @@
       }),
       /* Quest markers follow the fog like pins: with colour reveal or classic fog, only where the party has been (guide 6B). */
       quests: (Array.isArray(extras.quests) ? extras.quests : []).slice(0, 300).filter(function (q) { return q && typeof q === 'object'; }).filter(function (q) {
-        return !ns.explored || ns.explored.visibleToPlayers(s, board, num(Number(q.x), 0) * board.w, num(Number(q.y), 0) * board.h);
+        /* A marker the DM ticked "Show to players" is sent wherever it is; otherwise only in land the party has explored. */
+        return q.shown === true || !ns.explored || ns.explored.visibleToPlayers(s, board, num(Number(q.x), 0) * board.w, num(Number(q.y), 0) * board.h);
       }).map(function (q) {
         return { id: str(q.id, 60), mapId: str(q.mapId, 120), x: Math.min(1, Math.max(0, num(Number(q.x), 0))), y: Math.min(1, Math.max(0, num(Number(q.y), 0))) };
       }),

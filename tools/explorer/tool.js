@@ -150,7 +150,7 @@
         name: 'ScarlettExplorerPlayers',
         keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
-        getState: function () { return R.playerSnapshot(state, DATA, { atlas: pvAtlas, view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, banners: bannerMap(), clouds: prefs.clouds && !reducedMotion(), quests: PINS.snapshot(quests, R.mapKey(state)), dim: pvDim(), camp: pvCamp, scene: pvScene, word: pvWord, reach: pvReach(), terrain: pvTerrain() }); },
+        getState: function () { return R.playerSnapshot(state, DATA, { atlas: pvAtlas, view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, banners: bannerMap(), clouds: prefs.clouds && !reducedMotion(), quests: PINS.markersForMap(quests, R.mapKey(state)), dim: pvDim(), camp: pvCamp, scene: pvScene, word: pvWord, reach: pvReach(), terrain: pvTerrain() }); },
         onStatus: function (st) {
           pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvStatus.classList.toggle('is-connected', st === 'connected');
@@ -331,8 +331,13 @@
           : '';
       }
 
+      var dmFogBox = el('input', { type: 'checkbox', id: 'tsi-exp-dmfog', 'data-test': 'dm-fog' });
+      dmFogBox.checked = prefs.dmFog;
       var controls = el('aside', { class: 'tsi-exp-side tsi-exp-controls', 'aria-label': 'Map controls' }, [
-        el('p', { class: 'tsi-exp-intro', text: 'Upload a map, align a hex grid, and drag your heroes around.' }),
+        el('div', { class: 'tsi-exp-controlhead' }, [
+          el('p', { class: 'tsi-exp-intro', text: 'Upload a map, align a hex grid, and drag your heroes around.' }),
+          btn('‹ Hide', function () { setLeftCollapsed(true); }, 'tsi-exp-mini tsi-exp-controlhead__hide', 'left-collapse')
+        ]),
         section('Map', [
           row([mapSelect, btn('Load', onLoadPreset, '', 'load')], 'tsi-exp-row--select'),
           row([uploadLabel, btn('Clear map', onClearMap, '', 'clear-map')])
@@ -347,6 +352,7 @@
         ]),
         section('Fog and snap', [
           row([fogSelect, btn('Reset Fog', resetFog, '', 'reset-fog')], 'tsi-exp-row--select'),
+          el('label', { class: 'tsi-exp-cursorrow tsi-exp-dmfogrow', for: 'tsi-exp-dmfog', title: 'Untick to see the whole map in colour on your own window, whatever the fog does to the players\' window.' }, [dmFogBox, el('span', { text: 'Fog on my view' })]),
           row([btnSnap, btnPick])
         ]),
         section('Heroes', [
@@ -376,8 +382,9 @@
       var reachCanvas = el('canvas', { class: 'tsi-exp-canvas tsi-exp-canvas--reach', 'data-test': 'reach-canvas' });
       var tokenLayer = el('div', { class: 'tsi-exp-world tsi-exp-world--tokens' });
       var marquee = el('div', { class: 'tsi-exp-marquee', hidden: true });
+      var btnShowLeft = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-showleft tsi-exp-showui', hidden: true, 'data-test': 'left-expand', title: 'Show the map controls again', onclick: function () { setLeftCollapsed(false); } }, '› Controls');
       var showUi = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-showui', hidden: true, 'data-test': 'show-ui', onclick: function () { setUiHidden(false); } }, 'Show UI');
-      var stage = el('div', { class: 'tsi-exp-stage' }, [mapLayer, video, gridCanvas, terrainCanvas, pinLayer, fogCanvas, reachCanvas, tokenLayer, questLayer, marquee, showUi, zoomBox, terrainPanel, revealPanel, sfxPanel]);
+      var stage = el('div', { class: 'tsi-exp-stage' }, [mapLayer, video, gridCanvas, terrainCanvas, pinLayer, fogCanvas, reachCanvas, tokenLayer, questLayer, marquee, showUi, btnShowLeft, zoomBox, terrainPanel, revealPanel, sfxPanel]);
 
       /* The travel panel. */
       var dayLabel = el('strong', { class: 'tsi-exp-day', text: 'Day 1', 'data-test': 'day' });
@@ -458,6 +465,45 @@
       ]);
 
       var wrap = el('div', { class: 'tsi-exp-wrap' }, [controls, stage, travel]);
+
+      /* ---------- Folding the left panel away (4 November 2026) ----------
+         The whole panel folds into a small "Controls" button on the map (and comes back from it), and each section folds to its heading.
+         Both are remembered (tsi.explorer.prefs: leftCollapsed, closedSections). The map takes the room the panel leaves. */
+      var SECTION_IDS = { 'Map': 'map', 'View': 'view', 'Hex grid': 'hexgrid', 'Fog and snap': 'fog', 'Heroes': 'heroes', 'Region': 'region', 'Journey': 'journey' };
+      Array.prototype.forEach.call(controls.querySelectorAll(':scope > .tsi-exp-section'), function (sec) {
+        var h = sec.querySelector('.tsi-exp-section-title');
+        var id = h && SECTION_IDS[h.textContent];
+        if (!id) return;
+        sec.setAttribute('data-section', id);
+        h.setAttribute('role', 'button');
+        h.setAttribute('data-test', 'fold-' + id);
+        h.tabIndex = 0;
+        h.classList.add('tsi-exp-section-title--fold');
+        function apply() {
+          var closed = prefs.closedSections.indexOf(id) !== -1;
+          sec.classList.toggle('tsi-exp-section--closed', closed);
+          h.setAttribute('aria-expanded', closed ? 'false' : 'true');
+        }
+        function toggle() {
+          var list = prefs.closedSections.slice(), i = list.indexOf(id);
+          if (i === -1) list.push(id); else list.splice(i, 1);
+          prefs.closedSections = list;
+          savePrefs();
+          apply();
+        }
+        h.addEventListener('click', toggle);
+        h.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+        apply();
+      });
+      function setLeftCollapsed(on) {
+        on = !!on;
+        wrap.classList.toggle('tsi-exp-wrap--noleft', on);
+        btnShowLeft.hidden = !on || uiHidden;
+        if (prefs.leftCollapsed !== on) { prefs.leftCollapsed = on; savePrefs(); }
+        if (on && controls.contains(document.activeElement)) btnShowLeft.focus();
+        life.raf(function () { redrawMap(); });
+      }
+      if (prefs.leftCollapsed) { wrap.classList.add('tsi-exp-wrap--noleft'); btnShowLeft.hidden = false; }
       ctx.root.appendChild(el('div', { class: 'tsi-exp' }, wrap));
 
       function setNotice(text) { noticeEl.textContent = text || ''; }
@@ -545,14 +591,14 @@
       life.on(terrainBox, 'change', function () { setPref('showTerrain', terrainBox.checked); queuePlayerSync(); });
       function drawFog() {
         var s = sizeCanvas(fogCanvas);
-        if (!state.fog.enabled) return;
+        if (!state.fog.enabled || !prefs.dmFog) return;
         ns.draw.fog(s.ctx, s.w, s.h, view, state.grid, R.fogStore(state));
       }
 
       function renderPins() {
         TSI.clear(pinLayer);
         var banners = [];
-        R.visibleMarkers(state, DATA, board).forEach(function (m) {
+        R.visibleMarkers(state, DATA, board, prefs.dmFog ? undefined : 'dm-all').forEach(function (m) {
           var p = R.toScreen(view, (Number(m.x) || 0) * board.w, (Number(m.y) || 0) * board.h);
           var pin = el('button', {
             type: 'button',
@@ -579,7 +625,8 @@
             type: 'button', class: 'tsi-exp-banner__cog', title: 'Ruled by…', 'aria-label': 'Ruled by… (' + m.label + ')', 'data-test': 'banner-ruled-' + m.id, text: '⚙',
             onclick: function (e) { e.stopPropagation(); ruledByDialog(m); }
           });
-          var bn = el('div', { class: 'tsi-exp-banner' + (b.banner ? '' : ' tsi-exp-banner--plain'), 'data-test': 'banner-' + m.id, 'data-clan': b.clan || '', oncontextmenu: function (e) { e.preventDefault(); ruledByDialog(m); } }, [open, cog]);
+          var isKnown = EXP.isKnownPin(knownPins, m.id);
+          var bn = el('div', { class: 'tsi-exp-banner' + (b.banner ? '' : ' tsi-exp-banner--plain') + (isKnown ? ' tsi-exp-banner--known' : ''), 'data-test': 'banner-' + m.id, 'data-clan': b.clan || '', 'data-known': isKnown ? 'yes' : '', title: isKnown ? m.label + ': known to the players' : null, oncontextmenu: function (e) { e.preventDefault(); ruledByDialog(m); } }, [open, cog]);
           bn.style.left = p.x + 'px';
           bn.style.top = (p.y + 4) + 'px';
           pinLayer.appendChild(bn);
@@ -600,8 +647,9 @@
           var p = R.toScreen(view, q.x * board.w, q.y * board.h);
           var mk = el('button', {
             type: 'button', class: 'tsi-exp-qmark', 'data-test': 'quest-' + q.id, dataset: { id: q.id },
-            title: q.label || 'Quest marker', 'aria-label': 'Quest marker' + (q.label ? ': ' + q.label : ''), text: '!'
+            title: (q.label || 'Quest marker') + (q.shown ? ' (shown to the players)' : ''), 'aria-label': 'Quest marker' + (q.label ? ': ' + q.label : '') + (q.shown ? ', shown to the players' : ''), text: '!'
           });
+          if (q.shown) mk.classList.add('is-shown');
           mk.style.left = p.x + 'px';
           mk.style.top = p.y + 'px';
           var drag0 = null;
@@ -678,12 +726,16 @@
         var noteBox = el('textarea', { class: 'tsi-input tsi-exp-qpanel__note', maxlength: String(PINS.NOTE_MAX), placeholder: 'Your note (optional)', 'data-test': 'quest-note', 'aria-label': 'Marker note' });
         noteBox.value = q.note;
         var count = el('div', { class: 'tsi-exp-qpanel__count', text: q.note.length + ' / ' + PINS.NOTE_MAX });
+        /* Show to players: the bare ! on their window even in land the party has not explored (a place they have heard of). */
+        var shownBox = el('input', { type: 'checkbox', id: 'tsi-exp-qshown', 'data-test': 'quest-shown' });
+        shownBox.checked = !!q.shown;
+        var shownRow = el('label', { class: 'tsi-exp-cursorrow tsi-exp-knownrow', for: 'tsi-exp-qshown' }, [shownBox, el('span', { text: 'Show to players (their window shows the ! even in land the party has not explored)' })]);
         life.on(noteBox, 'input', function () { count.textContent = noteBox.value.length + ' / ' + PINS.NOTE_MAX; });
         return TSI.modal.open({
           title: 'Quest marker',
           body: [
             el('p', { class: 'tsi-exp-muted', text: 'Only you see the label and the note. The players see just the gold !. Drag the ! on the map to move it.' }),
-            label, noteBox, count
+            label, noteBox, count, shownRow
           ],
           escValue: false,
           actions: [{ label: 'Delete', value: 'delete' }, { label: 'Done', value: 'done' }, { label: 'Cancel', value: false }, { label: 'Save', value: true, primary: true }],
@@ -691,7 +743,7 @@
         }).then(function (v) {
           if (!life.alive || !v) return false;
           if (v === true) {
-            PINS.editMarker(quests, id, label.value, noteBox.value);
+            PINS.editMarker(quests, id, label.value, noteBox.value, shownBox.checked);
             saveQuests(); renderQuests();
             return true;
           }
@@ -723,7 +775,7 @@
         }).then(function (ok) {
           if (!ok || !life.alive) return false;
           if (PINS.setClan(townClans, CLAN_SEEDS, SHIELDS, m.id, sel.value === '' ? null : sel.value)) { saveTownClans(); renderPins(); }
-          if (EXP.setKnown(knownPins, m.id, knownBox.checked)) saveKnown();
+          if (EXP.setKnown(knownPins, m.id, knownBox.checked)) { saveKnown(); renderPins(); }
           return true;
         });
       }
@@ -741,7 +793,7 @@
          the new wash fades in over the old one for about 600 ms (at once under reduced motion). */
       function syncColour(force) {
         var key = R.mapKey(state);
-        if (explored.mode !== 'colour' || key === 'none') { if (washHost.firstChild) TSI.clear(washHost); washSig = ''; return; }
+        if (explored.mode !== 'colour' || key === 'none' || !prefs.dmFog) { if (washHost.firstChild) TSI.clear(washHost); washSig = ''; return; }
         var sig = [key, exploredRev, state.grid.r, state.grid.offsetX, state.grid.offsetY, board.w, board.h].join('|');
         if (!force && sig === washSig && washHost.firstChild) return;
         washSig = sig;
@@ -870,6 +922,7 @@
         cloudEl.style.animationPlayState = document.hidden ? 'paused' : 'running';
       }
       life.on(document, 'visibilitychange', syncClouds);
+      life.on(dmFogBox, 'change', function () { setPref('dmFog', dmFogBox.checked); drawFog(); syncColour(true); renderPins(); });
       life.on(cloudsBox, 'change', function () { setPref('clouds', cloudsBox.checked); syncClouds(); queuePlayerSync(); });
 
       /* ---------- Camera glide (guide 6B) ----------
@@ -1137,6 +1190,7 @@
         uiHidden = !!hidden;
         wrap.classList.toggle('tsi-exp-wrap--bare', uiHidden);
         showUi.hidden = !uiHidden;
+        btnShowLeft.hidden = uiHidden || !prefs.leftCollapsed;
         btnHideUi.textContent = uiHidden ? 'Show UI' : 'Hide UI';
         if (uiHidden && controls.contains(document.activeElement)) showUi.focus();
       }
@@ -3327,12 +3381,13 @@
         walking: function () { return !!walking; },
         prefs: function () { return JSON.parse(JSON.stringify(prefs)); },
         /* Fog modes and the explored map (the tests). */
+        leftPanel: function () { return { collapsed: prefs.leftCollapsed, closed: prefs.closedSections.slice() }; },
         explored: function () { return { mode: explored.mode, radius: explored.radius, key: R.mapKey(state), flat: EXP.snapshot(explored, R.mapKey(state)), known: JSON.parse(JSON.stringify(knownPins)), revealing: revealEdit, wash: !!washHost.firstChild, rev: exploredRev }; },
         setFogMode: function (m) { setFogMode(m); },
         exploreNow: function () { exploreAroundHeroes(); },
         glide: function () { glideToParty(); },
         /* Town banners and quest markers (the tests). */
-        pins: function () { return { townClans: JSON.parse(JSON.stringify(townClans)), quests: JSON.parse(JSON.stringify(quests)), placing: placing, snapshot: R.playerSnapshot(state, DATA, { banners: bannerMap(), quests: PINS.snapshot(quests, R.mapKey(state)) }) }; },
+        pins: function () { return { townClans: JSON.parse(JSON.stringify(townClans)), quests: JSON.parse(JSON.stringify(quests)), placing: placing, snapshot: R.playerSnapshot(state, DATA, { banners: bannerMap(), quests: PINS.markersForMap(quests, R.mapKey(state)) }) }; },
         setPlacing: function (on) { setPlacing(on); },
         sfx: function () { return sfx.debug(); },
         sfxSettings: function () { return sfx.settings(); },

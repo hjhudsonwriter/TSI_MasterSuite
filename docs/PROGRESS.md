@@ -1346,3 +1346,9 @@ Built from `TSI-build-guide-6b-colour-reveal-fog.md`, after 6A (pull request 106
 - **Backups.** `tsi.explorer.explored` and `pinknown` are Explorer saved items, so Export/Import, campaign files, Back up everything, Restore and snapshots carry them. Import now also refuses damaged `explored`, `pinknown`, `townclans` and `markers` items (rules).
 - **Performance.** Dragging a hero at 1920 x 1080 in the test browser (software drawing, no graphics card): about 15 to 17 frames a second on the TV window in Colour reveal with the cloud shadows on, against about 20 with fog off in the same test; a real Edge on a graphics card should be far smoother. Please check on the real TV.
 - **Existing tests.** The new default (Colour reveal for a new Explorer) hides unexplored towns from the players, so the Player View and banner click-throughs now start with the fog set to No fog; `phase8` uses the new Fog box.
+
+### Guide 6B follow-ups after Harry's first test (4 November 2026)
+- **Show to players for quest markers.** A marker has a `shown` tick (marker panel); a ticked marker is sent to the players' window wherever it is (still only `id, mapId, x, y`: the label, note and the tick itself never go). A thin white ring on the DM's marker shows it is shown.
+- **Known to players** now works in every fog mode (it used to count only in Colour reveal, so in Classic fog the tick did nothing). The DM's banner shows a ◉ and a tooltip when a town is known.
+- **Fog on my view.** A saved tick box in the Fog section (`tsi.explorer.prefs.dmFog`, on by default = as before). Unticked, the DM's window has no black fog and no grey wash and shows every pin; the players' window is untouched.
+- **Folding the left panel.** `‹ Hide` / `› Controls` folds the whole panel, and each section heading folds that section; saved in prefs (`leftCollapsed`, `closedSections`).

@@ -156,7 +156,15 @@
     E.reveal(s.explored, KEY, [R.hexAt(s.grid, rr.x * board.w, rr.y * board.h)]);
     t.same(R.visibleMarkers(s, EX, board, 'players').map(function (m) { return m.id; }), ['river_rook', 'middlemount'], 'explored');
     s.explored.mode = 'classic'; s.fog.enabled = true;
+    E.setKnown(s.knownPins, 'middlemount', false);
     t.same(R.visibleMarkers(s, EX, board, 'players').map(function (m) { return m.id; }), [], 'classic fog: as it always was');
+    E.setKnown(s.knownPins, 'middlemount', true);
+    t.same(R.visibleMarkers(s, EX, board, 'players').map(function (m) { return m.id; }), ['middlemount'], 'Known to players works in classic fog too');
+    E.setKnown(s.knownPins, 'middlemount', false);
+    s.fog.enabled = true;
+    t.same(R.visibleMarkers(s, EX, board).map(function (m) { return m.id; }), [], 'the DM, with fog on their view, sees only the uncovered pins');
+    t.same(R.visibleMarkers(s, EX, board, 'dm-all').map(function (m) { return m.id; }), ['river_rook', 'middlemount'], 'with Fog on my view off, the DM sees every pin');
+    E.setKnown(s.knownPins, 'middlemount', true);
     s.explored.mode = 'off'; s.fog.enabled = false;
     t.same(R.visibleMarkers(s, EX, board, 'players').map(function (m) { return m.id; }), ['river_rook', 'middlemount'], 'no fog');
   });

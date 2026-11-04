@@ -20,7 +20,7 @@ const prefs = page => page.evaluate(() => TSI.explorer.debug.prefs());
     await page.waitForSelector('[data-test=camp]');
 
     await check('a fresh Explorer starts with the usual settings', async () => {
-      equal(await prefs(page), { sfxOn: true, sfxVolume: 0.8, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: false, clouds: true });
+      equal(await prefs(page), { sfxOn: true, sfxVolume: 0.8, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: false, clouds: true, dmFog: true, leftCollapsed: false, closedSections: [] });
       equal(await page.isChecked('[data-test=cursor-on]'), true);
       equal(await page.isChecked('[data-test=reach-on]'), true);
       equal(await page.isChecked('[data-test=terrain-show]'), false);
@@ -38,7 +38,7 @@ const prefs = page => page.evaluate(() => TSI.explorer.debug.prefs());
       await page.waitForTimeout(300);
       await page.reload();
       await page.waitForSelector('[data-test=camp]');
-      equal(await prefs(page), { sfxOn: false, sfxVolume: 0.4, autoplayVoice: true, clickMove: false, showCursor: false, showReach: false, showTerrain: true, clouds: true });
+      equal(await prefs(page), { sfxOn: false, sfxVolume: 0.4, autoplayVoice: true, clickMove: false, showCursor: false, showReach: false, showTerrain: true, clouds: true, dmFog: true, leftCollapsed: false, closedSections: [] });
       equal(await page.isChecked('[data-test=cursor-on]'), false);
       equal(await page.isChecked('[data-test=reach-on]'), false);
       equal(await page.isChecked('[data-test=terrain-show]'), true);
@@ -61,7 +61,7 @@ const prefs = page => page.evaluate(() => TSI.explorer.debug.prefs());
       await page.evaluate(async () => { TSI.store.remove('tsi.explorer.prefs'); await TSI.store.flush(); });
       await page.reload();
       await page.waitForSelector('[data-test=camp]');
-      equal(await prefs(page), { sfxOn: true, sfxVolume: 0.8, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: false, clouds: true });
+      equal(await prefs(page), { sfxOn: true, sfxVolume: 0.8, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: false, clouds: true, dmFog: true, leftCollapsed: false, closedSections: [] });
     });
 
     await check('a setting kept the old way (the browser\'s small storage) is picked up once', async () => {

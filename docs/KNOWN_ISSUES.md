@@ -4461,3 +4461,7 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - Before: one Fog of War button (black fog); after reopening, the button read "Off" even with the fog on until pressed.
 - After: a Fog box (Classic fog / Colour reveal / No fog) that shows the real saved mode; a new Explorer starts in Colour reveal, an older one keeps its black fog (or no fog). Colour reveal, the Reveal map brushes, Known to players, cloud shadows and the camera glide are described in `docs/PROGRESS.md`.
 - Left alone: hexes are explored by the grid of the map at the time, so changing a map's hex size afterwards (the Lock hex button guards it) makes the explored area stop lining up with the picture, as painted terrain does. The colour reveal edge needs a browser whose canvas can blur (Edge, Chrome, Firefox can); an old one would show hard hex edges.
+
+### EXP-FOG-02 · Follow-ups from the first test of colour reveal (4 November 2026)
+- Before: a quest marker in unexplored land could not be shown to the players; "Known to players" did nothing in Classic fog; the DM's window always shared the fog; the left panel could not be folded.
+- After: quest markers have a **Show to players** tick; Known to players works in every mode; **Fog on my view** lets the DM see the whole map while the players keep their fog; the left panel and each of its sections fold, and it is remembered.

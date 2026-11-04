@@ -89,7 +89,7 @@
     var mk = P.emptyMarkers();
     t.equal(P.addMarker(mk, 'none', 0.5, 0.5), null, 'no map, no marker');
     var a = P.addMarker(mk, 'preset:midland_province', 0.25, 0.75);
-    t.same(a, { id: 'qm-1', mapId: 'preset:midland_province', x: 0.25, y: 0.75, label: '', note: '', source: '' });
+    t.same(a, { id: 'qm-1', mapId: 'preset:midland_province', x: 0.25, y: 0.75, label: '', note: '', shown: false, source: '' });
     var b = P.addMarker(mk, 'preset:the_east_isle', 2, -3);
     t.same([b.id, b.x, b.y], ['qm-2', 1, 0], 'held on the map');
     t.equal(P.editMarker(mk, 'qm-1', '  The   old mill ', 'Ask for\nBranwen'), true);
@@ -114,7 +114,7 @@
       { id: 'a', mapId: 'm', x: 0, y: 0 },
       { id: '', mapId: 'm' }, null, 5, { id: 'c' }
     ] });
-    t.same(c, { version: 1, markers: [{ id: 'a', mapId: 'm', x: 1, y: 0, label: 'L', note: 'N', source: '' }] }, 'one good entry; source stays empty for now');
+    t.same(c, { version: 1, markers: [{ id: 'a', mapId: 'm', x: 1, y: 0, label: 'L', note: 'N', shown: false, source: '' }] }, 'one good entry; source stays empty for now');
     t.same(P.cleanMarkers('junk'), { version: 1, markers: [] });
   });
 
@@ -131,6 +131,27 @@
     var text = JSON.stringify(full);
     t.ok(text.indexOf('SECRET') === -1, 'no label or note anywhere in the snapshot');
     t.same(R.playerSnapshot(s, EX, {}).quests, [], 'none by default');
+  });
+
+  test('Show to players: a marker can be ticked to show on the players\' window in unexplored land, and only then; the label and note still never go', function (t) {
+    var mk = P.emptyMarkers();
+    var m = P.addMarker(mk, 'preset:midland_province', 0.02, 0.02);
+    P.editMarker(mk, m.id, 'SECRET-LABEL', 'SECRET-NOTE');
+    t.equal(m.shown, false, 'not shown by default');
+    var s = R.defaultState(EX);
+    s.mapPresetId = 'midland_province';
+    s.explored = TSI.explorer.explored.empty('colour');
+    t.same(R.playerSnapshot(s, EX, { quests: mk.markers }).quests, [], 'in unexplored land, hidden');
+    t.equal(P.editMarker(mk, m.id, 'SECRET-LABEL', 'SECRET-NOTE', true), true);
+    t.equal(m.shown, true);
+    var snap = R.playerSnapshot(s, EX, { quests: mk.markers });
+    t.same(snap.quests, [{ id: 'qm-1', mapId: 'preset:midland_province', x: 0.02, y: 0.02 }], 'sent, as a bare spot');
+    t.ok(JSON.stringify(snap).indexOf('SECRET') === -1 && JSON.stringify(snap).indexOf('shown') === -1, 'no label, no note, not even the flag');
+    P.editMarker(mk, m.id, 'x', 'y');
+    t.equal(m.shown, true, 'editing the text alone keeps the tick');
+    P.editMarker(mk, m.id, 'x', 'y', false);
+    t.equal(m.shown, false);
+    t.equal(P.cleanMarkers({ version: 1, markers: [{ id: 'a', mapId: 'm', x: 0, y: 0, shown: 'yes' }] }).markers[0].shown, false, 'only a real true counts');
   });
 
   test('the players\' town markers carry the shield picture and the clan\'s name only, for the pins that show', function (t) {
