@@ -9,7 +9,7 @@
      fadeSecs   crossfade between sounds; duckTo how loud everything is while a voice line plays (0.3 = 30%)
    A file that is not there is skipped quietly and the Sound control says "file missing". Folder: tools/explorer/assets/soundscape/ (the campfire,
    rain and storm beds reuse the Explorer's sound effect files in tools/explorer/assets/sfx/). Levels were measured on 5 November 2026 (EBU R128)
-   and brought to about -26 LUFS; the quietest files (the plains and the night) are already at full volume. The campfire and the night play together at the
+   and brought to about -26 LUFS; the quietest files (the night) are already at full volume. The campfire and the night play together at the
    same level (both -27.5 LUFS, the night's own level), so the campfire is set a little lower than the rest. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.soundscape = {
@@ -18,9 +18,9 @@ window.TSI_DATA.soundscape = {
   moodBedLevel: 0.5,          /* the road sound sits at this level under a mood */
   beds: {
     coast: { file: 'tools/explorer/assets/soundscape/coast.wav', volume: 0.44, label: 'Coast (surf, gulls, wind)' },
-    forest: { file: 'tools/explorer/assets/soundscape/forest.mp3', volume: 0.35, label: 'Forest (wind in pines)' },
+    forest: { file: 'tools/explorer/assets/soundscape/forest.mp3', volume: 0.36, label: 'Forest (wind in pines)' },
     marsh: { file: 'tools/explorer/assets/soundscape/marsh.mp3', volume: 0.8, label: 'Marsh (reeds, frogs, still water)' },
-    plains: { file: 'tools/explorer/assets/soundscape/plains.mp3', volume: 1.0, label: 'Plains (open wind over grass)' },
+    plains: { file: 'tools/explorer/assets/soundscape/plains.mp3', volume: 0.88, label: 'Plains (open wind over grass)' },
     mountain: { file: 'tools/explorer/assets/soundscape/mountain.mp3', volume: 1.0, label: 'Mountain (high thin wind)' },
     town: { file: 'tools/explorer/assets/soundscape/town.mp3', volume: 1.0, label: 'Town (a market murmur)' },
     tavern: { file: 'tools/explorer/assets/soundscape/tavern.mp3', volume: 0.52, label: 'Tavern (an inn interior)' },

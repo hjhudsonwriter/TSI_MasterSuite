@@ -689,9 +689,9 @@ Harry's background sounds, in `tools/explorer/assets/soundscape/`, kept as he su
 | File | What it is | Length | Loudness (LUFS) | Source and licence |
 |---|---|---|---|---|
 | `coast.wav` | surf, gulls, wind | 38 s | -18.8 | Harry's list (Part A2): source and licence to be added |
-| `forest.mp3` | wind in pines, birds | 3 min 32 s | -17.0 | to be added |
+| `forest.mp3` | wind in pines, birds | 2 min 30 s (trimmed from 3 min 32 s) | -17.2 | to be added |
 | `marsh.mp3` | reeds, frogs, water | 2 min 24 s | -24.1 | to be added |
-| `plains.mp3` | open wind over grass | 8 min 38 s | -27.1 | to be added |
+| `plains.mp3` | open wind over grass | 2 min 30 s (trimmed from 8 min 38 s) | -24.9 | to be added |
 | `mountain.mp3` | high thin wind | 39 s | -26.0 | to be added |
 | `town.mp3` | a market murmur | 14 s | -26.1 | to be added |
 | `tavern.mp3` | an inn | 37 s | -20.4 | to be added |

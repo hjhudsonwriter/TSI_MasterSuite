@@ -16,7 +16,7 @@
   - Settings use the keys `scVolume`, `scMuted`, `scMood` in the Explorer's prefs.
 - **The rule change (Harry approved it):** until now the TV windows were silent. Documented in `docs/RUNNING-ON-THE-TV.md` (point 5) and `docs/PLAYER-VIEW-PLAN.md`.
 - **Tests:** rules (which bed wins, layering, ducking, moods, the combat mood returning, missing files, the player's fades, loop crossfade, mute at once, ticks once a second) and `tests/e2e/soundscape.test.js` (both screen sizes). Nobody can hear anything in the test browser: what each sound is doing is read from the players. The listening is on Harry's Edge checklist.
-- **Open:** each sound's source link and licence (guide A2, `docs/ASSETS.md` table) were not sent with the files. Long files: plains is 8½ minutes and forest 3½; they were not trimmed (see KNOWN_ISSUES SND-02).
+- **Open:** each sound's source link and licence (guide A2, `docs/ASSETS.md` table) were not sent with the files. Long files: at Harry's go-ahead, `plains.mp3` (8 min 38 s) and `forest.mp3` (3 min 32 s) were trimmed to 2 min 30 s each, cut without re-encoding (plains from 2:00, forest from 0:30); the plains cut is a little louder, so its volume is 0.88. The sound-effect files were left alone (none is over 1½ minutes).
 - **Next:** all five guides are built.
 
 ### 5 November 2026: "Previously, in the Scarlett Isles…" (guide 4 of 5)
