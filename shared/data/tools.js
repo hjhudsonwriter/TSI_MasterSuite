@@ -79,7 +79,7 @@ window.TSI_DATA.tools = [
     single: true,
     desc: 'Manage facilities, orders and the treasury for your bastion, day by day with the Explorer.',
     files: {
-      css: ['tools/bastion/bastion.css', 'tools/beasthandler/dm-panel.css'],
+      css: ['tools/bastion/bastion.css', 'tools/beasthandler/dm-panel.css', 'tools/beasthandler/compendium.css'],
       js: [
         'tools/bastion/data/bastion-data.js',
         'tools/bastion/data/facilities-data.js',
@@ -105,6 +105,8 @@ window.TSI_DATA.tools = [
            player's companion once, and the DM's panel makes the codes that link a phone. */
         'shared/js/hmac.js',
         'tools/beasthandler/data/profile-tables.js',
+        'tools/beasthandler/data/beast-compendium-data.js',
+        'tools/beasthandler/compendium.js',
         'tools/beasthandler/data/initiation-data.js',
         'tools/beasthandler/projection.js',
         'tools/beasthandler/profile-rules.js',
@@ -134,10 +136,13 @@ window.TSI_DATA.tools = [
     /* The Player View (26 October 2026): the Bastion for the TV, view-only, fed by a snapshot of what players may see. */
     playerViews: {
       bastion: {
-        css: ['tools/bastion/player-view.css'],
+        css: ['tools/bastion/player-view.css', 'tools/beasthandler/compendium.css'],
         js: [
           'tools/bastion/data/bastion-data.js',
           'tools/bastion/data/player-panels-data.js',
+          'tools/beasthandler/data/profile-tables.js',
+          'tools/beasthandler/data/beast-compendium-data.js',
+          'tools/beasthandler/compendium.js',
           'tools/bastion/player-view-art.js',
           'tools/bastion/map-loop.js',
           'shared/js/pointer-mirror.js',

@@ -368,7 +368,7 @@
       if (p.bare) { t.equal(p.id, 'party_quarters'); t.same(p.widgets, []); t.equal(p.tagline + p.blurb, ''); t.equal(p.title, 'Party Quarters'); }
       else {
       t.equal(R.facility(data, p.id).name, p.title, p.id + '\'s title is its name');
-      if (p.id === 'beast_pen') { t.ok(p.tagline, 'a tagline'); t.equal(p.blurb, ''); t.same(p.widgets, ['beasts']); }
+      if (p.id === 'beast_pen') { t.ok(p.tagline, 'a tagline'); t.equal(p.blurb, ''); t.same(p.widgets, ['beasts', 'compendium']); }
       else {
       t.ok(p.tagline && p.blurb, p.id + ' has a tagline and a blurb');
       t.ok(p.widgets.indexOf('level') !== -1 && p.widgets.indexOf('orders') !== -1, p.id + ' shows its level and orders');
