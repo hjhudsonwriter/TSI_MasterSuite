@@ -6,7 +6,9 @@
    - Sounds crossfade over data.fadeSecs when the plan changes; everything drops to data.duckTo while a voice line plays; mute is at once.
    - A file that is not there is skipped quietly (status().missing). A browser that will not play a sound before the window has been clicked is
      noticed (status().blocked): resume() on the first click starts what was wanted.
-   TSI.soundscape.create({ makeAudio, setInterval, clearInterval, onStatus, data }) → { apply(auto, mix), status(), resume(), stop(), debug() } */
+   Time is read from the clock, not counted in ticks: a window the browser has put in the background (a hidden or covered TV window) is
+   only ticked about once a second, and the fades must still take the right time.
+   TSI.soundscape.create({ makeAudio, setInterval, clearInterval, onStatus, data, now }) → { apply(auto, mix), status(), resume(), stop(), debug() } */
 (function () {
   'use strict';
 
@@ -27,6 +29,8 @@
       var duck = 1;                /* the current duck, moving towards its target */
       var timer = null;
       var lastStatusKey = '';
+      var clock = opts.now || function () { return Date.now(); };
+      var lastTick = clock();
       var stopped = false;
 
       function missingIds() { return Object.keys(channels).filter(function (k) { return channels[k].missing; }); }
@@ -71,7 +75,7 @@
       function setVolumes(ch, level) {
         var v = mix.muted ? 0 : clamp(level);
         if (ch.xf) {
-          var t = clamp((Date.now() - ch.xf.start) / (ch.xf.secs * 1000));
+          var t = clamp((clock() - ch.xf.start) / (ch.xf.secs * 1000));
           ch.xf.from.volume = clamp(v * (1 - t)); ch.xf.to.volume = clamp(v * t);
           if (t >= 1) { try { ch.xf.from.pause(); ch.xf.from.currentTime = 0; } catch (e) { /* nothing */ } ch.active = ch.copies.indexOf(ch.xf.to); ch.xf = null; }
         } else {
@@ -82,7 +86,9 @@
 
       function tick() {
         if (stopped) return;
-        var dt = TICK_MS / 1000;
+        var nowMs = clock();
+        var dt = Math.max(0, Math.min(1.5, (nowMs - lastTick) / 1000));
+        lastTick = nowMs;
         /* the duck moves quickly; the sounds fade over fadeSecs */
         var duckTarget = R.duckFactor(auto, d);
         duck = duck < duckTarget ? Math.min(duckTarget, duck + dt / DUCK_SECS) : Math.max(duckTarget, duck - dt / DUCK_SECS);
@@ -104,7 +110,7 @@
               try { b.currentTime = 0; } catch (e) { /* nothing */ }
               b.volume = 0;
               play(ch, b);
-              ch.xf = { from: a, to: b, start: Date.now(), secs: secs };
+              ch.xf = { from: a, to: b, start: clock(), secs: secs };
             } else if (a.ended) {
               try { a.currentTime = 0; } catch (e) { /* nothing */ }
               play(ch, a);

@@ -17,6 +17,10 @@
   function data() { return window.TSI_DATA.soundscape; }
 
   function readMix() {
+    /* The newest choice is the one last passed on to the TV (it is written at once; the save in the prefs follows a moment later). */
+    var passed = null;
+    try { passed = R().unpack(TSI.handoff.read('sound')); } catch (e) { passed = null; }
+    if (passed) return passed.mix;
     var p = null;
     try { p = TSI.store.get(PREFS, null); } catch (e) { p = null; }
     p = p && typeof p === 'object' ? p : {};

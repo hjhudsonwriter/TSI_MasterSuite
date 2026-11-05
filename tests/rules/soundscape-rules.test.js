@@ -144,12 +144,13 @@
     this.play = function () { self.paused = false; return FakeAudio.refuse ? Promise.reject({ name: 'NotAllowedError' }) : Promise.resolve(); };
   }
   function engine() {
-    var made = [], tickFn = null;
+    var made = [], tickFn = null, ms = 1000000;
     var e = TSI.soundscape.create({
+      now: function () { return ms; },
       makeAudio: function () { var a = new FakeAudio(); made.push(a); return a; },
       setInterval: function (f) { tickFn = f; return 1; }, clearInterval: function () { tickFn = null; }, onStatus: function () {}, data: D
     });
-    return { e: e, made: made, tick: function (n) { for (var i = 0; i < (n || 1); i++) tickFn(); } };
+    return { e: e, made: made, advance: function (x) { ms += x; }, tick: function (n) { for (var i = 0; i < (n || 1); i++) { ms += 100; tickFn(); } } };
   }
   function playingCount(en) { return en.made.filter(function (a) { return !a.paused; }).length; }
 
@@ -181,20 +182,24 @@
     var a = en.made[0], b = en.made[1];
     a.duration = b.duration = 14; a.fire('loadedmetadata');
     a.currentTime = 12;
-    var real = Date.now, t0 = real();
-    Date.now = function () { return t0; };
-    try {
-      en.tick(1);
-      t.ok(!b.paused, 'the second copy starts');
-      t.ok(en.e.debug().channels.town.crossfading);
-      Date.now = function () { return t0 + 1750; };
-      en.tick(1);
-      t.ok(b.volume > a.volume, 'the second is now louder');
-      Date.now = function () { return t0 + 3500; };
-      en.tick(1);
-      t.ok(a.paused && !b.paused, 'the first has finished and stopped');
-      t.ok(!en.e.debug().channels.town.crossfading);
-    } finally { Date.now = real; }
+    en.tick(1);
+    t.ok(!b.paused, 'the second copy starts');
+    t.ok(en.e.debug().channels.town.crossfading);
+    en.advance(1650); en.tick(1);
+    t.ok(b.volume > a.volume, 'the second is now louder');
+    en.advance(1500); en.tick(1);
+    t.ok(a.paused && !b.paused, 'the first has finished and stopped');
+    t.ok(!en.e.debug().channels.town.crossfading);
+  });
+
+  test('the fades take the right time even when the window is only ticked once a second (a window in the background)', function (t) {
+    var en = engine();
+    en.e.apply({ base: 'coast' }, { volume: 1 });
+    for (var i = 0; i < 5; i++) { en.advance(1000); en.tick(1); }   /* five seconds, in one-second steps (and a tick's own 100 ms) */
+    t.equal(en.e.debug().channels.coast.fade, 1, 'faded in over four seconds, not forty');
+    en.e.apply({ base: 'coast', voice: true }, { volume: 1 });
+    en.advance(1000); en.tick(1);
+    t.ok(en.e.debug().duck <= 0.31, 'ducked within a second');
   });
 
   test('a duck brings everything down to 30% quickly and back up; mute is at once', function (t) {

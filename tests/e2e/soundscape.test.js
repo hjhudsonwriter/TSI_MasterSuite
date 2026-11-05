@@ -37,9 +37,10 @@ async function closeModals(page) { for (let i = 0; i < 4; i++) { const b = await
     assert(fs.existsSync(path.join(H.ROOT, 'tools/explorer/assets/soundscape/ADD-THE-SOUNDS-HERE.txt')), 'the file list note');
   });
 
-  for (const [name, size] of [['laptop', { width: 1707, height: 930 }], ['tv', { width: 1920, height: 1080 }]]) {
+  for (const [name, size] of [['laptop', { width: 1707, height: 930 }], ['tv', { width: 1920, height: 1080 }]].filter(x => !process.env.ONLY || process.env.ONLY === x[0])) {
     section('The soundscape at ' + size.width + ' x ' + size.height + ' (' + name + ', internet off)');
-    const context = await H.newContext(browser, name, { questMode: 'default', backedUp: true });
+    const br = await H.chromium.launch();   /* a browser of its own for each size, so nothing carries over from the last */
+    const context = await H.newContext(br, name, { questMode: 'default', backedUp: true });
     await context.setOffline(true);
     /* No random camp or weather event: the dice always roll high. */
     await context.addInitScript(() => { Math.random = () => 0.99; });
@@ -53,6 +54,8 @@ async function closeModals(page) { for (let i = 0; i < 4; i++) { const b = await
     await page.waitForTimeout(500);
     await change(page, s => { s.travel.travelEventDay = s.travel.day; s.snap.enabled = true; });
     let pv = null;
+    /* When a check fails, say what the TV and the Explorer were doing. */
+    const check = (title, fn) => H.check(title, async () => { try { await fn(); } catch (e) { try { const a = await page.evaluate(() => TSI.explorer && TSI.explorer.debug ? TSI.explorer.debug.sound() : 'the Explorer is not open here'); const b = pv ? await pvSound(pv) : null; console.log('  [diagnosis] explorer: ' + JSON.stringify(a).slice(0, 700) + '\n  [diagnosis] TV: ' + JSON.stringify(b).slice(0, 700) + '\n  [diagnosis] url: ' + page.url()); } catch (e2) { console.log('  [diagnosis failed] ' + e2); } throw e; } });
 
     await check('with no Player View open the Explorer\'s own window plays the road sound, and says so once', async () => {
       await until(async () => { const d = (await page.evaluate(() => TSI.explorer.debug.sound())).local; return d && d.channels.coast && d.channels.coast.state === 'playing' && d.channels.coast.playing > 0; }, 'the coast sound from the Explorer window');
@@ -69,6 +72,7 @@ async function closeModals(page) { for (let i = 0; i < 4; i++) { const b = await
 
     await check('opening the Player View moves the sound there: it plays on the TV window and stops in the DM\'s, so no sound is ever doubled', async () => {
       [pv] = await Promise.all([page.waitForEvent('popup'), page.click('[data-test=open-player-view]')]);
+      pv.on('pageerror', e => errors.push('player view: ' + e));
       await pv.setViewportSize(size);
       await pv.waitForSelector('[data-test=pv-stage]');
       await settled(pv, ['coast']);
@@ -234,6 +238,7 @@ async function closeModals(page) { for (let i = 0; i < 4; i++) { const b = await
 
     equal(errors, [], 'no page errors');
     await context.close();
+    await br.close();
   }
 
   await browser.close();
