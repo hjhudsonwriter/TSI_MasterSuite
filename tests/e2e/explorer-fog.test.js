@@ -71,7 +71,7 @@ const pvColour = pv => pv.evaluate(() => { const i = document.querySelector('[da
       assert(i.flat.length / 2 >= 19 && i.flat.length / 2 <= 19 * 5, 'hexes: ' + i.flat.length / 2);
       equal(await page.$$('[data-test=colour-wash]').then(l => l.length), 1, 'the wash is there');
       assert((await page.$eval('[data-test=colour-wash]', n => (n.style.maskImage || n.style.webkitMaskImage || '').startsWith('url("data:image/png'))), 'a soft mask');
-      equal(await page.$$eval('.tsi-exp-pin', n => n.length), 2, 'the DM sees every pin, explored or not');
+      equal(await page.$$eval('.tsi-exp-pin', n => n.length), 3, 'the DM sees every pin, explored or not (two towns and the First Temple of Telluria)');
     });
 
     const pv = await openPlayer(page, size);
@@ -181,7 +181,7 @@ const pvColour = pv => pv.evaluate(() => { const i = document.querySelector('[da
       await page.click('[data-test=reveal-all]');
       await page.click('[data-test=reveal-done]');
       await pvWait(pv, () => document.querySelectorAll('.tsi-xpv-quest').length === 1);
-      assert((await pv.$$('.tsi-xpv-banner').then(l => l.length)) === 2, 'both towns now');
+      assert((await pv.$$('.tsi-xpv-banner').then(l => l.length)) === 3, 'both towns and the temple now');
       /* Un-know it and hide everything */
       await page.hover('[data-test=banner-middlemount]');
       await page.click('[data-test=banner-ruled-middlemount]');
@@ -323,7 +323,7 @@ const pvColour = pv => pv.evaluate(() => { const i = document.querySelector('[da
       await page.uncheck('[data-test=dm-fog]');
       await page.waitForTimeout(300);
       equal(await dark(), 0, 'no black fog on the DM window');
-      equal(await page.$$eval('.tsi-exp-pin', n => n.map(p => p.title)), ['The River Rook', 'Middlemount'], 'every town shows to the DM');
+      equal(await page.$$eval('.tsi-exp-pin', n => n.map(p => p.title)), ['First Temple of Telluria', 'The River Rook', 'Middlemount'], 'every town shows to the DM');
       assert((await pv.$eval('[data-test=pv-fog]', c => c.getContext('2d').getImageData(Math.floor(c.width * 0.9), Math.floor(c.height * 0.9), 1, 1).data[3])) > 100, 'the players\' fog is still there');
       equal((await page.evaluate(() => TSI.explorer.debug.prefs())).dmFog, false, 'saved');
       await page.selectOption('[data-test=fog-mode]', 'colour');

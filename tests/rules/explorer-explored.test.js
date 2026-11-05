@@ -148,7 +148,7 @@
     s.explored = E.empty('colour');
     s.knownPins = E.emptyKnown();
     var dm = R.visibleMarkers(s, EX, board).map(function (m) { return m.id; });
-    t.same(dm, ['river_rook', 'middlemount'], 'the DM sees them all');
+    t.same(dm, ['temple_telluria', 'river_rook', 'middlemount'], 'the DM sees them all');
     t.same(R.visibleMarkers(s, EX, board, 'players').map(function (m) { return m.id; }), [], 'nothing explored yet');
     E.setKnown(s.knownPins, 'middlemount', true);
     t.same(R.visibleMarkers(s, EX, board, 'players').map(function (m) { return m.id; }), ['middlemount'], 'Known to players');
@@ -163,10 +163,10 @@
     E.setKnown(s.knownPins, 'middlemount', false);
     s.fog.enabled = true;
     t.same(R.visibleMarkers(s, EX, board).map(function (m) { return m.id; }), [], 'the DM, with fog on their view, sees only the uncovered pins');
-    t.same(R.visibleMarkers(s, EX, board, 'dm-all').map(function (m) { return m.id; }), ['river_rook', 'middlemount'], 'with Fog on my view off, the DM sees every pin');
+    t.same(R.visibleMarkers(s, EX, board, 'dm-all').map(function (m) { return m.id; }), ['temple_telluria', 'river_rook', 'middlemount'], 'with Fog on my view off, the DM sees every pin');
     E.setKnown(s.knownPins, 'middlemount', true);
     s.explored.mode = 'off'; s.fog.enabled = false;
-    t.same(R.visibleMarkers(s, EX, board, 'players').map(function (m) { return m.id; }), ['river_rook', 'middlemount'], 'no fog');
+    t.same(R.visibleMarkers(s, EX, board, 'players').map(function (m) { return m.id; }), ['temple_telluria', 'river_rook', 'middlemount'], 'no fog');
   });
 
   test('the snapshot: the explored hexes only in colour mode, as plain numbers; quest markers follow the fog; LEAK: no marker text, no unexplored town', function (t) {

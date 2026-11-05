@@ -98,6 +98,8 @@ window.TSI_DATA.explorer = {
     }
   },
 
+  /* The three First Temples (Harry, 5 November 2026) are pins too, with the god's coin as the picture and the temple's painting in the pop-up
+     (a town map's place, as for a town). temple names the god, only for the DM's records. */
   /* Town pins (old data/markers.json), by map. A pin shows only if it has a
      town map (submapImage), as before (E10): 15 show and 18 stay hidden. x, y
      is the tip of the pin. Old values are in the comments. */
@@ -109,6 +111,7 @@ window.TSI_DATA.explorer = {
     ],
 
     the_north_isle: [
+      { id: 'temple_pelagos', label: 'First Temple of Pelagos', x: 0.0683, y: 0.0492, description: '', thumb: 'tools/explorer/assets/temples/pelagos-icon.png', submapImage: 'tools/explorer/assets/temples/first-temple-of-pelagos.webp', temple: 'pelagos' },
       { id: 'leatherport', label: 'Leatherport', x: 0.665, y: 0.916, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: '', show: true },
       { id: 'bleakhold', label: 'The Bleakhold', x: 0.5082, y: 0.2629, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: 'tools/explorer/assets/submaps/the_bleakhold.png' }, /* old 0.5068, 0.2629 */
       { id: 'bleakharbour', label: 'Bleakharbour', x: 0.5865, y: 0.4634, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: 'tools/explorer/assets/submaps/bleakharbour.png' }, /* old 0.5721, 0.4634 */
@@ -116,6 +119,7 @@ window.TSI_DATA.explorer = {
     ],
 
     midland_province: [
+      { id: 'temple_telluria', label: 'First Temple of Telluria', x: 0.5561, y: 0.1058, description: '', thumb: 'tools/explorer/assets/temples/telluria-icon.png', submapImage: 'tools/explorer/assets/temples/first-temple-of-telluria.webp', temple: 'telluria' },
       { id: 'river_rook', label: 'The River Rook', x: 0.7775, y: 0.742, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: 'tools/explorer/assets/submaps/the_river_rook.webp', show: true },
       { id: 'middlemount', label: 'Middlemount', x: 0.5293, y: 0.188, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: 'tools/explorer/assets/submaps/middlemount.webp' }, /* old 0.5244, 0.188 */
       { id: 'pearlsmore', label: 'Pearlsmore', x: 0.3088, y: 0.3648, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: '' },                                            /* old 0.3407, 0.3648 */
@@ -162,6 +166,7 @@ window.TSI_DATA.explorer = {
     ],
 
     western_province_south: [
+      { id: 'temple_aurush', label: 'First Temple of Aurush', x: 0.2995, y: 0.0693, description: '', thumb: 'tools/explorer/assets/temples/aurush-icon.png', submapImage: 'tools/explorer/assets/temples/first-temple-of-aurush.webp', temple: 'aurush' },
       { id: 'redport', label: 'Redport', x: 0.159, y: 0.479, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: '', show: true },
       { id: 'westreach', label: 'Westreach', x: 0.423, y: 0.5775, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: '' },                                               /* old 0.4358, 0.5775 */
       { id: 'shadowhall', label: 'Shadowhall', x: 0.4585, y: 0.0607, description: '', thumb: 'tools/explorer/assets/markers/marker_gold.png', submapImage: '' },                                            /* old 0.4654, 0.0607 */

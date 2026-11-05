@@ -683,3 +683,15 @@ Harry's `SC_Plainsmane` and `SC_Boltback` pictures and videos were turned into t
 | `SC_Plainsmane.png` / `SC_Plainsmane.mp4` | `tools/beasthandler/assets/sabrecat/plainsmane.webp` / `.mp4` |
 | `SC_Boltback.png` / `SC_Boltback.mp4` | `tools/beasthandler/assets/sabrecat/boltback.webp` / `.mp4` |
 | Harry's regenerated Ashmark picture (attached to the session, 768 x 1360 WebP, kept as sent) and `SC_Ashmark.mp4` | `tools/beasthandler/assets/sabrecat/ashmark.webp` / `.mp4` |
+
+## The three First Temples (Harry, 5 November 2026)
+
+| Picture | Location | Notes |
+|---|---|---|
+| Harry's coin for Telluria (a leaf on green; 2000 x 2000 WebP), cropped to the coin and scaled to 128 x 128 | `tools/explorer/assets/temples/telluria-icon.png` | The pin on Midland Province |
+| Harry's coin for Aurush (a sun on red), same treatment | `tools/explorer/assets/temples/aurush-icon.png` | The pin on Western Province (south) |
+| Harry's coin for Pelagos (waves on blue), same treatment | `tools/explorer/assets/temples/pelagos-icon.png` | The pin on The North Isle |
+| Painting: roots at the base of two mountains (1280 x 720 WebP, kept as sent) | `tools/explorer/assets/temples/first-temple-of-telluria.webp` | First Temple of Telluria's pop-up |
+| Painting: a frozen, icy coastline | `tools/explorer/assets/temples/first-temple-of-pelagos.webp` | First Temple of Pelagos's pop-up |
+| Painting: a mountain peak at dawn | `tools/explorer/assets/temples/first-temple-of-aurush.webp` | First Temple of Aurush's pop-up |
+

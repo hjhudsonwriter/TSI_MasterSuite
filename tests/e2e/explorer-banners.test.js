@@ -54,7 +54,7 @@ const pvWait = (pv, fn, arg) => pv.waitForFunction(fn, arg, { timeout: 6000 });
         });
         seen += banners.length;
       }
-      equal(seen, 21, 'the 21 pins that show today (those with a town map, and the ports waiting for theirs)');
+      equal(seen, 24, 'the 24 pins that show today (those with a town or temple picture, and the ports waiting for theirs)');
     });
 
     await check('no banner covers its pin, another banner, or a pin\'s click target', async () => {
@@ -79,7 +79,7 @@ const pvWait = (pv, fn, arg) => pv.waitForFunction(fn, arg, { timeout: 6000 });
     await check('the Player View shows the same banners: name, shield, plain where there is no clan; no cog or controls', async () => {
       await pvWait(pv, () => document.querySelectorAll('.tsi-xpv-banner').length > 0);
       const b = await pv.$$eval('.tsi-xpv-banner', n => n.map(x => ({ id: x.dataset.id, clan: x.dataset.clan, name: x.textContent.trim(), img: !!x.querySelector('img') })));
-      equal(b.map(x => [x.id, x.clan, x.img]), [['river_rook', '', false], ['middlemount', 'Clan Bacca', true]]);
+      equal(b.map(x => [x.id, x.clan, x.img]), [['temple_telluria', '', false], ['river_rook', '', false], ['middlemount', 'Clan Bacca', true]]);
       equal(await pv.$$('.tsi-xpv-banner button'), [], 'nothing to press');
     });
 
