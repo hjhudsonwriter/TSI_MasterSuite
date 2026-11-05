@@ -2102,6 +2102,90 @@
         im.onerror = function () { done(false); };
         im.src = TSI.path(src);
       }
+      /* ---------- The recap reel (guide 4; tools/recap/) ----------
+         {recap} plays the latest recap on the TV, {recap: id} a particular one: the reel is drawn by the Player View from a snapshot (pictures and
+         words only), and the narration, the opening sting and the music bed play here, on the laptop. It holds its last frame until the DM sends
+         the TV back to the map ({hide}, or the Back to the map button). If the TV window has only just been found (the Explorer was opened to play
+         it) it waits a few seconds for it to answer. */
+      var recapSounds = { narration: null, sting: null, bed: null };
+      var recapPlaying = false;
+      var recapNotice = null;
+      function recapAudioStop() {
+        ['narration', 'sting', 'bed'].forEach(function (k) {
+          var a = recapSounds[k];
+          if (a) { try { a.pause(); } catch (e) { /* nothing */ } a.removeAttribute('src'); try { a.load(); } catch (e) { /* nothing */ } }
+        });
+      }
+      function recapStop() {
+        if (!recapPlaying) return;
+        recapPlaying = false;
+        recapAudioStop();
+        pvLink.send('recap', { action: 'stop' });
+        if (recapNotice) { recapNotice.close(); recapNotice = null; }
+      }
+      function whenTvAnswers(ms) {
+        return new Promise(function (resolve) {
+          if (pvLink.isConnected()) return resolve(true);
+          var waited = 0;
+          var t = life.setInterval(function () {
+            waited += 250;
+            if (pvLink.isConnected()) { life.clearInterval(t); resolve(true); }
+            else if (waited >= ms) { life.clearInterval(t); resolve(false); }
+          }, 250);
+        });
+      }
+      function recapSound(key, file, volume, loop) {
+        return new Promise(function (resolve) {
+          TSI.recap.probeAudio(file, function (d) {
+            if (!d || !life.alive) return resolve(false);
+            if (!recapSounds[key]) recapSounds[key] = life.audio(null, { preload: 'none' });
+            var a = recapSounds[key];
+            a.loop = !!loop;
+            a.volume = Math.max(0, Math.min(1, volume));
+            a.setAttribute('src', TSI.path(file));
+            try { a.currentTime = 0; } catch (e) { /* not loaded yet */ }
+            var p = a.play();
+            if (p && p.catch) p.catch(function () { /* the browser may refuse; the reel still plays */ });
+            resolve(d);
+          });
+        });
+      }
+      function recapPlay(id) {
+        if (!TSI.recap) return 'The recap is not available.';
+        return TSI.recap.read().then(function (st) {
+          var recap = id ? TSI.recapRules.find(st, id) : TSI.recapRules.latest(st);
+          if (!recap) return id ? 'That recap is not saved any more.' : 'There is no recap yet. Press Recap on the home screen to make one.';
+          var snap = TSI.recapRules.snapshot(recap);
+          if (!snap) return 'That recap has nothing to show.';
+          return whenTvAnswers(6000).then(function (ok) {
+            if (!ok) return 'The TV window is not open. Open the Player View, then play the recap again.';
+            if (!life.alive) return '';
+            return new Promise(function (resolve) {
+              TSI.recap.probeAudio(TSI.recapRules.narrationFile(recap.id), function (secs) {
+                if (!life.alive) return resolve('');
+                if (secs) snap.slides = TSI.recapRules.retime(snap.slides, secs);
+                cueVoiceStop();
+                if (deckApi) deckApi.hide();
+                setPvScene(null);
+                noteLive('');
+                recapAudioStop();
+                recapPlaying = true;
+                pvLink.send('recap', { action: 'play', snapshot: snap });
+                var on = sfx.settings().on, vol = sfx.settings().volume;
+                if (secs) recapSound('narration', TSI.recapRules.narrationFile(recap.id), 1, false);
+                if (on) { recapSound('sting', 'tools/recap/assets/sting.mp3', 0.8 * vol, false); recapSound('bed', 'tools/recap/assets/recap-bed.mp3', 0.25 * vol, true); }
+                if (recapNotice) recapNotice.close();
+                recapNotice = TSI.notify('The recap is on the TV. It holds its last picture until you send the TV back to the map.', {
+                  type: 'info', title: 'Previously…', id: 'tsi-recap-playing', dismiss: false,
+                  actions: [{ label: 'Back to the map', primary: true, onClick: function () { cueActions.hide(); } }]
+                });
+                resolve('');
+              });
+            });
+          });
+        });
+      }
+      life.onStop(function () { recapAudioStop(); });
       var cueActions = {
         card: function (deckId, stepId) {
           var deck = R.mainEvent(DATA, deckId);
@@ -2147,7 +2231,9 @@
             probePicture(m.image, function (ok) { show(!ok); });
           });
         },
+        recap: function (arg) { return recapPlay(arg); },
         hide: function () {
+          recapStop();
           cueVoiceStop();
           if (deckApi) deckApi.hide();
           setPvScene(null);

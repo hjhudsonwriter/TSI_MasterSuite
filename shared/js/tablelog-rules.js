@@ -9,7 +9,8 @@
      kind   card, cast, clue, fight, camp, bond, note, or session-end (a marker written by End session)
      ref    what it was, for the DM's use (a card id, a cast id...)
      label  the words (a card's name, a person's name)
-     image  the picture's path, or '' */
+     image  the picture's path, or ''
+     result 'won' on a fight entry the Combat Tracker reported as won (guide 4, the recap's "Meanwhile" slide), else '' */
 (function () {
   'use strict';
 
@@ -28,8 +29,8 @@
     cleanEntry: function (raw) {
       if (!raw || typeof raw !== 'object' || KINDS.indexOf(raw.kind) === -1) return null;
       var at = Number(raw.at);
-      var day = Number(raw.day);
-      return {
+      var day = raw.day === null || raw.day === undefined || raw.day === '' ? NaN : Number(raw.day);   /* no day is no day, not day 0 */
+      var out = {
         day: isFinite(day) ? Math.floor(day) : null,
         at: isFinite(at) ? Math.floor(at) : 0,
         kind: raw.kind,
@@ -37,6 +38,8 @@
         label: str(raw.label, 200),
         image: str(raw.image, 300)
       };
+      if (raw.result === 'won') out.result = 'won';
+      return out;
     },
 
     /* A saved list, cleaned (anything wrong is dropped, never thrown). */
@@ -59,7 +62,7 @@
       var e = rules.cleanEntry(raw);
       if (!e) return entries.slice();
       var last = entries[entries.length - 1];
-      if (last && last.kind === e.kind && last.ref === e.ref && last.label === e.label && e.kind !== 'camp' && e.kind !== 'session-end' && e.at - last.at < 3000) return entries.slice();
+      if (last && last.kind === e.kind && last.ref === e.ref && last.label === e.label && (last.result || '') === (e.result || '') && e.kind !== 'camp' && e.kind !== 'session-end' && e.at - last.at < 3000) return entries.slice();
       return rules.trim(entries.concat([e]));
     },
 

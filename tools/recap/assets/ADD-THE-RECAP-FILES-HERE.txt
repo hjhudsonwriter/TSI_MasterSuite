@@ -1,0 +1,12 @@
+"Previously, in the Scarlett Isles…" optional files (added 5 November 2026).
+Everything here is optional. Without a file the reel simply skips it, quietly.
+
+  title.png          The opening card's picture, 1920 x 1080 (JPG or PNG; if it is a JPG, rename it to title.png or tell Claude).
+                     Without it the opening words show over the map of the Scarlett Isles, dimmed.
+  sting.mp3          A 3 to 5 second sound as the reel starts. Plays from the laptop.
+  recap-bed.mp3      A quiet 90 second loopable music bed under the reel. Plays from the laptop.
+  narration/<id>.mp3 The narration for one recap. The editor (Recap on the home screen) shows the exact file name to save it as, for
+                     example narration/recap-2026-11-05-213015.mp3. If the file is there, the reel plays it from the laptop and stretches
+                     the slides to fit it.
+
+The sting and the music bed follow the Explorer's Sound panel: they stay quiet while sound is switched off there.

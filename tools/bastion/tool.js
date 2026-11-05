@@ -483,8 +483,11 @@
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'bond-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); }
         });
         if (!ok || !life.alive) return;
+        var bondLevel = d.bond.ready;
         var res = R.confirmBond(state, data, id, why.value);
         if (!res.ok) { await say(res.message); return; }
+        /* The table log (guide 4): a Bond milestone confirmed, for the recap's "Meanwhile" slide. The DM's reason is not kept there. */
+        if (TSI.tablelog) TSI.tablelog.add({ kind: 'bond', ref: c.id + ':' + bondLevel, label: R.creatureName(data, c) + ' reached Bond ' + bondLevel + ' (' + R.bondName(bondLevel) + ')', day: null });
         done();
       });
       var onChronicleNote = TSI.oneAtATime(async function (id) {

@@ -1,0 +1,51 @@
+/* The recap reel on the Explorer's Player View (tools/recap/reel.js). Every class starts "tsi-reel". */
+.tsi-reel {
+  position: fixed; inset: 0; z-index: 90; background: #050202; overflow: hidden; color: #f3ead2;
+  font-family: var(--tsi-font-body, Georgia, serif);
+}
+.tsi-reel__slide {
+  position: absolute; inset: 0; opacity: 0; display: grid; place-items: center; overflow: hidden;
+  transition: opacity var(--tsi-reel-fade, 1.4s) ease;
+}
+.tsi-reel__slide.is-in { opacity: 1; }
+.tsi-reel__slide.is-out { opacity: 0; }
+.tsi-reel__push { position: absolute; inset: 0; animation: tsi-reel-push var(--tsi-reel-push, 8s) linear forwards; transform-origin: 50% 55%; }
+@keyframes tsi-reel-push { from { transform: scale(1); } to { transform: scale(1.07); } }
+.tsi-reel__bg { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity .6s ease; }
+.tsi-reel__bg.is-loaded, .tsi-reel__bg.is-title, .tsi-reel__bg.is-map { opacity: 1; }
+.tsi-reel__bg.is-missing { opacity: 1; background: #0c0606; }
+.tsi-reel__bg--blur { filter: blur(34px) brightness(.45); transform: scale(1.15); }
+.tsi-reel__bg--map.is-map { filter: brightness(.32) saturate(.8); }
+.tsi-reel__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 12px 40px rgba(0, 0, 0, .6)); }
+.tsi-reel__slide--picture::after, .tsi-reel__slide--title::after {
+  content: ''; position: absolute; inset: auto 0 0 0; height: 34%; pointer-events: none;
+  background: linear-gradient(to top, rgba(5, 2, 2, .92), rgba(5, 2, 2, 0));
+}
+.tsi-reel__caption {
+  position: absolute; left: 6%; right: 6%; bottom: 7%; margin: 0; z-index: 2; text-align: center;
+  font: 600 clamp(26px, 3.6vw, 56px)/1.25 var(--tsi-font-display, Georgia, serif); letter-spacing: .04em; color: #f3ead2; text-shadow: 0 2px 14px #000;
+}
+.tsi-reel__title {
+  position: relative; z-index: 2; margin: 0 8%; text-align: center; font: 700 clamp(34px, 5.2vw, 84px)/1.2 var(--tsi-font-display, Georgia, serif);
+  letter-spacing: .06em; color: #e3c46a; text-shadow: 0 3px 22px #000, 0 0 40px rgba(0, 0, 0, .8);
+}
+.tsi-reel__title--closing { color: #e3c46a; }
+.tsi-reel__slide--closing { background: radial-gradient(900px 500px at 50% 45%, #2a0a10, #050202 70%); gap: 28px; align-content: center; }
+.tsi-reel__rule { width: min(46vw, 640px); height: 2px; background: linear-gradient(90deg, transparent, #c9a227, transparent); }
+.tsi-reel__head {
+  position: relative; z-index: 2; margin: 0; text-align: center; font: 700 clamp(30px, 4vw, 64px)/1.2 var(--tsi-font-display, Georgia, serif); letter-spacing: .06em; color: #e3c46a; text-shadow: 0 2px 16px #000;
+}
+.tsi-reel__slide--clues, .tsi-reel__slide--meanwhile { align-content: center; justify-items: center; gap: 5vh; }
+.tsi-reel__board {
+  position: absolute; inset: 0; opacity: .9;
+  background: radial-gradient(1100px 700px at 50% 45%, #6a4326, #2a1a10 75%), repeating-linear-gradient(90deg, rgba(0, 0, 0, .22) 0 3px, transparent 3px 26px);
+  filter: brightness(.7);
+}
+.tsi-reel__notes { position: relative; z-index: 2; list-style: none; margin: 0 6vw; padding: 0; display: flex; flex-wrap: wrap; gap: 3vh 2.4vw; justify-content: center; align-content: start; max-width: 1500px; }
+.tsi-reel__note {
+  max-width: 28vw; padding: 2.2vh 1.6vw; background: #e8dcb8; color: #2a1c10; border-radius: 3px; box-shadow: 0 10px 28px rgba(0, 0, 0, .6);
+  font: 600 clamp(20px, 2.3vw, 38px)/1.3 "IM Fell English", var(--tsi-font-body, Georgia, serif); transform: rotate(var(--tsi-reel-tilt, 0deg));
+}
+.tsi-reel__lines { position: relative; z-index: 2; list-style: none; margin: 0 8vw; padding: 0; display: grid; gap: 2.4vh; text-align: center; }
+.tsi-reel__lines li { font: 600 clamp(26px, 3.2vw, 52px)/1.3 var(--tsi-font-display, Georgia, serif); letter-spacing: .04em; color: #f3ead2; text-shadow: 0 2px 14px #000; }
+@media (prefers-reduced-motion: reduce) { .tsi-reel__push { animation: none; } }

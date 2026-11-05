@@ -147,7 +147,7 @@
   test('a campaign file holds both tools, reads back exactly and is named for the campaign', function (t) {
     var records = [rec('tsi.explorer.save', { tokens: [] }), rec('tsi.bastion.state', { day: 4 }), rec('tsi.bastion.crest', { dataUrl: 'data:image/png;base64,x', key: 'k' })];
     var backup = B.makeCampaignBackup(records, when);
-    t.same([backup.kind, backup.tools], ['campaign', ['explorer', 'bastion', 'evidence']]);
+    t.same([backup.kind, backup.tools], ['campaign', ['explorer', 'bastion', 'evidence', 'recap']]);
     var parsed = B.parse(JSON.stringify(backup));
     t.ok(parsed.ok, parsed.reason);
     t.same(parsed.backup.records, records);
@@ -236,7 +236,7 @@
     var backup = B.makeSuiteBackup(recs, when, 'suite');
     var g = B.restoreGroups(backup, names);
     t.same(g.map(function (x) { return x.id + ':' + x.count; }), ['quests:1', 'campaign:3', 'dmdoc:1']);
-    t.same(g[1].tools, ['explorer', 'bastion', 'evidence']);
+    t.same(g[1].tools, ['explorer', 'bastion', 'evidence', 'recap']);
     t.equal(g[2].label, 'DM doc');
   });
 
@@ -252,7 +252,7 @@
     t.same(some.records.map(function (r) { return r.key; }), ['tsi.quests.accepted', 'tsi.dmdoc.layout']);
     t.equal(some.campaign, false);
     var camp = B.restorePlan(backup, g, ['campaign']);
-    t.same(camp.scope.tools, ['explorer', 'bastion', 'evidence']);
+    t.same(camp.scope.tools, ['explorer', 'bastion', 'evidence', 'recap']);
     t.equal(camp.campaign, true);
     t.equal(camp.records.length, 2);
     t.equal(B.restorePlan(backup, g, []), null);

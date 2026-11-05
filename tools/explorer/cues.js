@@ -5,7 +5,7 @@
    Explorer is run directly through TSI.cueRunner. Each cue is carried out once: the last 50 ids are remembered.
 
    ns.cues.create(opts) → { run(tagText, id), listen(), castDialog(), handled() }
-   opts: { life, data (what cue-rules.js needs), cast (the list), actions: { card, deck, cast, hide, fight, camp, sound, clue }, notify(text) } */
+   opts: { life, data (what cue-rules.js needs), cast (the list), actions: { card, deck, cast, hide, fight, camp, sound, clue, recap }, notify(text) } */
 (function () {
   'use strict';
 
@@ -42,6 +42,7 @@
           else if (res.kind === 'deck') out = A.deck(res.deck);
           else if (res.kind === 'cast') out = A.cast(res.cast);
           else if (res.kind === 'hide') out = A.hide();
+          else if (res.kind === 'recap') out = A.recap(res.arg);
           else if (res.kind === 'fight') out = A.fight(res.arg);
           else if (res.kind === 'camp') out = A.camp();
           else if (res.kind === 'sound') out = A.sound(res.arg);

@@ -11,7 +11,7 @@
      {camp}                Make Camp (it asks first)
      {sound: rain}         a sound effect from the Explorer
      {clue: id}            award a prepared clue to the Evidence Board ({clue: any words} pins those words as a note)
-     {recap}               the Recap (not built yet: shows greyed)
+     {recap}               plays the latest recap on the TV ({recap: id} a particular one)
 
    Tags are not case-sensitive and may have spaces after the colon. The text itself is never changed.
 
@@ -26,8 +26,8 @@
 
   var KINDS = ['card', 'deck', 'cast', 'hide', 'fight', 'puzzle', 'camp', 'sound', 'clue', 'recap'];
   var NEEDS_ARG = { card: 1, deck: 1, cast: 1, fight: 1, puzzle: 1, sound: 1, clue: 1 };
-  /* Built by later pull requests: they show greyed until then. */
-  var COMING = { recap: 'recap (coming)' };
+  /* Cues built by later pull requests show greyed until then (none now: the recap was built on 5 November 2026). */
+  var COMING = {};
   var PUZZLES = ['tidal', 'marker'];
   var PREFIX = 'absent_tide_';
 
@@ -108,6 +108,7 @@
         return r;
       }
       if (kind === 'hide') { r.ok = true; r.label = 'Hide'; return r; }
+      if (kind === 'recap') { r.ok = true; r.label = arg ? 'Recap: ' + arg : 'Recap'; return r; }
       if (kind === 'camp') { r.ok = true; r.label = 'Make camp'; return r; }
 
       if (kind === 'card') {

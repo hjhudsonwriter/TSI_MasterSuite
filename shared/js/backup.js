@@ -214,7 +214,11 @@
               TSI.el('li', { text: 'Keep the older backups too. Don\'t replace them.' })
             ])
           ]);
-          return TSI.modal.open({ title: 'Session ended', body: body, escValue: true, actions: [{ label: 'Done', value: true, primary: true }] }).then(function () { return name; });
+          /* "Make the recap now" (guide 4): the recap of the session just ended, drafted from the table log, opens in its editor. */
+          var acts = TSI.recap ? [{ label: 'Done', value: true }, { label: 'Make the recap now', value: 'recap', primary: true }] : [{ label: 'Done', value: true, primary: true }];
+          return TSI.modal.open({ title: 'Session ended', body: body, escValue: true, actions: acts }).then(function (v) {
+            return v === 'recap' ? TSI.recap.makeNow().then(function () { return name; }) : name;
+          });
         });
       });
     },

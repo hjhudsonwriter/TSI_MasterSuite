@@ -1044,7 +1044,7 @@
         e.reported = true;
         TSI.handoff.write('result', { id: e.handoff, result: 'won', at: new Date().toISOString() });
         /* The table log (guide 1) notes the fight: what the players won, for the recap. */
-        if (TSI.tablelog) TSI.tablelog.add({ kind: 'fight', ref: 'won:' + e.handoff, label: 'Won: ' + (e.name || 'a fight') });
+        if (TSI.tablelog) TSI.tablelog.add({ kind: 'fight', ref: 'won:' + e.handoff, label: 'Won: ' + (e.name || 'a fight'), result: 'won' });
         TSI.notify('Every enemy is down. The Explorer has been told: click Won there to carry on.', { title: 'Fight won.', type: 'ok', id: 'tsi-enc-handoff-won' });
       }
       TSI.handoff.listen(life, 'fight', function () { checkHandoff(); });

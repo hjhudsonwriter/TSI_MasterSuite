@@ -546,6 +546,14 @@
             'data-test': 'snapshots',
             onclick: function () { TSI.snapshots.open(); }
           }, 'Snapshots') : null,
+          /* "Previously, in the Scarlett Isles…": a short recap of last session for the TV (guide 4, tools/recap/). */
+          TSI.recap ? TSI.el('button', {
+            type: 'button',
+            class: 'tsi-btn tsi-btn--small',
+            title: 'Make a short recap of last session for the TV: your key pictures, the Evidence Board notes and what happened meanwhile.',
+            'data-test': 'recap',
+            onclick: TSI.oneAtATime(function () { return TSI.recap.open(); })
+          }, 'Recap') : null,
           TSI.el('button', {
             type: 'button',
             class: 'tsi-btn tsi-btn--small',
