@@ -202,8 +202,8 @@ window.TSI_DATA.tools = [
     /* The Player View (26 October 2026): the map for the TV, view-only, drawn by the Explorer's own drawing code. */
     playerViews: {
       explorer: {
-        css: ['tools/explorer/player-view.css'],
-        js: ['tools/explorer/data/hex-terrain-data.js', 'tools/explorer/rules.js', 'tools/explorer/pins-rules.js', 'tools/explorer/draw.js', 'shared/js/evidence-rules.js', 'shared/js/pointer-mirror.js', 'tools/explorer/evidence-board.js', 'tools/explorer/player-view.js']
+        css: ['tools/explorer/player-view.css', 'tools/recap/reel.css'],
+        js: ['tools/explorer/data/hex-terrain-data.js', 'tools/explorer/rules.js', 'tools/explorer/pins-rules.js', 'tools/explorer/draw.js', 'shared/js/evidence-rules.js', 'shared/js/pointer-mirror.js', 'tools/explorer/evidence-board.js', 'tools/recap/recap-rules.js', 'tools/recap/reel.js', 'tools/explorer/player-view.js']
       }
     }
   },

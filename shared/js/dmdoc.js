@@ -185,10 +185,10 @@
     }, [
       bar,
       body = TSI.el('div', { class: 'tsi-dmdoc__body', 'data-test': 'dmdoc-body' }, TSI.el('div', { class: 'tsi-dmdoc__grid' }, [
-        panelShell('party', 'Party'),
-        panelShell('bastion', 'Bastion'),
-        panelShell('explorer', 'Explorer'),
-        panelShell('quest', 'Quest')
+        /* Two columns. On the right the Bastion takes only the room it needs and the Quest box takes all the rest (Harry, 5 November
+           2026), so the box you read the session from is as tall as it can be. */
+        TSI.el('div', { class: 'tsi-dmdoc__col tsi-dmdoc__col--left' }, [panelShell('party', 'Party'), panelShell('explorer', 'Explorer')]),
+        TSI.el('div', { class: 'tsi-dmdoc__col tsi-dmdoc__col--right' }, [panelShell('bastion', 'Bastion'), panelShell('quest', 'Quest')])
       ])),
       TSI.el('p', { class: 'tsi-sr-only', id: hintId, text: 'Use the arrow keys to move the DM doc. Hold Shift to move it further.' }),
       grip

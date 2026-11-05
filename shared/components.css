@@ -594,12 +594,20 @@ body.tsi-modal-open { overflow: hidden; }
 .tsi-dmdoc__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1.15fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 12px;
   height: 100%;
   box-sizing: border-box;
   padding: 12px;
 }
+/* Each column stacks its panels. Left: the Party and the Explorer share the height (1 to 1.15). Right: the Bastion is as tall as its
+   contents need (and no taller than 45% of the column) and the Quest box has everything left. */
+.tsi-dmdoc__col { display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: 0; }
+.tsi-dmdoc__col--left > .tsi-dmdoc__panel:nth-child(1) { flex: 1 1 0; }
+.tsi-dmdoc__col--left > .tsi-dmdoc__panel:nth-child(2) { flex: 1.15 1 0; }
+.tsi-dmdoc__col--right > .tsi-dmdoc__panel:nth-child(1) { flex: 0 1 auto; max-height: 45%; }
+.tsi-dmdoc__col--right > .tsi-dmdoc__panel:nth-child(2) { flex: 1 1 0; }
+.tsi-dmdoc__col--right > .tsi-dmdoc__panel:nth-child(1) > .tsi-dmdoc__panel-body { flex: 0 1 auto; }
 /* The four panels: a thin gold border, a soft glow, a title, and a body that scrolls on its own. */
 .tsi-dmdoc__panel {
   display: flex;
@@ -852,6 +860,13 @@ body.tsi-modal-open { overflow: hidden; }
    column and the whole body scrolls; the Quest box gets a sensible height. */
 @container tsi-dmdoc (max-width: 759px) {
   .tsi-dmdoc__grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; height: auto; }
+  /* One column: the panels keep their order, Party, Bastion, Explorer, Quest. */
+  .tsi-dmdoc__col { display: contents; }
+  .tsi-dmdoc__col > .tsi-dmdoc__panel { max-height: none !important; }
+  .tsi-dmdoc__panel--party { order: 1; }
+  .tsi-dmdoc__panel--bastion { order: 2; }
+  .tsi-dmdoc__panel--explorer { order: 3; }
+  .tsi-dmdoc__panel--quest { order: 4; }
   .tsi-dmdoc__panel { overflow: visible; }
   .tsi-dmdoc__panel-body { overflow: visible; }
   .tsi-dmdoc__panel-body.tsi-dmdoc__quest { overflow: visible; }

@@ -64,11 +64,12 @@
     t.equal(one('{sound: nope}').ok, false);
   });
 
-  test('hide and camp need nothing; recap is greyed until it is built', function (t) {
+  test('hide, camp and recap need nothing (the recap plays the latest, or the one named)', function (t) {
     t.equal(one('{hide}').ok, true);
     t.equal(one('{camp}').ok, true);
     var recap = one('{recap}');
-    t.ok(recap.soon && !recap.ok && recap.label === 'recap (coming)');
+    t.ok(recap.ok && !recap.soon && recap.label === 'Recap' && recap.arg === '');
+    t.equal(one('{recap: recap-2026-11-05-213015}').arg, 'recap-2026-11-05-213015');
   });
 
   test('{clue: id} awards a prepared clue; {clue: other words} pins those words', function (t) {

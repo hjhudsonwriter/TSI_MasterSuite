@@ -140,6 +140,9 @@
     var boardHost = el('div', { class: 'tsi-xpv-evhost', 'data-test': 'pv-board-panel', hidden: true });
     stage.appendChild(boardHost);
     var board = TSI.explorer.evidenceBoard.create({ api: api, host: boardHost, button: boardBtn, reducedMotion: reducedMotion });
+    /* The recap reel (guide 4): "Previously, in the Scarlett Isles…" plays over everything, started by the DM's Explorer (the {recap} cue) and held on its
+       last frame until the DM sends the TV back to the map. It draws only what a recap snapshot holds (tools/recap/recap-rules.js). */
+    var reel = TSI.recapReel.create({ host: root, reducedMotion: reducedMotion });
     var atlasOpen = false;
     var lastAtlas = null;
     function setAtlas(on) {
@@ -574,6 +577,7 @@
       /* The DM's Explorer has gone quiet: nothing stays dark, and a half-open town card closes. */
       lost: function () {
         cursor.hide();
+        reel.stop();
         if (mode !== 'none' || dim.style.opacity > 0) release();
         if (sceneUp) { snap = snap && Object.assign({}, snap, { scene: null }); drawScene(); }
         pinId = null; TSI.clear(pinHost); pinHost.hidden = true;
@@ -599,6 +603,7 @@
           return;
         }
         if (type === 'preload' && payload) { preload(payload.kind, payload.src); return; }
+        if (type === 'recap' && payload) { if (payload.action === 'play') reel.play(payload.snapshot); else reel.stop(); return; }
         if (type === 'map' && payload && typeof payload.dataUrl === 'string' && payload.key) {
           upload = { key: String(payload.key), dataUrl: payload.dataUrl };
           if (snap) drawAll();

@@ -4517,3 +4517,17 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **Evidence Board:** six of the seven "Session 3 (confirm)" clues were confirmed as played (Ships out of time, Captain Isela Morrow, Knocking on the hull, Charts that don't fit, Korlis's lost weeks, The covenant): they are pinned from the start. Maerys Vell stays hidden, ready to award.
   - Before: a board already in use (like Harry's) kept those six waiting. After: the board is brought up to date once (a board marked "seedRev 2"): each of the six still waiting is pinned, in free space; one the DM already pinned or removed is left alone. It is saved with the next change to the board. The board now has 13 seed notes (it had 7).
 - Part 2 of the checklist (sounds and board art) was not filled in, so nothing was done for it.
+
+### RECAP-01 · The recap reel (guide 4, 5 November 2026)
+- Before: nothing. After: Recap on the home screen, Make the recap now in End session, `{recap}` plays it on the TV. See PROGRESS for what it does.
+- Left alone / limits:
+  - **Playing needs the Explorer.** The Explorer owns the TV window, so Play on the TV asks the Explorer (the same way a cue in the DM doc does). If the Explorer is not open in any window the editor says so and offers to open it. A window that is hidden or minimised beats slowly, so the editor may think the Explorer is closed; bring the Explorer window forward and press Play again.
+  - **Narration length.** The editor and the Explorer find the narration file by loading it, so the file name must be exactly the one shown. The slides stretch to the narration's length; the last frame is held after it ends.
+  - **Sound and video were not heard or played in testing** (the test browser has no sound): the narration, the sting and the music bed are on Harry's Edge checklist.
+  - **A day that was not known.** Table log entries with no day used to be saved as day 0 (a quirk from guide 1). They now stay "no day". Entries already saved with day 0 stay as they are, so a recap's "days travelled" ignores nothing and may count a few extra days if an old entry had day 0.
+  - **Only new play is recorded.** Fights won and Bond milestones from before this change are not in the table log, so the first recap will not mention them.
+  - **Title card picture** is optional (`title.png`); without it the words show over the dimmed map.
+
+### RECAP-02 · Play recap in the Explorer, and a taller Quest box (Harry, 5 November 2026)
+- Before: the recap could only be played from the editor, the Quest box's `{recap}` chip or the cue. After: **Play recap** is a button in the Explorer's View section. It needs the Player View open (it says so if not).
+- Before: in the DM doc the Bastion panel was as tall as the Party panel beside it, leaving an empty gap above the Quest box. After: the right column is a stack: the Bastion panel is as tall as its contents (never over 45% of the column) and the Quest box has the rest.
