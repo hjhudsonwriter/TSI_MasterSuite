@@ -9,7 +9,7 @@
 
   var TSI = window.TSI = window.TSI || {};
 
-  var KEYS = { explorer: 'tsi.explorer.save', bastion: 'tsi.bastion.state' };
+  var KEYS = { explorer: 'tsi.explorer.save', bastion: 'tsi.bastion.state', evidence: 'tsi.evidence.state' };
 
   var rules = {
     MAX: 12,
@@ -21,8 +21,11 @@
     },
 
     /* What a snapshot holds: the two saves (null if the tool has none). */
-    makeItems: function (explorerSave, bastionSave) {
-      return { explorer: explorerSave === undefined ? null : explorerSave, bastion: bastionSave === undefined ? null : bastionSave };
+    makeItems: function (explorerSave, bastionSave, evidenceSave) {
+      var items = { explorer: explorerSave === undefined ? null : explorerSave, bastion: bastionSave === undefined ? null : bastionSave };
+      /* The Evidence Board (guide 2) is kept too; an older snapshot without it leaves the board as it is when it is put back. */
+      if (evidenceSave !== undefined) items.evidence = evidenceSave;
+      return items;
     },
 
     sameItems: function (a, b) {
@@ -63,8 +66,9 @@
        Bastion's saves swapped for the snapshot's (a save the snapshot did not have is removed). current: records. */
     rollbackRecords: function (current, snap, when) {
       var stamp = new Date(when || Date.now()).toISOString();
-      var out = (current || []).filter(function (r) { return r.key !== KEYS.explorer && r.key !== KEYS.bastion; });
-      ['explorer', 'bastion'].forEach(function (tool) {
+      var hasBoard = !!snap.items && snap.items.evidence !== undefined;
+      var out = (current || []).filter(function (r) { return r.key !== KEYS.explorer && r.key !== KEYS.bastion && !(hasBoard && r.key === KEYS.evidence); });
+      ['explorer', 'bastion'].concat(hasBoard ? ['evidence'] : []).forEach(function (tool) {
         var value = snap.items ? snap.items[tool] : null;
         if (value !== null && value !== undefined) out.push({ key: KEYS[tool], value: value, savedAt: stamp });
       });

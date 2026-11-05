@@ -135,9 +135,10 @@ async function boot(browser, name, size) {
       equal((await page.evaluate(() => TSI.explorer.debug.cues())).length > 0, true);
     });
 
-    await check('{clue} and {recap} show greyed ("coming") and do nothing', async () => {
+    await check('{recap} shows greyed ("coming") and does nothing; {clue: …} is a live button (the Evidence Board)', async () => {
       await setText(page, 'x {clue: a wet letter} y {recap}');
-      equal(await page.$$eval('[data-test=cue-soon]', n => n.map(x => x.textContent)), ['clue (coming)', 'recap (coming)']);
+      equal(await page.$$eval('[data-test=cue-soon]', n => n.map(x => x.textContent)), ['recap (coming)']);
+      equal(await page.$$eval('[data-test=cue-clue]', n => n.map(x => x.textContent)), ['Pin: a wet letter']);
     });
 
     await check('the find box: 4.4 jumps to the scene heading first, and the next match follows', async () => {

@@ -61,9 +61,9 @@
       opts = opts || {};
       var job = queue.then(function () {
         return TSI.store.ready.then(function () { return TSI.store.flush(); }).then(function () {
-          return Promise.all([TSI.store.fresh(rules.KEYS.explorer, null), TSI.store.fresh(rules.KEYS.bastion, null)]);
+          return Promise.all([TSI.store.fresh(rules.KEYS.explorer, null), TSI.store.fresh(rules.KEYS.bastion, null), TSI.store.fresh(rules.KEYS.evidence, null)]);
         }).then(function (vals) {
-          var items = rules.makeItems(vals[0], vals[1]);
+          var items = rules.makeItems(vals[0], vals[1], vals[2]);
           return all().then(function (list) {
             var latest = rules.prune(list, 1).kept[0] || null;
             if (!rules.shouldKeep(latest, items, opts.force)) return null;
@@ -139,11 +139,11 @@
           var stop = TSI.shell && TSI.shell.stopTool ? TSI.shell.stopTool() : Promise.resolve();
           return stop;
         }).then(function () {
-          return Promise.all([TSI.store.freshRecords('explorer'), TSI.store.freshRecords('bastion')]);
+          return Promise.all([TSI.store.freshRecords('explorer'), TSI.store.freshRecords('bastion'), TSI.store.freshRecords('evidence')]);
         }).then(function (lists) {
           var current = [].concat.apply([], lists);
           var records = rules.rollbackRecords(current, snap, Date.now());
-          return TSI.store.replace(records, { tools: ['explorer', 'bastion'] });
+          return TSI.store.replace(records, { tools: ['explorer', 'bastion', 'evidence'] });
         }).then(function (saved) {
           try { sessionStorage.setItem(TSI.storeRules.spaceNames(TSI.space).flash, JSON.stringify({ text: saved ? 'Went back to the snapshot from ' + when + '.' : 'The snapshot could not be put back: the browser refused to save it.', type: saved ? 'ok' : 'error' })); } catch (e) { /* no flash message */ }
           if (TSI.shell && TSI.shell.reload) TSI.shell.reload(); else window.location.reload();

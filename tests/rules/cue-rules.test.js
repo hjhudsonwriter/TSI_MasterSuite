@@ -1,6 +1,6 @@
 /* Cue tags in the session text (shared/js/cue-rules.js), and the data they point at. */
 (function () {
-  var C = TSI.cueRules;
+  var C = TSI.cueRules, CR = TSI.cueRules;
   var DATA = {
     decks: window.TSI_DATA.decks,
     cast: window.TSI_DATA.cast,
@@ -64,12 +64,19 @@
     t.equal(one('{sound: nope}').ok, false);
   });
 
-  test('hide and camp need nothing; clue and recap are greyed until they are built', function (t) {
+  test('hide and camp need nothing; recap is greyed until it is built', function (t) {
     t.equal(one('{hide}').ok, true);
     t.equal(one('{camp}').ok, true);
-    var clue = one('{clue: a wet letter}'), recap = one('{recap}');
-    t.ok(clue.soon && !clue.ok && clue.label === 'clue (coming)');
-    t.ok(recap.soon && !recap.ok);
+    var recap = one('{recap}');
+    t.ok(recap.soon && !recap.ok && recap.label === 'recap (coming)');
+  });
+
+  test('{clue: id} awards a prepared clue; {clue: other words} pins those words', function (t) {
+    var data = Object.assign({}, DATA, CR.catalogue(window.TSI_DATA, window.TSI_DATA.evidenceSeed.prepared));
+    var a = CR.resolveCue(CR.parseCues('{clue: warm-tea}')[0], data), b = CR.resolveCue(CR.parseCues('{clue: a wet letter}')[0], data);
+    t.ok(a.ok && a.isId && a.label === 'Clue: The warm tea', JSON.stringify(a));
+    t.ok(b.ok && !b.isId && b.label === 'Pin: a wet letter');
+    t.equal(CR.resolveCue(CR.parseCues('{clue}')[0], data).ok, false);
   });
 
   test('every card in the shipped decks, and every cast member, resolves', function (t) {

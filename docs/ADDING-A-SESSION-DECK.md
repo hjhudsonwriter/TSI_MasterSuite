@@ -34,7 +34,8 @@ get the tags to paste into the Quest box. You only edit one data file and drop i
 | `{puzzle: tidal}` or `{puzzle: marker}` | Opens the Pelagosi Puzzle Trials on that puzzle (it asks first) |
 | `{camp}` | Make Camp (it asks first, because it passes a day) |
 | `{sound: id}` | Plays an Explorer sound (a looping one switches on, and off with the same tag) |
-| `{clue: …}`, `{recap}` | Coming in later updates; they show greyed |
+| `{clue: id}` | Puts a prepared clue on the Evidence Board (ids are in `tools/explorer/data/evidence-seed.js`); `{clue: any words}` pins those words as a new note |
+| `{recap}` | Coming in a later update; it shows greyed |
 
 ## Adding a person to the Cast list
 

@@ -198,7 +198,7 @@ window.TSI_DATA.tools = [
     playerViews: {
       explorer: {
         css: ['tools/explorer/player-view.css'],
-        js: ['tools/explorer/data/hex-terrain-data.js', 'tools/explorer/rules.js', 'tools/explorer/pins-rules.js', 'tools/explorer/draw.js', 'shared/js/pointer-mirror.js', 'tools/explorer/player-view.js']
+        js: ['tools/explorer/data/hex-terrain-data.js', 'tools/explorer/rules.js', 'tools/explorer/pins-rules.js', 'tools/explorer/draw.js', 'shared/js/evidence-rules.js', 'shared/js/pointer-mirror.js', 'tools/explorer/evidence-board.js', 'tools/explorer/player-view.js']
       }
     }
   },

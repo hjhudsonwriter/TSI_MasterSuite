@@ -16,6 +16,7 @@
      DM doc's own window, for the Explorer to carry out (shared/js/cue-rules.js);
    - 'live' (tsi.suite.handoff-live): { id, at }, what the Explorer has on the TV now ('card:<deck>/<card>', 'cast:<id>' or ''),
      so the DM doc can highlight that button, in whichever window it is.
+   - 'evidence' (tsi.suite.handoff-evidence): { at }, "the Evidence Board was changed", so every other window reads it again.
    A window with the other tool open hears at once (the browser's "storage"
    event); a tool opened later reads it as it starts. Only the latest of
    each is kept. They aren't saves, so they're not in backups. The test
@@ -26,7 +27,7 @@
 
   var TSI = window.TSI;
   var NAMES = TSI.storeRules.spaceNames(TSI.space);
-  var KEYS = { fight: NAMES.handoff, result: NAMES.handback, crest: NAMES.handoffCrest, cue: NAMES.handoffCue, live: NAMES.handoffLive };
+  var KEYS = { fight: NAMES.handoff, result: NAMES.handback, crest: NAMES.handoffCrest, cue: NAMES.handoffCue, live: NAMES.handoffLive, evidence: NAMES.handoffEvidence };
 
   function key(kind) {
     if (!KEYS[kind]) throw new Error('There is no hand-off called ' + kind + '.');

@@ -10,7 +10,7 @@
      {puzzle: tidal}       open the Pelagosi Puzzle Trials on that puzzle (tidal or marker)
      {camp}                Make Camp (it asks first)
      {sound: rain}         a sound effect from the Explorer
-     {clue: ...}           the Evidence Board (not built yet: shows greyed)
+     {clue: id}            award a prepared clue to the Evidence Board ({clue: any words} pins those words as a note)
      {recap}               the Recap (not built yet: shows greyed)
 
    Tags are not case-sensitive and may have spaces after the colon. The text itself is never changed.
@@ -27,7 +27,7 @@
   var KINDS = ['card', 'deck', 'cast', 'hide', 'fight', 'puzzle', 'camp', 'sound', 'clue', 'recap'];
   var NEEDS_ARG = { card: 1, deck: 1, cast: 1, fight: 1, puzzle: 1, sound: 1, clue: 1 };
   /* Built by later pull requests: they show greyed until then. */
-  var COMING = { clue: 'clue (coming)', recap: 'recap (coming)' };
+  var COMING = { recap: 'recap (coming)' };
   var PUZZLES = ['tidal', 'marker'];
   var PREFIX = 'absent_tide_';
 
@@ -97,6 +97,16 @@
       var ids = function (list) { return (list || []).map(function (x) { return typeof x === 'string' ? x : x.id; }); };
 
       if (COMING[kind]) { r.soon = true; r.label = COMING[kind]; r.problem = 'Not built yet.'; return r; }
+      /* {clue: id} awards a prepared clue; {clue: any other words} pins those words as a new note. Neither opens the board on the TV. */
+      if (kind === 'clue') {
+        var pid = lower(arg), prepared = ids(data.prepared).filter(function (c) { return lower(c) === pid; })[0];
+        r.ok = true;
+        var onBoard = (data.boardIds || []).filter(function (c) { return lower(c) === pid; })[0];
+        if (prepared) { r.arg = prepared; r.isId = true; r.label = 'Clue: ' + ((data.preparedLabels && data.preparedLabels[prepared]) || prepared); }
+        else if (onBoard) { r.arg = onBoard; r.isId = true; r.already = true; r.label = 'Clue: ' + onBoard + ' (already up)'; }
+        else { r.isId = false; r.label = 'Pin: ' + (arg.length > 28 ? arg.slice(0, 27) + '…' : arg); }
+        return r;
+      }
       if (kind === 'hide') { r.ok = true; r.label = 'Hide'; return r; }
       if (kind === 'camp') { r.ok = true; r.label = 'Make camp'; return r; }
 
@@ -189,7 +199,7 @@
     },
 
     /* What tags are checked against, taken from the data files (window.TSI_DATA): the decks, the cast, the fights and the sounds. */
-    catalogue: function (D) {
+    catalogue: function (D, prepared, boardIds) {
       D = D || {};
       var sfx = D.explorerSfx || {};
       return {
@@ -197,7 +207,11 @@
         cast: D.cast || [],
         fights: Object.keys((D.fights && D.fights.encounters) || {}),
         puzzles: PUZZLES.slice(),
-        sounds: Object.keys(sfx.sounds || {}).concat(Object.keys(sfx.groups || {}))
+        sounds: Object.keys(sfx.sounds || {}).concat(Object.keys(sfx.groups || {})),
+        /* the Evidence Board's clues ready to award: [{ id, text }] (the board's own save, or the seed) */
+        prepared: (prepared || []).map(function (c) { return c.id; }),
+        boardIds: (boardIds || []).slice(),
+        preparedLabels: (prepared || []).reduce(function (o, c) { o[c.id] = String(c.text || '').split('\n')[0].replace(/[.:]$/, ''); return o; }, {})
       };
     },
 

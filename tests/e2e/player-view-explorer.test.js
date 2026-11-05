@@ -125,9 +125,9 @@ async function openPlayer(page, size) {
       await H.shot(pv, 'pv-explorer-' + name);
     });
 
-    await check('no side panels, top bar, inputs or buttons but the map icon, its Close and Full screen; clicks do nothing', async () => {
+    await check('no side panels, top bar, inputs or buttons but the board and map icons, their Close and Full screen; clicks do nothing', async () => {
       equal(await pv.$$eval('input, select, textarea, a[href]', n => n.length), 0);
-      equal(await pv.$$eval('button', bs => bs.map(b => b.dataset.test)), ['pv-mapbtn', 'pv-map-close', 'pv-fullscreen']);
+      equal(await pv.$$eval('button', bs => bs.map(b => b.dataset.test)), ['pv-boardbtn', 'pv-mapbtn', 'pv-map-close', 'pv-fullscreen']);
       equal(await pv.$('.tsi-topbar, .tsi-exp-panel, .tsi-exp-side, .tsi-modal, [data-test=journal], [data-test=bags-list], [data-test=effects-list]'), null);
       equal(await pv.$eval('[data-test=pv-stage]', n => getComputedStyle(n).pointerEvents), 'none');
       await pv.click('.tsi-xpv-token', { force: true });
