@@ -34,13 +34,13 @@
   function copy(state) { return JSON.parse(JSON.stringify(state)); }
 
   var rules = {
-    MAX_TEXT: MAX_TEXT, NOTE_W: NOTE_W, NOTE_H: NOTE_H, FROM: FROM, KEY: 'tsi.evidence.state',
+    SEED_REV: 2, MAX_TEXT: MAX_TEXT, NOTE_W: NOTE_W, NOTE_H: NOTE_H, FROM: FROM, KEY: 'tsi.evidence.state',
     TITLE: 'The Tides That Remember',
 
     heading: function (text) { return String(text || '').split('\n')[0].trim(); },
     body: function (text) { return String(text || '').split('\n').slice(1).join('\n').trim(); },
 
-    empty: function () { return { version: 1, board: 'c2', title: rules.TITLE, notes: [], strings: [], prepared: [] }; },
+    empty: function () { return { version: 1, board: 'c2', title: rules.TITLE, seedRev: rules.SEED_REV, notes: [], strings: [], prepared: [] }; },
 
     cleanNote: function (raw) {
       if (!isObj(raw)) return null;
@@ -77,7 +77,8 @@
         if (!id || !text || pseen[id] || seen[id]) return;
         pseen[id] = 1; prepared.push({ id: id, text: text, image: cleanImage(p.image), scene: str(p.scene, 40) });
       });
-      return { version: 1, board: 'c2', title: str(raw.title, 80) || rules.TITLE, notes: notes, strings: strings, prepared: prepared };
+      /* seedRev: which version of the seed notes this board has had (a board saved before it was added is revision 1). */
+      return { version: 1, board: 'c2', title: str(raw.title, 80) || rules.TITLE, seedRev: Math.max(1, Math.floor(num(raw.seedRev, 1))), notes: notes, strings: strings, prepared: prepared };
     },
 
     /* The first time: pin the seed rows marked pin, and keep the rest ready to award. seed: { notes: [...], prepared: [...] } */
@@ -91,6 +92,24 @@
         s = r.state;
       });
       s.prepared = (seed.prepared || []).map(function (p) { return { id: String(p.id), text: cleanText(p.text), image: cleanImage(p.image), scene: str(p.scene, 40) }; }).filter(function (p) { return p.id && p.text; });
+      return s;
+    },
+
+    /* A board made before the seed changed (5 November 2026: Harry confirmed six Session 3 clues as played): each seed note that is still
+       waiting in the board's "ready to award" list is pinned, once, and the board is marked as up to date. A clue the DM already pinned, or
+       removed from the list, is left as it is. The same tilts as a fresh board. Returns the state (the same one if nothing was to do). */
+    upgradeSeed: function (state, seed, rand) {
+      if (!state || (state.seedRev || 1) >= rules.SEED_REV) return state;
+      if (!rand) { var seedN = 20261105; rand = function () { seedN = (seedN * 1664525 + 1013904223) % 4294967296; return seedN / 4294967296; }; }
+      var s = copy(state);
+      ((seed && seed.notes) || []).forEach(function (n) {
+        var at = s.prepared.findIndex(function (p) { return p.id === String(n.id); });
+        if (at === -1) return;
+        s.prepared.splice(at, 1);
+        var r = rules.addNote(s, { id: n.id, text: n.text, image: n.image || '', from: 'seed', ref: n.id, day: null }, { rand: rand });
+        s = r.state;
+      });
+      s.seedRev = rules.SEED_REV;
       return s;
     },
 

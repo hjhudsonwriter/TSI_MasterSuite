@@ -244,8 +244,7 @@ window.TSI_DATA.beastProfile = {
     },
 
     /* The Sabrecat joined the Beast Pen on 3 November 2026. Its five varieties are Harry's words (camouflage is part of each
-       appearance). Its two d8 tables are a DRAFT written for him to approve or replace, as the Buckbear's and Fellcat's
-       were: change a line here and nothing else needs to change. */
+       appearance). Its two d8 tables were a draft that Harry reviewed on 5 November 2026 (Attachment Cue 7 and Instinctive Trigger 1 are his wording): change a line here and nothing else needs to change. */
     sabrecat: {
       attachment: {
         dice: 8,
@@ -256,14 +255,14 @@ window.TSI_DATA.beastProfile = {
           { roll: 4, label: 'Lays a kill at handler\'s feet' },
           { roll: 5, label: 'Flops down beside handler' },
           { roll: 6, label: 'Rests its great head on handler\'s knee' },
-          { roll: 7, label: 'Walks between handler and the dark' },
+          { roll: 7, label: 'Stays close beside its handler in the dark' },
           { roll: 8, label: 'Sheathes its fangs when handler is near' }
         ]
       },
       trigger: {
         dice: 8,
         entries: [
-          { roll: 1, label: 'Being approached head-on' },
+          { roll: 1, label: 'Being approached from behind' },
           { roll: 2, label: 'Hands near its fangs' },
           { roll: 3, label: 'Sudden fire' },
           { roll: 4, label: 'Being chained or hobbled' },

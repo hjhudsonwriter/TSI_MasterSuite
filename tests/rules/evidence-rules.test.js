@@ -115,4 +115,33 @@
     var out = TSI.snapshotRules.rollbackRecords([{ key: E.KEY, value: { keep: 1 } }], oldSnap, 0);
     t.ok(out.some(function (r) { return r.key === E.KEY; }), 'an older snapshot leaves the board alone');
   });
+
+  group('Evidence Board: the six clues Harry confirmed');
+
+  var SIX = ['grey-tide-ships', 'isela-morrow', 'knuckles-hull', 'wrong-coast', 'korlis-weeks', 'covenant'];
+
+  test('the seed pins the six confirmed Session 3 clues from the start and keeps Maerys Vell ready to award', function (t) {
+    var s = board();
+    SIX.forEach(function (id) { t.ok(s.notes.some(function (n) { return n.id === id; }), id + ' is pinned'); t.ok(!s.prepared.some(function (p) { return p.id === id; }), id + ' is not also waiting'); });
+    t.ok(s.prepared.some(function (p) { return p.id === 'pelagos-adjusts' && /confirm/.test(p.scene); }), 'Maerys Vell stays hidden');
+    t.equal(s.seedRev, E.SEED_REV);
+  });
+
+  test('a board made before that (revision 1, the six waiting) pins them once; a clue already pinned or removed is left alone; nothing else moves', function (t) {
+    var old = E.fresh({ notes: SEED.notes.filter(function (n) { return SIX.indexOf(n.id) === -1; }), prepared: SEED.notes.filter(function (n) { return SIX.indexOf(n.id) !== -1; }).concat(SEED.prepared) });
+    old.seedRev = 1;
+    old.prepared = old.prepared.filter(function (p) { return p.id !== 'knuckles-hull'; });          /* the DM removed this one */
+    var up = E.upgradeSeed(old, SEED);
+    t.equal(up.seedRev, E.SEED_REV);
+    t.equal(up.notes.length, old.notes.length + 5, 'five pinned (the removed one stays removed)');
+    t.ok(!up.notes.some(function (n) { return n.id === 'knuckles-hull'; }));
+    t.ok(up.notes.slice(0, old.notes.length).every(function (n, i) { return JSON.stringify(n) === JSON.stringify(old.notes[i]); }), 'the notes already there are untouched');
+    t.equal(up.prepared.length, old.prepared.length - 5);
+    t.equal(old.seedRev, 1, 'the board it was given is not changed');
+    t.equal(JSON.stringify(E.upgradeSeed(up, SEED)), JSON.stringify(up), 'a second time changes nothing');
+    t.equal(JSON.stringify(E.upgradeSeed(old, SEED)), JSON.stringify(up), 'the same every time (two windows agree)');
+    var c = E.clean(JSON.parse(JSON.stringify(up)));
+    t.equal(c.seedRev, E.SEED_REV, 'revision survives a save');
+    t.equal(E.clean({ version: 1, notes: [] }).seedRev, 1, 'a board with no revision is revision 1');
+  });
 }());

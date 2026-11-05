@@ -56,7 +56,7 @@ const waitBoard = (page, fn, what) => until(async () => fn(await board(page)), w
       await pv.click('[data-test=pv-boardbtn]');
       await pv.waitForSelector('[data-test=pv-board-panel]', { state: 'visible' });
       equal(await pv.getAttribute('[data-test=pv-boardbtn]', 'aria-expanded'), 'true');
-      await waitPvCount(pv, 7);
+      await waitPvCount(pv, 13);
       equal((await pvNotes(pv))[0], 'The Marker was cut.');
       assert(/Tides That Remember/.test(await pv.textContent('[data-test=pv-ev-title]')));
       const f = await pv.$eval('.tsi-xpv-ev__note', e => getComputedStyle(e).fontFamily);
@@ -71,8 +71,8 @@ const waitBoard = (page, fn, what) => until(async () => fn(await board(page)), w
       await pv.fill('[data-test=pv-ev-text]', 'The tide clock\nIt ran backward at dusk.');
       assert((await pv.textContent('[data-test=pv-ev-count]')).startsWith('39 of 200'));
       await pv.click('[data-test=pv-ev-save]');
-      await waitPvCount(pv, 8);
-      await waitSaved(page, 8);
+      await waitPvCount(pv, 14);
+      await waitSaved(page, 14);
       const n = (await notes(page)).slice(-1)[0];
       equal([n.text, n.from], ['The tide clock\nIt ran backward at dusk.', 'board']);
       equal(await pv.$$eval('.tsi-xpv-ev__note.is-new', x => x.length) <= 1, true);
@@ -85,7 +85,7 @@ const waitBoard = (page, fn, what) => until(async () => fn(await board(page)), w
       await pv.fill('[data-test=pv-ev-text]', 'x'.repeat(300));
       assert((await pv.inputValue('[data-test=pv-ev-text]')).length === 200);
       await pv.click('[data-test=pv-ev-cancel]');
-      equal((await notes(page)).length, 8);
+      equal((await notes(page)).length, 14);
     });
 
     await check('double-click a note to change its words: Save keeps them, Cancel does not', async () => {
@@ -239,7 +239,7 @@ const waitBoard = (page, fn, what) => until(async () => fn(await board(page)), w
     const size = { width: 1707, height: 930 };
     const { context, page, pv } = await boot(browser, 'laptop', size);
     await pv.click('[data-test=pv-boardbtn]');
-    await waitPvCount(pv, 7);
+    await waitPvCount(pv, 13);
 
     await check('an edit on the TV and a note from the pop-out DM doc at the same moment both survive', async () => {
       await page.click('[data-test=dm-doc]');
@@ -251,12 +251,12 @@ const waitBoard = (page, fn, what) => until(async () => fn(await board(page)), w
       await pv.click('[data-test=pv-ev-add]');
       await pv.fill('[data-test=pv-ev-text]', 'From the TV\nAt the same time.');
       await Promise.all([pop.click('[data-test=dmdoc-evidence-add]'), pv.click('[data-test=pv-ev-save]')]);
-      await waitSaved(page, 9);
+      await waitSaved(page, 15);
       const texts = (await notes(page)).map(n => n.text.split('\n')[0]);
       assert(texts.includes('From the pop-out') && texts.includes('From the TV'), texts.join(' / '));
-      await waitPvCount(pv, 9);
+      await waitPvCount(pv, 15);
       // the pop-out window's change reaches the Explorer even though it is another window
-      equal(new Set((await notes(page)).map(n => n.id)).size, 9, 'distinct ids');
+      equal(new Set((await notes(page)).map(n => n.id)).size, 15, 'distinct ids');
       await pop.keyboard.press('Escape');
       await pop.close();
     });
@@ -268,13 +268,13 @@ const waitBoard = (page, fn, what) => until(async () => fn(await board(page)), w
       await pv.locator('[data-test=pv-ev-note]', { hasText: 'From the TV' }).click();
       await pv.click('[data-test=pv-ev-remove]');
       await pv.click('[data-test=pv-ev-remove-yes]');
-      await waitSaved(page, 8);
+      await waitSaved(page, 14);
       const f = H.writeTemp('campaign-evidence.json', exported);
       await H.chooseFile(page, '[data-test=import-save]', f);
       await page.waitForSelector('.tsi-modal');
       await H.clickModal(page, 'Import');
       await page.waitForSelector('[data-test=camp]');
-      await waitSaved(page, 9);
+      await waitSaved(page, 15);
     });
 
     await check('Back up everything holds the board and "Restore only some" lists it with the campaign', async () => {
@@ -294,7 +294,7 @@ const waitBoard = (page, fn, what) => until(async () => fn(await board(page)), w
       assert(keys.includes('tsi.evidence.state'), keys.join());
       assert(keys.includes('tsi.tablelog.entries'), keys.join());
       const ev = b.records.find(r => r.key === 'tsi.evidence.state').value;
-      equal(ev.notes.length, 9);
+      equal(ev.notes.length, 15);
       await page.waitForSelector('[data-test=session-ended]');
       await H.clickModal(page, 'Done');
     });

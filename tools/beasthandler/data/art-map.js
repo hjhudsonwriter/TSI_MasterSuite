@@ -74,8 +74,11 @@ window.TSI_DATA.beastArt = {
     sabrecat: {
       label: 'Sabrecat', alt: 'A sabrecat', default: { src: '' },
       variants: {
+        plainsmane: { src: 'sabrecat/plainsmane.webp', video: 'sabrecat/plainsmane.mp4' },
+        ashmark: { src: 'sabrecat/ashmark.webp', video: 'sabrecat/ashmark.mp4' },
         fenstalker: { src: 'sabrecat/fenstalker.webp', video: 'sabrecat/fenstalker.mp4' },
-        barkhide: { src: 'sabrecat/barkhide.webp', video: 'sabrecat/barkhide.mp4' }
+        barkhide: { src: 'sabrecat/barkhide.webp', video: 'sabrecat/barkhide.mp4' },
+        boltback: { src: 'sabrecat/boltback.webp', video: 'sabrecat/boltback.mp4' }
       }
     }
   }

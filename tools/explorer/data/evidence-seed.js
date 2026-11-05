@@ -1,7 +1,7 @@
-/* The Evidence Board's first notes (guide 2, 4 November 2026). Used once, when a fresh board is made (shared/js/evidence-rules.js, R.fresh).
-   notes     pinned from the start: what the party has found, confirmed from the Session 3 notes.
+/* The Evidence Board's first notes (guide 2, 4 November 2026). Used once, when a fresh board is made (shared/js/evidence-rules.js, R.fresh). A board made before seedRev 2 is brought up to date by R.upgradeSeed: the six clues Harry confirmed move from "ready to award" to pinned, once.
+   notes     pinned from the start: what the party has found, confirmed from the Session 3 notes (and, since 5 November 2026, the six Session 3 clues Harry confirmed).
    prepared  ready to award (the DM puts one on the board with the tag {clue: <id>} in the Quest box); the players never see them
-             until then. The first seven are from the written scripts and are kept here, not pinned, until they are confirmed as played.
+             until then. Of the seven that came from the written scripts, Harry confirmed six as played on 5 November 2026 (they are now pinned from the start); Maerys Vell stays here, "Session 3 (confirm)", until it is played.
    Edit the words here; a board already made keeps its own copy (use Edit Evidence Board in the DM doc, or the board itself, to change it). */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.evidenceSeed = {
@@ -33,52 +33,46 @@ window.TSI_DATA.evidenceSeed = {
     },
     {
       "id": "chains-vision",
-      "text": "\u201cThe chains weaken.\u201d\nBlack sky, towers of water, stone markers strung like a web, holding something down.",
+      "text": "“The chains weaken.”\nBlack sky, towers of water, stone markers strung like a web, holding something down.",
       "image": ""
     },
     {
       "id": "korlis-rescued",
       "text": "Korlis Karr.\nAgric Karr's heir by marriage, freed from Blackstone custody.",
       "image": ""
-    }
-  ],
-  "prepared": [
+    },
     {
       "id": "grey-tide-ships",
       "text": "Ships out of time.\nCargo arriving early, late or at the wrong port; mostly from Rowthorn and Karr harbours.",
-      "image": "",
-      "scene": "Session 3 (confirm)"
+      "image": ""
     },
     {
       "id": "isela-morrow",
       "text": "Captain Isela Morrow.\n\"We arrived when the sea allowed us to.\"",
-      "image": "",
-      "scene": "Session 3 (confirm)"
+      "image": ""
     },
     {
       "id": "knuckles-hull",
       "text": "Knocking on the hull.\nIsela's crew heard something tapping the hull like knuckles.",
-      "image": "",
-      "scene": "Session 3 (confirm)"
+      "image": ""
     },
     {
       "id": "wrong-coast",
       "text": "Charts that don't fit.\nCenturies-old charts, and a coastline that no longer matches them.",
-      "image": "",
-      "scene": "Session 3 (confirm)"
+      "image": ""
     },
     {
       "id": "korlis-weeks",
       "text": "Korlis's lost weeks.\nWeeks at sea for him, a day or two for the world. The same gull cry, again and again.",
-      "image": "",
-      "scene": "Session 3 (confirm)"
+      "image": ""
     },
     {
       "id": "covenant",
       "text": "The covenant.\n\"The Root would hold. The Sun would purify. The Sea would carry.\"",
-      "image": "",
-      "scene": "Session 3 (confirm)"
-    },
+      "image": ""
+    }
+  ],
+  "prepared": [
     {
       "id": "pelagos-adjusts",
       "text": "Maerys Vell.\n\"Pelagos does not wake. It adjusts.\"",
