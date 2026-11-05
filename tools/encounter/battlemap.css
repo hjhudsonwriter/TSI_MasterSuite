@@ -232,3 +232,102 @@
 .tsi-player--battlemap .tsi-bm-side-label { margin-bottom: 6px; font: 600 11px var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; }
 .tsi-player--battlemap .tsi-bm-side-hint { margin-top: 6px; font-size: 13px; opacity: .75; }
 .tsi-player--battlemap .tsi-bm-slider { width: 100%; accent-color: var(--tsi-gold); }
+
+/* ---------- Combat the players can read (guide 3) ---------- */
+/* Pictures are round; the ring is the creature's health (monsters: in words only, never numbers). */
+.tsi-player--battlemap .tsi-bm-token-img { border-radius: 50%; border-width: 3px; }
+.tsi-player--battlemap .tsi-bm-token-img.tsi-bm-health--unhurt { border-color: #5fae6a; }
+.tsi-player--battlemap .tsi-bm-token-img.tsi-bm-health--hurt { border-color: #c9b23a; }
+.tsi-player--battlemap .tsi-bm-token-img.tsi-bm-health--bloodied { border-color: #d9822b; }
+.tsi-player--battlemap .tsi-bm-token-img.tsi-bm-health--near { border-color: #d63a3a; }
+.tsi-player--battlemap .tsi-bm-token-img.tsi-bm-health--down { border-color: #6b6b6b; }
+
+.tsi-player--battlemap .tsi-bm-health {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  background: rgba(0, 0, 0, .7);
+  font: 600 12px/1.35 var(--tsi-font-body);
+  white-space: nowrap;
+  color: #e9e3d2;
+}
+.tsi-player--battlemap .tsi-bm-health--unhurt { color: #8fd69a; }
+.tsi-player--battlemap .tsi-bm-health--hurt { color: #e3d467; }
+.tsi-player--battlemap .tsi-bm-health--bloodied { color: #f0a25a; }
+.tsi-player--battlemap .tsi-bm-health--near { color: #ff7b7b; }
+.tsi-player--battlemap .tsi-bm-health--down { color: #c9c9c9; }
+/* On a token the word sits under the name. */
+.tsi-player--battlemap .tsi-bm-token > .tsi-bm-health {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 28px * var(--tsi-bm-label-scale, 1));
+  transform: translateX(-50%) scale(var(--tsi-bm-label-scale, 1));
+  transform-origin: 50% 0;
+}
+
+/* Death-save pips: three green for successes, three red for failures. */
+.tsi-player--battlemap .tsi-bm-pips { display: inline-flex; gap: 2px; }
+.tsi-player--battlemap .tsi-bm-pip { width: 8px; height: 8px; border-radius: 50%; border: 1px solid currentColor; opacity: .55; box-sizing: border-box; }
+.tsi-player--battlemap .tsi-bm-pip + .tsi-bm-pip--bad:first-of-type { margin-left: 3px; }
+.tsi-player--battlemap .tsi-bm-pip--ok { color: #7bd88a; }
+.tsi-player--battlemap .tsi-bm-pip--bad { color: #ff7b7b; }
+.tsi-player--battlemap .tsi-bm-pip--on { background: currentColor; opacity: 1; }
+
+/* Fallen: a grey marker with a cross, until the DM takes it off (Shift + click). */
+.tsi-player--battlemap .tsi-bm-token--fallen .tsi-bm-token-img { filter: grayscale(1) brightness(.55); }
+.tsi-player--battlemap .tsi-bm-fallen-x {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+  font: 700 calc(var(--tsi-bm-token, 56px) * .7)/1 var(--tsi-font-body); color: rgba(230, 230, 230, .85); text-shadow: 0 2px 6px rgba(0, 0, 0, .8);
+}
+
+/* Condition icons: a small row of round chips on the token and on the strip. */
+.tsi-player--battlemap .tsi-bm-conds { position: absolute; left: 50%; top: -4px; transform: translate(-50%, -100%); display: flex; gap: 2px; pointer-events: none; }
+.tsi-player--battlemap .tsi-bm-cond {
+  display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(20, 8, 8, .9); border: 1px solid rgba(201, 162, 39, .6); box-sizing: border-box;
+}
+.tsi-player--battlemap .tsi-bm-cond img { width: 15px; height: 15px; display: block; }
+.tsi-player--battlemap .tsi-bm-cond--word { width: auto; padding: 0 6px; border-radius: 10px; font: 600 10px/1 var(--tsi-font-body); color: #f3ead2; height: 18px; }
+
+/* The turn-order strip, along the top of the map. */
+.tsi-player--battlemap .tsi-bm-strip {
+  position: absolute; z-index: 40; left: 0; right: 0; top: 0;
+  display: flex; align-items: flex-start; gap: 14px; padding: 8px 14px 6px;
+  background: linear-gradient(to bottom, rgba(10, 3, 3, .92), rgba(10, 3, 3, .7) 78%, rgba(10, 3, 3, 0));
+  pointer-events: none;
+}
+.tsi-player--battlemap .tsi-bm-strip[hidden] { display: none; }
+.tsi-player--battlemap .tsi-bm-round { display: grid; justify-items: center; align-content: center; min-width: 58px; padding-top: 14px; }
+.tsi-player--battlemap .tsi-bm-round-label { font: 600 11px/1 var(--tsi-font-display); letter-spacing: .12em; text-transform: uppercase; color: #c9a227; }
+.tsi-player--battlemap .tsi-bm-round-num { font: 700 32px/1.1 var(--tsi-font-display); color: #f3ead2; }
+.tsi-player--battlemap .tsi-bm-strip-list { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-end; gap: 12px; overflow: hidden; min-width: 0; }
+.tsi-player--battlemap .tsi-bm-strip-item { flex: none; display: grid; justify-items: center; gap: 2px; width: 76px; position: relative; }
+.tsi-player--battlemap .tsi-bm-strip-item--current { width: 112px; }
+.tsi-player--battlemap .tsi-bm-strip-frame { position: relative; width: 52px; height: 52px; }
+.tsi-player--battlemap .tsi-bm-strip-item--current .tsi-bm-strip-frame { width: 84px; height: 84px; }
+.tsi-player--battlemap .tsi-bm-strip-img {
+  width: 100%; height: 100%; border-radius: 50%; object-fit: cover; box-sizing: border-box; border: 3px solid #666; background: rgba(0, 0, 0, .4); display: block;
+}
+.tsi-player--battlemap .tsi-bm-strip-item--current .tsi-bm-strip-img { box-shadow: 0 0 0 3px #c9a227, 0 0 16px rgba(201, 162, 39, .7); }
+.tsi-player--battlemap .tsi-bm-strip-img.tsi-bm-health--unhurt { border-color: #5fae6a; }
+.tsi-player--battlemap .tsi-bm-strip-img.tsi-bm-health--hurt { border-color: #c9b23a; }
+.tsi-player--battlemap .tsi-bm-strip-img.tsi-bm-health--bloodied { border-color: #d9822b; }
+.tsi-player--battlemap .tsi-bm-strip-img.tsi-bm-health--near { border-color: #d63a3a; }
+.tsi-player--battlemap .tsi-bm-strip-img.tsi-bm-health--down { border-color: #6b6b6b; filter: grayscale(.8); }
+.tsi-player--battlemap .tsi-bm-strip-tag { font: 700 11px/1.2 var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: #c9a227; min-height: 13px; white-space: nowrap; }
+.tsi-player--battlemap .tsi-bm-strip-tag--next { color: #f3ead2; }
+.tsi-player--battlemap .tsi-bm-strip-tag--blank { visibility: hidden; }
+.tsi-player--battlemap .tsi-bm-strip-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 13px/1.25 var(--tsi-font-body); color: #f3ead2; text-shadow: 0 1px 3px #000; }
+.tsi-player--battlemap .tsi-bm-strip-item--current .tsi-bm-strip-name { font-size: 16px; }
+.tsi-player--battlemap .tsi-bm-conds--strip { top: auto; bottom: -6px; transform: translateX(-50%); }
+.tsi-player--battlemap .tsi-bm-conds--strip .tsi-bm-cond { width: 18px; height: 18px; }
+.tsi-player--battlemap .tsi-bm-conds--strip .tsi-bm-cond img { width: 12px; height: 12px; }
+@media (max-width: 900px) {
+  .tsi-player--battlemap .tsi-bm-strip-item { width: 60px; }
+  .tsi-player--battlemap .tsi-bm-strip-item--current { width: 92px; }
+  .tsi-player--battlemap .tsi-bm-strip-frame { width: 42px; height: 42px; }
+  .tsi-player--battlemap .tsi-bm-strip-item--current .tsi-bm-strip-frame { width: 68px; height: 68px; }
+}

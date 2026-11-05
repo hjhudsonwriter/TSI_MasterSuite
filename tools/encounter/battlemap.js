@@ -28,10 +28,12 @@
   function createBattlemap(root, api) {
     var el = TSI.el;
     var R = enc.rules;
+    var CB = enc.combat;
 
     var ready = false;
     var vtt = R.normalizeVtt({});
     var roster = [];
+    var trackerView = { status: 'ready', round: 1, turnIndex: 0, roster: [] };
     var trackerName = '';
     var activeTurnEncId = null;
     var mapUrl = '';
@@ -109,8 +111,10 @@
         side('▼', 'bm-fs-nudge-d', 'tsi-bm-side-btn--small', function () { nudge(0, 2); })
       ])
     ]);
+    /* The turn-order strip along the top of the map (guide 3). It lives inside the stage so it shows in fullscreen too. */
+    var strip = el('div', { class: 'tsi-bm-strip', hidden: true, 'data-test': 'bm-strip', 'aria-label': 'Turn order' });
     var stage = el('div', { class: 'tsi-bm-stage', 'data-test': 'bm-stage' }, [
-      mapLayer, gridCanvas, tokenLayer, fogCanvas, aboveLayer, measureCanvas, marquee, measureBtn, measureReadout, sidebar
+      mapLayer, gridCanvas, tokenLayer, fogCanvas, aboveLayer, measureCanvas, marquee, measureBtn, measureReadout, sidebar, strip
     ]);
 
     TSI.append(root, el('div', { class: 'tsi-bm' }, [
@@ -360,14 +364,20 @@
       tokenEls.clear();
       var above = vtt.fog.monstersUnderFog === false;
       roster.forEach(function (c) {
-        /* Defeated monsters leave the map; so does anything Shift+clicked off it (C7: no way back, as before). */
-        if (c.type === 'monster' && (c.defeated || Number(c.curHp) <= 0)) return;
+        /* A fallen monster stays as a greyed marker with a cross until the DM removes it (Shift + click, as for any token). */
+        var fallen = c.type === 'monster' && (c.fallen || c.defeated || Number(c.curHp) <= 0);
         if (vtt.removed && vtt.removed[c.encId]) return;
-        var img = el('img', { class: 'tsi-bm-token-img', alt: '', src: c.avatar || R.defaultAvatar(c.type), draggable: 'false' });
-        img.onerror = function () { img.onerror = null; img.src = R.defaultAvatar(c.type); };
-        var token = el('div', { class: 'tsi-bm-token', 'data-enc-id': c.encId, 'data-name': c.name, 'data-type': c.type, 'data-test': 'bm-token' }, [
-          img, el('div', { class: 'tsi-bm-token-label', text: c.name })
-        ]);
+        var img = el('img', { class: 'tsi-bm-token-img' + (c.type === 'monster' || c.type === 'pc' ? ' tsi-bm-health--' + (fallen ? 'down' : (c.health || 'unhurt')) : ''), alt: '', src: pictureOf(c), draggable: 'false' });
+        img.onerror = function () { img.onerror = null; img.src = CB.nameToken(c.name, c.type); };
+        var kids = [img];
+        var conds = condIcons(c.conditions, 'tsi-bm-conds');
+        if (conds && !fallen) kids.push(conds);
+        if (fallen) kids.push(el('div', { class: 'tsi-bm-fallen-x', 'aria-hidden': 'true', text: '✕' }));
+        kids.push(el('div', { class: 'tsi-bm-token-label', text: c.name }));
+        var status = tokenStatus(c, fallen);
+        if (status) kids.push(status);
+        var token = el('div', { class: 'tsi-bm-token', 'data-enc-id': c.encId, 'data-name': c.name, 'data-type': c.type, 'data-test': 'bm-token' }, kids);
+        if (fallen) token.classList.add('tsi-bm-token--fallen');
         if (activeTurnEncId && c.encId === activeTurnEncId) token.classList.add('tsi-bm-token--active');
         if ((vtt.hidden && vtt.hidden[c.encId]) || (vtt.hideMonsters && c.type === 'monster')) token.classList.add('tsi-bm-token--hidden');
         if (selected.has(c.encId)) token.classList.add('tsi-bm-token--selected');
@@ -376,7 +386,71 @@
         (above && c.type === 'monster' ? aboveLayer : tokenLayer).appendChild(token);
         tokenEls.set(c.encId, token);
       });
+      renderStrip();
       drawFog();
+    }
+
+    /* ---------- Pictures, health words and condition icons (guide 3) ---------- */
+    /* A bundled picture is inside the suite's folder; an uploaded one is used as it is; with none, a round name token. */
+    function pictureOf(c) { return c.avatar ? CB.src(c.avatar) : CB.nameToken(c.name, c.type); }
+    /* Condition icons (game-icons.net, shared/art/conditions/); a condition with no icon shows as a small word. */
+    function condIcons(list, cls, max) {
+      list = Array.isArray(list) ? list : [];
+      if (!list.length) return null;
+      var wrap = el('div', { class: cls, 'data-test': 'bm-conditions' });
+      list.slice(0, max || 6).forEach(function (name) {
+        var known = CB.CONDITIONS.indexOf(name) !== -1 || name === 'Concentrating';
+        if (known) {
+          wrap.appendChild(el('span', { class: 'tsi-bm-cond', title: name, 'data-cond': name }, el('img', { src: TSI.path('shared/art/conditions/' + CB.slugify(name) + '.svg'), alt: name })));
+        } else {
+          wrap.appendChild(el('span', { class: 'tsi-bm-cond tsi-bm-cond--word', title: name, 'data-cond': name, text: String(name).slice(0, 10) }));
+        }
+      });
+      return wrap;
+    }
+    /* Under a token: a monster's health in words, a hero's HP as current / maximum, a hero at 0 as Down with the death-save pips. */
+    function tokenStatus(c, fallen) {
+      if (c.type === 'monster') return el('div', { class: 'tsi-bm-health tsi-bm-health--' + (fallen ? 'down' : c.health), 'data-test': 'bm-health', text: fallen ? 'Fallen' : CB.HEALTH[c.health].label });
+      if (c.type === 'pc') {
+        if (c.down) return el('div', { class: 'tsi-bm-health tsi-bm-health--down', 'data-test': 'bm-health' }, [el('span', { text: c.death && c.death.dead ? 'Dead' : c.death && c.death.stable ? 'Stable' : 'Down' }), deathPips(c.death)]);
+        return el('div', { class: 'tsi-bm-health tsi-bm-health--' + c.health, 'data-test': 'bm-health', text: c.curHp + '/' + c.maxHp });
+      }
+      return null;
+    }
+    function deathPips(d) {
+      d = d || { s: 0, f: 0 };
+      var wrap = el('span', { class: 'tsi-bm-pips', 'data-test': 'bm-death-pips', 'aria-label': d.s + ' successes, ' + d.f + ' failures' });
+      for (var i = 0; i < 3; i++) wrap.appendChild(el('i', { class: 'tsi-bm-pip tsi-bm-pip--ok' + (i < d.s ? ' tsi-bm-pip--on' : '') }));
+      for (var j = 0; j < 3; j++) wrap.appendChild(el('i', { class: 'tsi-bm-pip tsi-bm-pip--bad' + (j < d.f ? ' tsi-bm-pip--on' : '') }));
+      return wrap;
+    }
+
+    /* The turn-order strip: the round, then everyone in initiative order starting with whoever is up. The one up is large with a gold frame
+       and the next is labelled "Up next". Defeated and hidden monsters are left out. Shown only while the fight is running. */
+    function renderStrip() {
+      TSI.clear(strip);
+      var items = CB.strip(trackerView, vtt).filter(function (c) { return !(vtt.removed && vtt.removed[c.encId]); });
+      strip.hidden = !items.length;
+      if (!items.length) return;
+      strip.appendChild(el('div', { class: 'tsi-bm-round', 'data-test': 'bm-round' }, [el('span', { class: 'tsi-bm-round-label', text: 'Round' }), el('span', { class: 'tsi-bm-round-num', text: String(trackerView.round || 1) })]));
+      var list = el('ol', { class: 'tsi-bm-strip-list' });
+      items.forEach(function (c) {
+        var li = el('li', { class: 'tsi-bm-strip-item' + (c.current ? ' tsi-bm-strip-item--current' : '') + (c.next ? ' tsi-bm-strip-item--next' : ''), 'data-test': 'bm-strip-item', 'data-enc-id': c.encId, 'data-name': c.name });
+        if (c.current) li.appendChild(el('span', { class: 'tsi-bm-strip-tag', text: 'Now' }));
+        else if (c.next) li.appendChild(el('span', { class: 'tsi-bm-strip-tag tsi-bm-strip-tag--next', text: 'Up next' }));
+        else li.appendChild(el('span', { class: 'tsi-bm-strip-tag tsi-bm-strip-tag--blank', text: '\u00a0' }));
+        var img = el('img', { class: 'tsi-bm-strip-img tsi-bm-health--' + (c.down ? 'down' : c.health), alt: c.name, src: pictureOf(c) });
+        img.onerror = function () { img.onerror = null; img.src = CB.nameToken(c.name, c.type); };
+        var frame = el('div', { class: 'tsi-bm-strip-frame' }, img);
+        var conds = condIcons(c.conditions, 'tsi-bm-conds tsi-bm-conds--strip', 3);
+        if (conds) frame.appendChild(conds);
+        li.appendChild(frame);
+        li.appendChild(el('div', { class: 'tsi-bm-strip-name', text: c.name }));
+        var st = tokenStatus(c, false);
+        if (st) li.appendChild(st);
+        list.appendChild(li);
+      });
+      strip.appendChild(list);
     }
     function tokenPx() { return R.clamp(Number(vtt.tokenSize) || 56, 24, 140); }
     function placeToken(token, encId) {
@@ -645,7 +719,8 @@
 
     /* ---------- What the desk sends ---------- */
     function hydrate(t) {
-      roster = Array.isArray(t.roster) ? t.roster : [];
+      trackerView = { name: t.name, status: t.status || 'ready', round: t.round || 1, turnIndex: t.turnIndex || 0, roster: Array.isArray(t.roster) ? t.roster : [] };
+      roster = trackerView.roster;
       trackerName = t.name || '';
       var idx = Math.max(0, Math.min(t.turnIndex || 0, roster.length - 1));
       activeTurnEncId = t.status === 'running' && roster.length ? (roster[idx] || {}).encId || null : null;

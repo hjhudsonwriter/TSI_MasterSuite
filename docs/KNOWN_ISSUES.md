@@ -4477,3 +4477,23 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 ### EXP-FIGHT-03 · The Shambling Mound, the Rootbound Husk and T9 taken out (5 November 2026, Harry)
 - Before: T9 The Husk in the Furrows existed but was switched off (it used a Rootbound Husk stat line); T20 The Marsh Lights added a Shambling Mound at levels 11 to 16.
 - After: T9 and its Explorer stat line are removed, and T20 is 4 crocodiles at every level. The Heartwood Ritual's own Rootbound Husk (in the Ritual tool) is a different thing and is untouched.
+
+### CT-01 · The TV now shows combat (guide 3, 5 November 2026)
+- Before: the Battlemap showed names and tokens only, and a monster at 0 HP vanished from the map. After: a turn-order strip, health in words, hero HP, Down with death-save pips, condition icons, and a greyed "fallen" marker that stays until the DM removes it (Shift + click on the Battlemap, as for any token).
+- Left alone: the existing damage and healing maths (unchanged). Defeated monsters still do not get a turn.
+
+### CT-02 · SRD numbers differ from the table's (guide 3)
+- The stat blocks are SRD 5.2 (the 2024 rules). The Thug and the Veteran are from SRD 5.1 because 5.2 does not list them. Where the tracker's own numbers differ from the block's (for example the Ogre has 59 HP in the table and 68 in the block), the tracker's numbers win and the block shows a small note "SRD says …". No number already in the tracker was changed.
+
+### CT-03 · What is in the library now (guide 3)
+- Before: the library started empty. After: the first time the tracker opens, the five heroes and the 13 Explorer monsters are added once. If a creature of the same name was already there it keeps its numbers and only gets its stat block. Delete them if unwanted: they are not added again.
+- Pictures: all 18 supplied pictures were square (512 × 512), so none needed cropping. A monster with no picture shows a round name token.
+
+### CT-04 · Small choices in guide 3
+- Conditions: the 15 from the 2014 and 2024 rules (Exhaustion included) have icons; any other typed condition (Surprised, Hexed…) shows as a small word on the TV.
+- The pencil on a hero's row also updates that hero's library entry (AC and max HP) so the next fight starts with the new numbers.
+- Not built because they were not ticked: Explorer hero tokens using headshots, and the turn chime.
+- Firefox: not tested (Chromium only).
+
+### CT-05 · Party panel typing (guide 3)
+- Found while testing: editing one box in the Party panel rebuilt the others, so a half-typed number could be lost. Fixed before release: the panel now updates numbers in place.

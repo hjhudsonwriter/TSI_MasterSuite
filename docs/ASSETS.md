@@ -661,3 +661,17 @@ Harry's engravings (2000 x 1500, see-through background), kept byte for byte. Us
 | Harry's griffin picture | `tools/beasthandler/assets/compendium/griffin.webp` |
 | Harry's sabrecat picture | `tools/beasthandler/assets/compendium/sabrecat.webp` |
 | Harry's wyvern picture (attached 5 November 2026) | `tools/beasthandler/assets/compendium/wyvern.webp` |
+
+## Combat Tracker pictures (guide 3, 5 November 2026)
+Harry's pictures, kept byte for byte (all square, 512 × 512). Used by `tools/encounter/data/party-data.js`.
+| Old name | New location |
+|---|---|
+| hero portraits, `24685d95-hero-portraits.zip`: party/kaelen.png | `shared/art/party/kaelen.png` |
+| party/elara.png | `shared/art/party/elara.png` |
+| party/magnus.png | `shared/art/party/magnus.png` |
+| party/umbrys.png | `shared/art/party/umbrys.png` |
+| party/charles-vect.png | `shared/art/party/charles-vect.png` |
+| monster pictures, `ef938f6f-monster-portraits.zip`: monsters/<slug>.png (13: bandit, bandit-captain, berserker, crocodile, dire-wolf, gladiator, hill-giant, ogre, spy, thug, veteran, winter-wolf, wolf) | `shared/art/monsters/<slug>.png` |
+| Condition icons (16 SVGs, from game-icons.net, CC BY 3.0, black background square removed; credits in the folder's `CREDITS.txt`) | `shared/art/conditions/<condition>.svg` |
+
+Data (not art): `tools/encounter/data/srd-monsters.js` (343 SRD stat blocks, built by `tools/encounter/dev/build-srd.py` from the 5e-bits database) and `tools/encounter/data/party-data.js` (the party and the 13 monsters' numbers).

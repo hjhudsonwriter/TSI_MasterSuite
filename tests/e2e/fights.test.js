@@ -85,6 +85,7 @@ async function mapShown(map) {
   section('A fight from the Explorer, set up in the Combat Tracker (laptop, internet off)');
   {
     const context = await H.newContext(browser, 'laptop');
+    await context.addInitScript(() => { window.TSI_NO_SEED = true; }); /* this checks the hand-over with its own two heroes; the party and monsters have combat-table.test.js */
     await context.setOffline(true);
     const page = await context.newPage();
     let tracker = null;

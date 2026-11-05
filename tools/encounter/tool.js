@@ -60,7 +60,8 @@
       var CB = enc.combat;
       /* The first time the tracker opens after guide 3: the five heroes and the 13 Explorer monsters join the library (numbers already
          there are kept; only the stat block is attached). Once only. */
-      var seeded = CB.seedOnce(state, null, R.uid);
+      /* (window.TSI_NO_SEED is a switch for the old click-through tests, which count the library from empty.) */
+      var seeded = window.TSI_NO_SEED ? { skipped: true } : CB.seedOnce(state, null, R.uid);
       if (!seeded.skipped) save();
 
       function note(message, title) { return TSI.modal.alert({ title: title || 'Combat Tracker', message: message }); }
@@ -76,7 +77,7 @@
         features: 'popup=yes,width=1400,height=900',
         getState: function () { return { tracker: trackerView(), vtt: vtt, map: ctx.store.get('mapImage', '') }; },
         onMessage: function (type, payload) {
-          if (type === 'vtt' && payload && typeof payload === 'object') { saveVtt(payload); link.send('tracker', trackerView()); }
+          if (type === 'vtt' && payload && typeof payload === 'object') { saveVtt(payload); }
           else if (type === 'map' && payload && R.isMapSave(payload.dataUrl)) {
             if (payload.dataUrl) ctx.store.set('mapImage', payload.dataUrl);
             else ctx.store.remove('mapImage');
@@ -501,16 +502,25 @@
       /* ---------- The party panel and the quick edit (guide 3) ---------- */
       /* The five heroes in one table: AC, max HP, initiative bonus and passive Perception, editable in place. A blank shows "set me". */
       function renderParty() {
-        if (partyBox.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
-        TSI.clear(partyBox);
         var pcs = R.libraryOrder(state.library).filter(function (x) { return x.type === 'pc'; });
+        /* The same heroes: only bring the numbers up to date, so a box being typed in is never rebuilt under the cursor. */
+        var sig = pcs.map(function (x) { return x.id + '|' + x.name + '|' + x.avatar; }).join(';');
+        if (partyBox.dataset.sig === sig && partyBox.firstChild) {
+          Array.prototype.forEach.call(partyBox.querySelectorAll('input[data-key]'), function (inp) {
+            var pc = pcs.filter(function (x) { return x.id === inp.dataset.id; })[0];
+            if (pc && document.activeElement !== inp) inp.value = Number.isFinite(pc[inp.dataset.key]) ? pc[inp.dataset.key] : '';
+          });
+          return;
+        }
+        partyBox.dataset.sig = sig;
+        TSI.clear(partyBox);
         if (!pcs.length) { partyBox.appendChild(hint('No heroes in the library yet.')); return; }
         var table = el('table', { class: 'tsi-enc-partytable' }, [
           el('thead', null, el('tr', null, ['Hero', 'AC', 'Max HP', 'Init', 'Passive'].map(function (h) { return el('th', { text: h }); }))),
           el('tbody', null, pcs.map(function (pc) {
             function cell(key, label, min) {
               var v = pc[key];
-              var inp = el('input', { type: 'number', min: String(min), step: '1', class: 'tsi-input tsi-enc-input tsi-enc-partyin', 'aria-label': pc.name + ' ' + label, 'data-test': 'party-' + key + '-' + pc.name.toLowerCase().replace(/[^a-z]+/g, '-'), placeholder: 'set me' });
+              var inp = el('input', { type: 'number', min: String(min), step: '1', class: 'tsi-input tsi-enc-input tsi-enc-partyin', 'aria-label': pc.name + ' ' + label, 'data-test': 'party-' + key + '-' + pc.name.toLowerCase().replace(/[^a-z]+/g, '-'), placeholder: 'set me', 'data-key': key, 'data-id': pc.id });
               inp.value = Number.isFinite(v) ? v : '';
               inp.addEventListener('change', function () {
                 var f = {}; f[key] = inp.value;
@@ -568,7 +578,7 @@
           (function (i) {
             var used = i < tracker.used;
             row.appendChild(el('button', {
-              type: 'button', class: 'tsi-enc-pip' + (used ? ' is-used' : ''), 'aria-pressed': used ? 'true' : 'false', 'data-test': test + '-pip',
+              type: 'button', class: 'tsi-enc-pip' + (used ? ' tsi-enc-pip--used' : ''), 'aria-pressed': used ? 'true' : 'false', 'data-test': test + '-pip',
               'aria-label': label + ' ' + (i + 1) + (used ? ' (used)' : ' (left)'), title: used ? 'Used. Click to take it back.' : 'Click when used.',
               onclick: function () { CB.setPips(tracker, i < tracker.used ? i : i + 1); save(); render(); }
             }));
@@ -635,7 +645,7 @@
               (function (i) {
                 var on = i < g[2];
                 grp.appendChild(el('button', {
-                  type: 'button', class: 'tsi-enc-pip tsi-enc-pip--' + g[0] + (on ? ' is-used' : ''), 'aria-pressed': on ? 'true' : 'false', 'data-test': 'fx-death-' + g[0],
+                  type: 'button', class: 'tsi-enc-pip tsi-enc-pip--' + g[0] + (on ? ' tsi-enc-pip--used' : ''), 'aria-pressed': on ? 'true' : 'false', 'data-test': 'fx-death-' + g[0],
                   'aria-label': g[1] + ' ' + (i + 1), title: on ? 'Click to take this back.' : 'Click to tick it.',
                   onclick: function () { deathPip(f, g[0], on); }
                 }));
@@ -951,7 +961,6 @@
         var patch = hide ? { hideMonsters: true } : { hideMonsters: false, hidden: {} };
         saveVtt(patch);
         link.send('vtt', patch);
-        link.send('tracker', trackerView());
       }
       function resetAll() {
         TSI.backup.askReset({ toolId: 'encounter', title: 'Reset the Combat Tracker', okLabel: 'Reset', message: 'This will wipe your library and encounter data from this device/browser. Continue?' }).then(function (ok) {

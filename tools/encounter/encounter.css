@@ -222,7 +222,7 @@
 .tsi-tool--encounter .tsi-enc-table-head,
 .tsi-tool--encounter .tsi-enc-roster-row {
   display: grid;
-  grid-template-columns: 44px 52px minmax(0, 1.3fr) 76px minmax(0, 1fr) 86px;
+  grid-template-columns: 44px 52px minmax(0, 1.3fr) 76px minmax(0, 1fr) 118px;
   gap: 10px;
   align-items: center;
 }
@@ -303,7 +303,7 @@
 @media (max-width: 1450px) {
   .tsi-tool--encounter .tsi-enc-main { grid-template-columns: minmax(270px, 320px) minmax(0, 1fr) minmax(270px, 320px); gap: 10px; }
   .tsi-tool--encounter .tsi-enc-table-head,
-  .tsi-tool--encounter .tsi-enc-roster-row { grid-template-columns: 40px 44px minmax(0, 1.3fr) 66px minmax(0, 1fr) 80px; gap: 8px; }
+  .tsi-tool--encounter .tsi-enc-roster-row { grid-template-columns: 40px 44px minmax(0, 1.3fr) 66px minmax(0, 1fr) 108px; gap: 8px; }
   .tsi-tool--encounter .tsi-enc-tabs { gap: 2px; padding: 8px 10px 0; }
   .tsi-tool--encounter .tsi-enc-tab { padding: 7px 6px; letter-spacing: .04em; }
 }
@@ -312,3 +312,68 @@
   .tsi-tool--encounter .tsi-enc-main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(520px, auto) auto; }
   .tsi-tool--encounter .tsi-enc-board { grid-column: 1 / -1; grid-row: 1; }
 }
+
+/* ==========================================================================
+   Guide 3: the party, stat blocks, trackers, death saves, the SRD and New stat block
+   ========================================================================== */
+.tsi-tool--encounter .tsi-enc-avatar { border-radius: 50%; }
+.tsi-tool--encounter .tsi-enc-avatar--sm { width: 28px; height: 28px; flex: 0 0 auto; }
+.tsi-tool--encounter .tsi-enc-cell--actions { display: flex; gap: 4px; justify-content: flex-end; align-items: center; }
+.tsi-tool--encounter .tsi-enc-ac { display: block; font-size: 12px; color: var(--tsi-text-muted); }
+.tsi-tool--encounter .tsi-enc-badge--bloodied { border-color: rgba(240, 140, 60, .8); background: rgba(190, 90, 20, .25); color: #ffd2a8; }
+
+/* The Party panel */
+.tsi-tool--encounter .tsi-enc-partytable { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tsi-tool--encounter .tsi-enc-partytable th,
+.tsi-tool--encounter .tsi-enc-partytable td { padding: 3px 3px; text-align: left; }
+.tsi-tool--encounter .tsi-enc-partytable thead th { font: 600 11px var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-text-faint); }
+.tsi-tool--encounter .tsi-enc-partyname { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--tsi-text); min-width: 0; }
+.tsi-tool--encounter .tsi-enc-partyname span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tsi-tool--encounter .tsi-enc-partyin { width: 100%; min-width: 0; padding: 3px 4px; font-size: 14px; text-align: center; }
+
+/* Trackers for the creature in focus */
+.tsi-tool--encounter .tsi-enc-hpctl { display: flex; gap: 6px; align-items: center; margin: 6px 0; }
+.tsi-tool--encounter .tsi-enc-hpctl input { width: 6em; }
+.tsi-tool--encounter .tsi-enc-check { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 15px; cursor: pointer; }
+.tsi-tool--encounter .tsi-enc-pips,
+.tsi-tool--encounter .tsi-enc-death { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; font-size: 14px; }
+.tsi-tool--encounter .tsi-enc-pips__label { margin-right: 4px; }
+.tsi-tool--encounter .tsi-enc-death__grp { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
+.tsi-tool--encounter .tsi-enc-tiny { font-size: 12px; }
+.tsi-tool--encounter .tsi-enc-pip {
+  width: 20px; height: 20px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: 2px solid var(--tsi-gold-text); background: transparent;
+}
+.tsi-tool--encounter .tsi-enc-pip.tsi-enc-pip--used { background: var(--tsi-gold-text); }
+.tsi-tool--encounter .tsi-enc-pip--success { border-color: #7bd88a; }
+.tsi-tool--encounter .tsi-enc-pip--success.tsi-enc-pip--used { background: #7bd88a; }
+.tsi-tool--encounter .tsi-enc-pip--fail { border-color: #ff7b7b; }
+.tsi-tool--encounter .tsi-enc-pip--fail.tsi-enc-pip--used { background: #ff7b7b; }
+.tsi-tool--encounter .tsi-enc-pip:focus-visible { outline: 2px solid var(--tsi-gold-text); outline-offset: 2px; }
+.tsi-tool--encounter .tsi-enc-recharge { display: grid; gap: 4px; margin: 6px 0; }
+.tsi-tool--encounter .tsi-enc-recharge__one { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; }
+.tsi-tool--encounter .tsi-enc-recharge__name { flex: 1 1 auto; min-width: 0; }
+
+/* The stat block card */
+.tsi-tool--encounter .tsi-sb { font-size: 14px; line-height: 1.35; color: var(--tsi-text); }
+.tsi-tool--encounter .tsi-sb__name { font: 700 18px/1.2 var(--tsi-font-display); color: var(--tsi-gold-text); margin: 0; }
+.tsi-tool--encounter .tsi-sb__type { margin: 0 0 6px; font-style: italic; color: var(--tsi-text-muted); }
+.tsi-tool--encounter .tsi-sb__line { margin: 2px 0; }
+.tsi-tool--encounter .tsi-sb__line b { color: var(--tsi-gold-text); font-weight: 700; }
+.tsi-tool--encounter .tsi-sb__abil { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; margin: 8px 0; padding: 6px 0; border-top: 1px solid var(--tsi-line-panel); border-bottom: 1px solid var(--tsi-line-panel); text-align: center; }
+.tsi-tool--encounter .tsi-sb__ab { display: grid; gap: 1px; font-size: 12px; }
+.tsi-tool--encounter .tsi-sb__ab b { font: 600 11px var(--tsi-font-display); color: var(--tsi-gold-text); letter-spacing: .06em; }
+.tsi-tool--encounter .tsi-sb__section { margin-top: 8px; }
+.tsi-tool--encounter .tsi-sb__h { margin: 0 0 4px; padding-bottom: 2px; border-bottom: 1px solid var(--tsi-line-panel); font: 600 13px var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-tool--encounter .tsi-sb__entry { margin: 0 0 5px; }
+.tsi-tool--encounter .tsi-sb__entry-name { font-style: italic; color: var(--tsi-text); }
+.tsi-tool--encounter .tsi-sb__note { margin: 8px 0 0; padding: 4px 8px; border-radius: var(--tsi-radius-sm); border: 1px solid rgba(240, 140, 60, .6); background: rgba(190, 90, 20, .2); font-size: 13px; }
+.tsi-tool--encounter .tsi-sb__foot { margin: 8px 0 0; font-size: 11px; color: var(--tsi-text-faint); }
+
+/* The SRD search, New stat block and the quick edit */
+.tsi-enc-srd .tsi-enc-srdlist { max-height: 46vh; overflow-y: auto; margin-top: 8px; display: grid; gap: 6px; }
+.tsi-enc-srd input[type=search] { width: 100%; box-sizing: border-box; }
+.tsi-enc-newblock .tsi-enc-abil { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.tsi-enc-newblock textarea { width: 100%; box-sizing: border-box; resize: vertical; }
+.tsi-enc-newblock { max-height: 90vh; }
+.tsi-enc-quickedit .tsi-enc-check { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
