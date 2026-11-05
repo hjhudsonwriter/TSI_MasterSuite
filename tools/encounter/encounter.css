@@ -377,3 +377,15 @@
 .tsi-enc-newblock textarea { width: 100%; box-sizing: border-box; resize: vertical; }
 .tsi-enc-newblock { max-height: 90vh; }
 .tsi-enc-quickedit .tsi-enc-check { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+
+/* The Party panel, roomier (Harry, 5 November 2026): each hero is a name line with the four numbers under it, each with its label,
+   so nothing is squashed in the narrow left panel. */
+.tsi-tool--encounter .tsi-enc-partytable,
+.tsi-tool--encounter .tsi-enc-partytable tbody { display: block; width: 100%; }
+.tsi-tool--encounter .tsi-enc-partytable thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.tsi-tool--encounter .tsi-enc-partytable tr { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 8px; padding: 8px 0; border-bottom: 1px solid var(--tsi-line-faint); }
+.tsi-tool--encounter .tsi-enc-partytable tr:last-child { border-bottom: 0; }
+.tsi-tool--encounter .tsi-enc-partytable th.tsi-enc-partyname { grid-column: 1 / -1; padding: 0 0 2px; }
+.tsi-tool--encounter .tsi-enc-partytable td { display: grid; gap: 2px; padding: 0; min-width: 0; }
+.tsi-tool--encounter .tsi-enc-partytable td::before { content: attr(data-label); font: 600 10px/1.2 var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tsi-tool--encounter .tsi-enc-partyin { height: 34px; padding: 4px 6px; text-align: center; }

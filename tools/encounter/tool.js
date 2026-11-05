@@ -527,7 +527,7 @@
                 CB.editPartyMember(state, pc.id, f);
                 save(); render();
               });
-              return el('td', null, inp);
+              return el('td', { 'data-label': { ac: 'AC', maxHp: 'Max HP', initBonus: 'Init', passive: 'Passive' }[key] }, inp);
             }
             return el('tr', { 'data-test': 'party-row', 'data-name': pc.name }, [
               el('th', { scope: 'row', class: 'tsi-enc-partyname' }, [avatarImg(pic(pc), 'pc', pc.name, 'tsi-enc-avatar--sm', pc.name), el('span', { text: pc.name })]),
