@@ -4505,3 +4505,7 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 ### VOICE-01 · Tovin Ash's voice clip made as loud as Pell Ardwick's (5 November 2026, Harry)
 - Before: `tovin-ash.mp3` measured -32.4 LUFS (very quiet) beside Pell Ardwick's -21.0 LUFS, which plays straight after it. After: raised to -21.5 LUFS (about 11 dB louder), with the loudest peaks held at -1.3 dBFS so nothing clips. Same length, same format (mono MP3, 128 kbit/s). Nothing else was changed.
 - Left alone: Isla Tarrow (-24.6 LUFS) and Linnet (-23.1 LUFS) are a little quieter than the rest, and Dren Marr (-17.1 LUFS) a little louder; say if you want them matched too. The original Tovin file is in the git history if you ever want it back.
+
+### VOICE-02 · Isla Tarrow, Linnet and Dren Marr matched to the other voice clips (5 November 2026, Harry)
+- Before: Isla Tarrow -24.6 LUFS, Linnet -23.1 LUFS, Dren Marr -17.1 LUFS. After: all three at about -21.5 LUFS, the same as Tovin Ash and Pell Ardwick (Isla +3.6 dB, Linnet +2.1 dB, Dren -3.9 dB, loudest peaks held under -1 dBFS). Same format (mono MP3, 128 kbit/s); lengths are 25 milliseconds longer (MP3 padding).
+- Left alone: Seris Thane (-21.4 LUFS) was already level, and the Maerys letter (-19.5 LUFS) is a different kind of clip (a letter read out) so it was not touched. The originals are in the git history.
