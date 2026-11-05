@@ -4473,3 +4473,7 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 ### EVID-01 · The Evidence Board (4 November 2026)
 - The players' window can now change the board (and only the board): see docs/PLAYER-VIEW-PLAN.md. Before: Player Views never changed a save. After: the board's edits go to the Explorer window, which saves them.
 - Left alone: the pin sound (`pin.mp3`) was not supplied, so notes drop in silently; the board's pictures for the oak, parchment and pin are drawn in code (no art supplied); the board is a panel over the TV picture (not a separate window). The Explorer must be open for the board's edits on the TV to be saved (without it, the TV window shows the last picture and says so).
+
+### EXP-FIGHT-03 · The Shambling Mound, the Rootbound Husk and T9 taken out (5 November 2026, Harry)
+- Before: T9 The Husk in the Furrows existed but was switched off (it used a Rootbound Husk stat line); T20 The Marsh Lights added a Shambling Mound at levels 11 to 16.
+- After: T9 and its Explorer stat line are removed, and T20 is 4 crocodiles at every level. The Heartwood Ritual's own Rootbound Husk (in the Ritual tool) is a different thing and is untouched.

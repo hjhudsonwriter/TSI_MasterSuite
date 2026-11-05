@@ -4,10 +4,10 @@
    (no longer loaded) but kept.
 
    Harry's choices (6 October 2026): every recommendation in the draft's
-   "Decisions for Harry", except T9 The Husk in the Furrows, which is written
-   here but switched off (off: true): no Rootbound creature before the
-   Heartwood finale. T17 The Second Marker was removed at Harry's request
-   (7 October 2026), so there are 16 travel events.
+   "Decisions for Harry", except T9 The Husk in the Furrows, which was written
+   but switched off (no Rootbound creature before the Heartwood finale), and
+   was removed altogether on 5 November 2026 at Harry's request. T17 The Second
+   Marker was removed at Harry's request (7 October 2026).
 
    How an event is written (the rules are in journey.js):
    - kind: 'travel' (drawn on the road), 'camp' (drawn at Make Camp),
@@ -396,50 +396,6 @@ window.TSI_DATA.journeyEvents = {
         },
         cut: { text: 'Cutting them free takes time, and the hollow stays shut.', apply: [{ miles: -6 }], end: true },
         shut: { text: 'You pull free, but the hollow stays shut.', end: true }
-      }
-    },
-
-    {
-      /* Switched off (Harry, 6 October 2026): no Rootbound creature before the Heartwood finale. */
-      id: 't9', code: 'T9', kind: 'travel', off: true, title: 'The Husk in the Furrows', where: { gods: ['telluria'], terrain: ['open'] },
-      line: 'Nature or Arcana, then Survival · may lead to a fight',
-      steps: {
-        start: {
-          text: 'A farmer waves you down at the edge of his field. "It\'s my scarecrow. It wasn\'t facing this way this morning." Roots have grown up through its straw, and they are still moving.',
-          check: { skill: 'Intelligence (Nature) or Intelligence (Arcana)', dc: 15, who: 'one', success: 'known', failure: 'unknown' }
-        },
-        known: {
-          text: 'This is the sickness that makes Rootbound creatures, and it hasn\'t finished growing.',
-          choices: [
-            { label: 'Destroy it now: fight', go: 'destroy' },
-            { label: 'Trace the roots: Wisdom (Survival), DC 16', go: 'trace' }
-          ]
-        },
-        unknown: {
-          text: 'Roots in a scarecrow, still moving. You don\'t know what it means.',
-          choices: [
-            { label: 'Destroy it now: fight', go: 'destroy' },
-            { label: 'Trace the roots: Wisdom (Survival), DC 16', go: 'trace' }
-          ]
-        },
-        destroy: { text: 'The Husk lurches out of the furrows.', fight: { suggest: 'One Rootbound Husk (35 HP, as in the Heartwood Ritual).', encounter: 't9', won: 'thanks', fled: 'fled' } },
-        thanks: { text: 'The farmer presses all he has on you.', apply: [{ gold: 60 }], end: true },
-        trace: {
-          text: 'You follow the roots.',
-          check: { skill: 'Wisdom (Survival)', dc: 16, who: 'one', success: 'deep', failure: 'cold' }
-        },
-        deep: {
-          text: 'The roots run deep and far.',
-          apply: [{ thread: { name: 'The Spreading Rot', note: 'The roots run deep and far. DM: decide where they lead.' } }],
-          end: true
-        },
-        cold: {
-          text: 'The trail goes cold, and the Husk is waiting when you return.',
-          apply: [{ miles: -6 }],
-          fight: { suggest: 'One Rootbound Husk (35 HP, as in the Heartwood Ritual).', encounter: 't9', won: 'coldWon', fled: 'fled' }
-        },
-        coldWon: { text: 'The Husk is destroyed.', end: true },
-        fled: { text: 'You get away.', end: true }
       }
     },
 
@@ -844,7 +800,7 @@ window.TSI_DATA.journeyEvents = {
         road: { text: 'The lights drift away. The detour costs you time.', apply: [{ miles: -6 }], end: true },
         follow: {
           text: 'The lights lead to a drowned waystone and a cache of coins. Something in the water has been luring travellers here.',
-          fight: { suggest: 'Levels 7–10: 4 crocodiles. Levels 11–16: add a shambling mound.', encounter: 't20', won: 'won', fled: 'fled' }
+          fight: { suggest: '4 crocodiles.', encounter: 't20', won: 'won', fled: 'fled' }
         },
         won: { text: 'The water goes still. The cache is yours.', apply: [{ gold: 100 }], end: true },
         fled: { text: 'You get away along the old road, and the lights go out behind you.', end: true }
