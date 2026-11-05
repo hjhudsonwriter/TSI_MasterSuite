@@ -196,6 +196,8 @@ window.TSI_DATA.tools = [
         'tools/bastion/strip-back-rules.js',
         'shared/js/pointer-mirror.js',
         'tools/explorer/sfx.js',
+        /* The soundscape's player (guide 5): plays the background sound from this window when no Player View is open. */
+        'tools/explorer/soundscape-player.js',
         'tools/explorer/tool.js'
       ]
     },
@@ -203,7 +205,7 @@ window.TSI_DATA.tools = [
     playerViews: {
       explorer: {
         css: ['tools/explorer/player-view.css', 'tools/recap/reel.css'],
-        js: ['tools/explorer/data/hex-terrain-data.js', 'tools/explorer/rules.js', 'tools/explorer/pins-rules.js', 'tools/explorer/draw.js', 'shared/js/evidence-rules.js', 'shared/js/pointer-mirror.js', 'tools/explorer/evidence-board.js', 'tools/recap/recap-rules.js', 'tools/recap/reel.js', 'tools/explorer/player-view.js']
+        js: ['tools/explorer/data/hex-terrain-data.js', 'tools/explorer/rules.js', 'tools/explorer/pins-rules.js', 'tools/explorer/draw.js', 'shared/js/evidence-rules.js', 'shared/js/pointer-mirror.js', 'tools/explorer/evidence-board.js', 'tools/recap/recap-rules.js', 'tools/recap/reel.js', 'shared/js/store-rules.js', 'shared/js/handoff.js', 'tools/explorer/data/soundscape-data.js', 'tools/explorer/soundscape-rules.js', 'tools/explorer/soundscape-player.js', 'tools/explorer/player-view.js']
       }
     }
   },

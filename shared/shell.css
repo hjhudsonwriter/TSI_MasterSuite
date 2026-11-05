@@ -139,3 +139,18 @@ h1.tsi-topbar__tool { margin: 0; }
 .tsi-home__protect.is-ok { color: var(--tsi-text-soft); }
 .tsi-home__protect:not(.is-ok) { color: var(--tsi-gold-text, #f0d68a); }
 .tsi-topbar__backup.is-due { border-color: var(--tsi-gold, #c9a55a); color: var(--tsi-gold-text, #f0d68a); box-shadow: 0 0 0 1px var(--tsi-gold, #c9a55a) inset; }
+
+/* The Sound control's pop-over (guide 5), under the top bar. */
+.tsi-sound {
+  position: fixed; z-index: var(--tsi-z-dmdoc, 60); top: 58px; right: 12px; width: min(340px, 94vw); box-sizing: border-box; padding: 12px 14px;
+  border-radius: var(--tsi-radius-lg); border: var(--tsi-border-panel); background: var(--tsi-modal-fill) var(--tsi-panel-deep);
+  box-shadow: var(--tsi-shadow-modal), 0 0 26px rgba(214, 178, 94, .18); color: var(--tsi-text); font: 400 var(--tsi-fs-body-sm)/1.4 var(--tsi-font-body);
+}
+.tsi-sound__title { margin: 0 0 8px; font: 700 14px var(--tsi-font-display); letter-spacing: var(--tsi-track-heading); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-sound__row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.tsi-sound__label { width: 4.5em; font: 600 12px var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-text-faint); }
+.tsi-sound__vol { flex: 1 1 auto; min-width: 0; accent-color: var(--tsi-gold-text); }
+.tsi-sound__volnum { width: 3em; text-align: right; font-variant-numeric: tabular-nums; }
+.tsi-sound__mood { flex: 1 1 auto; min-width: 0; }
+.tsi-sound__now { margin: 8px 0 4px; color: var(--tsi-text); }
+.tsi-sound__hint { margin: 6px 0 0; font-size: 13px; color: var(--tsi-text-muted); }

@@ -125,9 +125,11 @@ async function openPlayer(page, size) {
       await H.shot(pv, 'pv-explorer-' + name);
     });
 
-    await check('no side panels, top bar, inputs or buttons but the board and map icons, their Close and Full screen; clicks do nothing', async () => {
+    await check('no side panels, top bar, inputs or buttons but the board and map icons, their Close, the board’s own buttons and Full screen; clicks do nothing', async () => {
       equal(await pv.$$eval('input, select, textarea, a[href]', n => n.length), 0);
-      equal(await pv.$$eval('button', bs => bs.map(b => b.dataset.test)), ['pv-boardbtn', 'pv-mapbtn', 'pv-map-close', 'pv-fullscreen']);
+      /* (pv-sound-prompt is the soundscape's one-click button, guide 5: hidden unless the browser has refused to play sound.) */
+      equal(await pv.$$eval('button', bs => bs.map(b => b.dataset.test)), ['pv-sound-prompt', 'pv-boardbtn', 'pv-mapbtn', 'pv-map-close', 'pv-ev-close', 'pv-ev-add', 'pv-ev-edit', 'pv-ev-tie', 'pv-ev-untie', 'pv-ev-remove', 'pv-fullscreen']);   /* the Evidence Board's buttons are in its closed panel */
+      equal(await pv.isVisible('[data-test=pv-sound-prompt]'), false, 'and hidden');
       equal(await pv.$('.tsi-topbar, .tsi-exp-panel, .tsi-exp-side, .tsi-modal, [data-test=journal], [data-test=bags-list], [data-test=effects-list]'), null);
       equal(await pv.$eval('[data-test=pv-stage]', n => getComputedStyle(n).pointerEvents), 'none');
       await pv.click('.tsi-xpv-token', { force: true });
@@ -500,7 +502,8 @@ async function openPlayer(page, size) {
     });
 
     await check('the players\' window wrote nothing to storage, and nothing went online', async () => {
-      equal(await pv.evaluate(() => window.__writes), []);
+      /* The one thing the players' window writes is a status line for the Sound control (what is playing, a missing file; guide 5), never a save. */
+      equal((await pv.evaluate(() => window.__writes)).filter(w => !/^setItem tsi\.suite\.handoff-soundstatus$/.test(w)), []);
     });
 
     await check('the DM Explorer\'s own save is the DM\'s only (the player window is not a saver)', async () => {

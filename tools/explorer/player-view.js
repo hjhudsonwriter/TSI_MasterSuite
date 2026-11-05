@@ -143,6 +143,38 @@
     /* The recap reel (guide 4): "Previously, in the Scarlett Isles…" plays over everything, started by the DM's Explorer (the {recap} cue) and held on its
        last frame until the DM sends the TV back to the map. It draws only what a recap snapshot holds (tools/recap/recap-rules.js). */
     var reel = TSI.recapReel.create({ host: root, reducedMotion: reducedMotion });
+    /* The soundscape (guide 5): the background sound plays from this window, so it carries on when the DM changes tool. The Explorer says what should
+       play and the Sound control sets the volume, mute and mood, both through TSI.handoff ('sound'). Browsers do not play sound in a window nobody
+       has clicked yet: a small button asks for one click, once. Nothing is saved here. */
+    var soundEngine = null;
+    var soundPrompt = el('button', { type: 'button', class: 'tsi-xpv-soundprompt', hidden: true, 'data-test': 'pv-sound-prompt' }, 'Click here once to turn the sound on');
+    root.appendChild(soundPrompt);
+    function soundStatus(s) {
+      soundPrompt.hidden = !s.blocked;
+      if (TSI.handoff) TSI.handoff.write('soundstatus', { at: Date.now(), playing: s.playing, missing: s.missing, blocked: s.blocked, from: 'player-view' });
+    }
+    var soundSeenAt = null, soundPoll = null;
+    function soundFollow() {
+      var v = TSI.soundscapeRules.unpack(TSI.handoff.read('sound'));
+      if (!v) return;
+      soundSeenAt = v.at;
+      if (!soundEngine) soundEngine = TSI.soundscape.create({ makeAudio: function () { return new Audio(); }, setInterval: function (f, ms) { return window.setInterval(f, ms); }, clearInterval: function (t) { window.clearInterval(t); }, onStatus: soundStatus });
+      soundEngine.apply(v.auto, v.mix);
+    }
+    if (TSI.soundscape && TSI.handoff) {
+      window.addEventListener('storage', function (e) { if (e.key === TSI.storeRules.spaceNames(TSI.space).handoffSound) soundFollow(); });
+      /* The browser's "storage" message is best-effort and can be missed, so this window also looks for a newer choice twice a second. */
+      soundPoll = window.setInterval(function () {
+        var v = TSI.soundscapeRules.unpack(TSI.handoff.read('sound'));
+        if (v && v.at !== soundSeenAt) soundFollow();
+      }, 500);
+      window.addEventListener('pointerdown', function () { if (soundEngine) soundEngine.resume(); }, true);
+      window.addEventListener('keydown', function () { if (soundEngine) soundEngine.resume(); }, true);
+      /* The window is closing: every sound stops, and the Sound control is told. */
+      window.addEventListener('pagehide', function () { if (soundPoll) { window.clearInterval(soundPoll); soundPoll = null; } if (soundEngine) { soundEngine.stop(); soundEngine = null; } if (TSI.handoff) TSI.handoff.write('soundstatus', { at: Date.now(), playing: [], missing: [], blocked: false, from: 'player-view', closed: true }); });
+      soundFollow();
+    }
+    TSI.explorer.soundDebug = function () { return soundEngine ? soundEngine.debug() : null; };
     var atlasOpen = false;
     var lastAtlas = null;
     function setAtlas(on) {

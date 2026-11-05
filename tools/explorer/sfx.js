@@ -89,7 +89,10 @@
     /* Make what is playing match what is wanted now. */
     function sync() {
       var weather = S.weatherSound(want.weather);
-      var wanted = { footsteps: want.footsteps || !!manual.footsteps, campfire: S.campOn(camp, now()) || !!manual.campfire, rain: weather === 'rain' || !!manual.rain, storm: weather === 'storm' || !!manual.storm };
+      /* The soundscape (guide 5) plays the campfire and the weather's rain and storm as background beds from the TV window, so with opts.beds they
+         are not started from here; a cue tag can still switch them on by hand. */
+      var beds = !!opts.beds;
+      var wanted = { footsteps: want.footsteps || !!manual.footsteps, campfire: (!beds && S.campOn(camp, now())) || !!manual.campfire, rain: (!beds && weather === 'rain') || !!manual.rain, storm: (!beds && weather === 'storm') || !!manual.storm };
       ['footsteps', 'campfire', 'rain', 'storm'].forEach(function (name) {
         if (!cfgOf(name)) return;
         if (wanted[name]) start(name); else stop(name);

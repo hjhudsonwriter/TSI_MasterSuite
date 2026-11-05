@@ -245,7 +245,7 @@
      reload and travel in an Export, Import and Back up everything: sound on or off and its volume, the voice lines playing
      by themselves, Click to move, the three "show to the players" tick boxes, and the cloud shadows (guide 6B). Not kept: which heroes are picked, the zoom. */
   R.defaultPrefs = function () {
-    return { sfxOn: true, sfxVolume: 0.8, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: false, clouds: true, dmFog: true, leftCollapsed: false, closedSections: [] };
+    return { sfxOn: true, sfxVolume: 0.8, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: false, clouds: true, dmFog: true, leftCollapsed: false, closedSections: [] , scMuted: false, scVolume: 0.8, scMood: '' };
   };
   R.cleanPrefs = function (raw) {
     var d = R.defaultPrefs();
@@ -255,7 +255,8 @@
         /* The left panel's sections the DM has folded away (by name, at most a dozen). */
         d[k] = Array.isArray(o[k]) ? o[k].filter(function (x, i, a) { return typeof x === 'string' && /^[a-z-]{1,20}$/.test(x) && a.indexOf(x) === i; }).slice(0, 12) : [];
       }
-      else if (k === 'sfxVolume') { var v = Number(o[k]); if (Number.isFinite(v)) d[k] = R.clamp(v, 0, 1); }
+      else if (k === 'sfxVolume' || k === 'scVolume') { var v = Number(o[k]); if (Number.isFinite(v)) d[k] = R.clamp(v, 0, 1); }
+      else if (k === 'scMood') { d[k] = typeof o[k] === 'string' && /^[a-z0-9_]{1,30}$/.test(o[k]) ? o[k] : ''; }
       else if (typeof o[k] === 'boolean') d[k] = o[k];
     });
     return d;

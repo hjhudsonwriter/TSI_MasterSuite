@@ -82,11 +82,15 @@ const playing = name => (n => TSI.explorer.debug.sfx()[n].playing);
       for (const n of Object.keys(s)) equal(s[n].playing, false, n);
     });
 
-    await check('Make Camp plays the campfire through the fade, then it stops', async () => {
+    /* Guide 5 (5 November 2026): the campfire, rain and storm are the soundscape's beds, played from the TV window (tests/e2e/soundscape.test.js),
+       so this window no longer starts them by itself; a cue tag can still switch them on by hand. */
+    const auto = page => page.evaluate(() => TSI.explorer.debug.sound().auto);
+    await check('Make Camp: the campfire is now a bed for the TV window, not played from here', async () => {
       await page.click('[data-test=camp]');
-      await until(page, playing('campfire'), 'campfire');
+      await until(page, () => TSI.explorer.debug.sound().auto.base === 'campfire', null);
+      equal((await sfx(page)).campfire.playing, false);
       await page.evaluate(() => { document.querySelectorAll('.tsi-modal__foot button').forEach(b => b.click()); });
-      await until(page, n => !TSI.explorer.debug.sfx()[n].playing, 'campfire', 9000);
+      await until(page, () => TSI.explorer.debug.sound().auto.base !== 'campfire', null, 9000);
     });
 
     await check('a campfire event keeps the campfire on until the event is finished', async () => {
@@ -94,25 +98,28 @@ const playing = name => (n => TSI.explorer.debug.sfx()[n].playing);
       await change(page, s => { s.journey.current = null; });
       await page.evaluate(() => TSI.explorer.debug.startEvent('c1'));
       await page.waitForSelector('.tsi-modal.tsi-exp-journey');
-      await until(page, playing('campfire'), 'campfire');
+      await until(page, () => TSI.explorer.debug.sound().auto.base === 'campfire', null);
       await page.waitForTimeout(4500);
-      equal((await sfx(page)).campfire.playing, true, 'still on after the fade time, the event is open');
+      equal((await auto(page)).base, 'campfire', 'still on after the fade time, the event is open');
       await page.click('.tsi-modal.tsi-exp-journey [data-test=skip-event]');
       await page.waitForTimeout(300);
       const b = await page.$('.tsi-modal__foot button:last-child');
       if (b) await b.click().catch(() => {});
-      await until(page, n => !TSI.explorer.debug.sfx()[n].playing, 'campfire', 6000);
+      await until(page, () => TSI.explorer.debug.sound().auto.base !== 'campfire', null, 6000);
     });
 
-    await check('rain loops while rain weather lasts; storm swaps it for the storm; clearing the weather stops it', async () => {
+    await check('rain and storm weather are beds for the TV window now; clearing the weather clears them; {sound: rain} still switches the rain loop on and off by hand', async () => {
       await change(page, s => { s.journey.current = null; s.travel.activeWeather = { kind: 'rain', day: s.travel.day }; });
-      await until(page, playing('rain'), 'rain');
-      equal((await sfx(page)).storm.playing, false);
+      await until(page, () => TSI.explorer.debug.sound().auto.overlay === 'rain', null);
+      equal((await sfx(page)).rain.playing, false);
       await change(page, s => { s.travel.activeWeather = { kind: 'storm', day: s.travel.day }; });
-      await until(page, playing('storm'), 'storm');
+      await until(page, () => TSI.explorer.debug.sound().auto.overlay === 'storm', null);
+      await change(page, s => { s.travel.activeWeather = null; });
+      await until(page, () => TSI.explorer.debug.sound().auto.overlay === '', null);
+      await page.evaluate(() => TSI.cueRunner.run('{sound: rain}'));
+      await until(page, playing('rain'), 'rain');
+      await page.evaluate(() => TSI.cueRunner.run('{sound: rain}'));
       await until(page, n => !TSI.explorer.debug.sfx()[n].playing, 'rain');
-      await change(page, s => { s.travel.activeWeather = { kind: 'blizzard', day: s.travel.day }; });
-      await until(page, n => !TSI.explorer.debug.sfx()[n].playing && !TSI.explorer.debug.sfx().rain.playing, 'storm');
     });
 
     await check('the wing flap and the raven\'s caw start together when "The Ironbow sends word" opens', async () => {
@@ -128,7 +135,7 @@ const playing = name => (n => TSI.explorer.debug.sfx()[n].playing);
 
     await check('sound off silences everything and is remembered; the volume sets how loud, and is remembered', async () => {
       await page.click('[data-test=sfx-toggle]');
-      await change(page, s => { s.travel.activeWeather = { kind: 'rain', day: s.travel.day }; });
+      await page.evaluate(() => TSI.cueRunner.run('{sound: rain}'));
       await until(page, playing('rain'), 'rain');
       await page.fill('[data-test=sfx-volume]', '0.5');
       await page.dispatchEvent('[data-test=sfx-volume]', 'input');

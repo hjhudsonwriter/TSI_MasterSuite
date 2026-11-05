@@ -683,3 +683,21 @@ Harry's `SC_Plainsmane` and `SC_Boltback` pictures and videos were turned into t
 | `SC_Plainsmane.png` / `SC_Plainsmane.mp4` | `tools/beasthandler/assets/sabrecat/plainsmane.webp` / `.mp4` |
 | `SC_Boltback.png` / `SC_Boltback.mp4` | `tools/beasthandler/assets/sabrecat/boltback.webp` / `.mp4` |
 | Harry's regenerated Ashmark picture (attached to the session, 768 x 1360 WebP, kept as sent) and `SC_Ashmark.mp4` | `tools/beasthandler/assets/sabrecat/ashmark.webp` / `.mp4` |
+
+## Soundscape sounds (5 November 2026)
+Harry's background sounds, in `tools/explorer/assets/soundscape/`, kept as he supplied them (the one change: `comabt.mp3` was a typing slip and is now `combat.mp3`). Levels measured with ffmpeg (EBU R128) so the data file (`tools/explorer/data/soundscape-data.js`) can set each one's volume to about the same loudness. The campfire, rain and storm beds reuse the Explorer's sound effects in `tools/explorer/assets/sfx/` by path.
+| File | What it is | Length | Loudness (LUFS) | Source and licence |
+|---|---|---|---|---|
+| `coast.wav` | surf, gulls, wind | 38 s | -18.8 | Harry's list (Part A2): source and licence to be added |
+| `forest.mp3` | wind in pines, birds | 2 min 30 s (trimmed from 3 min 32 s) | -17.2 | to be added |
+| `marsh.mp3` | reeds, frogs, water | 2 min 24 s | -24.1 | to be added |
+| `plains.mp3` | open wind over grass | 2 min 30 s (trimmed from 8 min 38 s) | -24.9 | to be added |
+| `mountain.mp3` | high thin wind | 39 s | -26.0 | to be added |
+| `town.mp3` | a market murmur | 14 s | -26.1 | to be added |
+| `tavern.mp3` | an inn | 37 s | -20.4 | to be added |
+| `night.mp3` | crickets, an owl | 11 s | -27.5 | to be added |
+| `blizzard.mp3` | wind and snow | 17 s | -14.4 | to be added |
+| `heat.mp3` | a dry drone | 2 min 14 s | -16.0 | to be added |
+| `combat.mp3` | tense battle music | 30 s | -12.9 | to be added |
+| `mystery.ogg` | a low, uneasy drone | 1 min 59 s | -17.3 | to be added |
+Harry's guide asks for each file's source link and licence (Pixabay, or Freesound CC0). They were not sent with the files: please fill in the table above (or send me the links) so `licences/` can record them.
