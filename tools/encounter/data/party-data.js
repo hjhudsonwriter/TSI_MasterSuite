@@ -7,7 +7,7 @@
    monsterPictures: the monsters that have a picture in shared/art/monsters/<slug>.png (512 x 512). Any other creature gets a name token. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.encounterSeed = {
-  version: 1,
+  version: 2, /* 2: a hero already in the library under the same name but with a different picture is set to the table's numbers and portrait, once */
   party: [
     { name: 'Kaelen', ac: 17, maxHp: 76, initBonus: 9, passive: 16, portrait: 'shared/art/party/kaelen.png' },
     { name: 'Elara', ac: 16, maxHp: 67, initBonus: 2, passive: 14, portrait: 'shared/art/party/elara.png' },

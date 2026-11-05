@@ -117,12 +117,27 @@
       mapLayer, gridCanvas, tokenLayer, fogCanvas, aboveLayer, measureCanvas, marquee, measureBtn, measureReadout, sidebar, strip
     ]);
 
-    TSI.append(root, el('div', { class: 'tsi-bm' }, [
+    /* The top bar folds away to give the map the whole window; the choice is remembered in this browser. */
+    var controlsBar = null;
+    var rootBm = null;
+    var controlsToggle = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-btn--ghost tsi-bm-fold', 'data-test': 'bm-fold', 'aria-controls': 'tsi-bm-controls', 'aria-expanded': 'true' }, 'Hide controls ▲');
+    function setControlsFolded(folded, remember) {
+      if (!controlsBar) return;
+      controlsBar.hidden = folded;
+      rootBm.classList.toggle('tsi-bm--folded', folded);
+      controlsToggle.textContent = folded ? 'Show controls ▼' : 'Hide controls ▲';
+      controlsToggle.setAttribute('aria-expanded', folded ? 'false' : 'true');
+      if (remember) { try { localStorage.setItem('tsi.encounter.bmFolded', folded ? '1' : '0'); } catch (e) { /* not remembered */ } }
+    }
+    controlsToggle.addEventListener('click', function () { setControlsFolded(!controlsBar.hidden, true); });
+
+    TSI.append(root, rootBm = el('div', { class: 'tsi-bm' }, [
       el('header', { class: 'tsi-bm-head' }, [
         el('img', { class: 'tsi-bm-logo', src: TSI.path('shared/art/logo-crest-wide.png'), alt: '' }),
-        el('div', null, [el('h1', { class: 'tsi-bm-title', text: 'Scarlett Isles Campaign – Battlemap' }), statusEl])
+        el('div', { class: 'tsi-bm-head-text' }, [el('h1', { class: 'tsi-bm-title', text: 'Scarlett Isles Campaign – Battlemap' }), statusEl]),
+        controlsToggle
       ]),
-      el('div', { class: 'tsi-bm-controls', 'data-test': 'bm-controls' }, [
+      controlsBar = el('div', { class: 'tsi-bm-controls', id: 'tsi-bm-controls', 'data-test': 'bm-controls' }, [
         group([
           el('label', { class: 'tsi-btn tsi-btn--small tsi-btn--primary tsi-bm-upload', 'data-test': 'bm-upload' }, ['Upload battlemap', mapUpload]),
           btn('Clear map', 'bm-clear-map', '', function () { setMap(''); api.send('map', { dataUrl: '' }); resetFog(true); })
@@ -165,6 +180,8 @@
       ]),
       stage
     ]));
+
+    try { if (localStorage.getItem('tsi.encounter.bmFolded') === '1') setControlsFolded(true, false); } catch (e) { /* shown */ }
 
     /* ---------- Where things are on screen ---------- */
     var view = R.view(1, 1, board, vtt.camera);

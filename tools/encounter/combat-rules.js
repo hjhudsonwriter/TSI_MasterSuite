@@ -221,13 +221,13 @@
       return 'data:image/svg+xml,' + encodeURIComponent(svg);
     },
 
-    /* Add the five heroes and the 13 monsters to the library, once (state.seeded). A creature already in the library under the same name (and type)
-       keeps its numbers: only its stat block (srd) and a missing AC or picture are filled in. Returns { added, attached }. */
+    /* Add the five heroes and the 13 monsters to the library, once (state.seeded). A monster already in the library under the same name keeps its numbers (only its stat block and a missing AC are filled in); a hero of the same name
+       is made to match the table once (see below). Returns { added, attached }. */
     seedOnce: function (state, seed, uid) {
       seed = seed || window.TSI_DATA.encounterSeed;
       if (!seed || state.seeded >= seed.version) return { added: 0, attached: 0, skipped: true };
       var made = uid || function () { return Math.random().toString(16).slice(2) + Date.now().toString(16); };
-      var added = 0, attached = 0;
+      var added = 0, attached = 0, corrected = 0;
       function find(name, type) {
         var n = String(name).toLowerCase();
         return state.library.filter(function (x) { return x.type === type && String(x.name).toLowerCase() === n; })[0];
@@ -235,9 +235,21 @@
       seed.party.forEach(function (p) {
         var have = find(p.name, 'pc');
         if (have) {
-          if (!have.avatar && p.portrait) { have.avatar = p.portrait; attached++; }
-          if (!Number.isFinite(have.ac) && Number.isFinite(p.ac)) have.ac = p.ac;
-          if (!Number.isFinite(have.passive) && Number.isFinite(p.passive)) have.passive = p.passive;
+          /* A hero of the same name that was there before (an old test, say) is made to match the table once: its picture is not the hero's
+             portrait, so its numbers and portrait are set to Harry's. (A hero this seeded, or one edited in the Party panel since, keeps its own.) */
+          if (p.portrait && have.avatar !== p.portrait) {
+            have.avatar = p.portrait; have.ac = p.ac; have.maxHp = p.maxHp; have.curHp = p.maxHp; have.initBonus = p.initBonus; have.passive = p.passive;
+            (state.encounter.roster || []).forEach(function (r) {
+              if (r.type !== 'pc' || (r.baseId !== have.id && String(r.name).toLowerCase() !== String(p.name).toLowerCase())) return;
+              r.avatar = p.portrait; r.ac = p.ac; r.passive = p.passive;
+              if (r.maxHp !== p.maxHp) { r.maxHp = p.maxHp; r.curHp = Math.min(r.curHp, p.maxHp); }
+              if (!r.baseId) r.baseId = have.id;
+            });
+            corrected++; attached++;
+          } else {
+            if (!Number.isFinite(have.ac) && Number.isFinite(p.ac)) have.ac = p.ac;
+            if (!Number.isFinite(have.passive) && Number.isFinite(p.passive)) have.passive = p.passive;
+          }
           return;
         }
         state.library.push({ id: made(), name: p.name, type: 'pc', maxHp: p.maxHp, curHp: p.maxHp, initBonus: p.initBonus, ac: p.ac, passive: p.passive, avatar: p.portrait || '', refLink: '' });
@@ -257,7 +269,7 @@
         added++;
       });
       state.seeded = seed.version;
-      return { added: added, attached: attached };
+      return { added: added, attached: attached, corrected: corrected };
     },
 
     /* From the SRD: a monster's library entry (the block attached by slug). null if there is no such monster. */

@@ -4497,3 +4497,7 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 
 ### CT-05 · Party panel typing (guide 3)
 - Found while testing: editing one box in the Party panel rebuilt the others, so a half-typed number could be lost. Fixed before release: the panel now updates numbers in place.
+
+### CT-06 · Magnus, and a folding Battlemap bar (Harry's test, 5 November 2026)
+- Before: a hero already in the library under the same name (Harry's old test Magnus) kept its old picture and numbers, because the seed never overwrote anything. After: a hero of the same name whose picture is not that hero's portrait is set once to the table's numbers and portrait (its copy in an encounter that is waiting is updated too). A hero seeded earlier and edited in the Party panel since keeps the edit. Monsters still keep whatever numbers they had.
+- The Battlemap window's top bar has a **Hide controls / Show controls** button. Folded, only a slim bar is left and the map takes the room; the choice is remembered in that browser (`tsi.encounter.bmFolded`).

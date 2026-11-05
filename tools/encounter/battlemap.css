@@ -331,3 +331,10 @@
   .tsi-player--battlemap .tsi-bm-strip-frame { width: 42px; height: 42px; }
   .tsi-player--battlemap .tsi-bm-strip-item--current .tsi-bm-strip-frame { width: 68px; height: 68px; }
 }
+
+/* The top bar folds away (Hide controls): only a slim bar with the button is left, and the map takes the room. */
+.tsi-player--battlemap .tsi-bm-head { flex-wrap: nowrap; }
+.tsi-player--battlemap .tsi-bm-fold { margin-left: auto; flex: none; }
+.tsi-player--battlemap .tsi-bm--folded { gap: 4px; padding-top: 6px; }
+.tsi-player--battlemap .tsi-bm--folded .tsi-bm-head-text { display: none; }
+.tsi-player--battlemap .tsi-bm--folded .tsi-bm-logo { height: 26px; }

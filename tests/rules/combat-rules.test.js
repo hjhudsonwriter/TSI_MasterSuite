@@ -192,18 +192,37 @@
     t.equal(wolf.name, 'Wolf'); t.equal(wolf.maxHp, 11);
   });
 
-  test('seeding happens once, and a creature already in the library keeps its numbers (only the block is attached)', function (t) {
+  test('seeding happens once; a monster already in the library keeps its numbers (only the block is attached)', function (t) {
     var s = freshState();
     s.library.push({ id: 'mine', name: 'Wolf', type: 'monster', maxHp: 14, curHp: 14, initBonus: 4, ac: 9, avatar: '', refLink: '' });
-    s.library.push({ id: 'k', name: 'Kaelen', type: 'pc', maxHp: 80, curHp: 80, initBonus: 1, ac: 18, avatar: 'data:image/png;base64,AAAA', refLink: '' });
-    var r = seed(s);
+    seed(s);
     var wolf = s.library.filter(function (x) { return x.id === 'mine'; })[0];
     t.equal(wolf.maxHp, 14); t.equal(wolf.ac, 9); t.equal(wolf.initBonus, 4); t.equal(wolf.srd, 'wolf');
-    var k = s.library.filter(function (x) { return x.id === 'k'; })[0];
-    t.equal(k.maxHp, 80); t.equal(k.ac, 18); t.equal(k.avatar, 'data:image/png;base64,AAAA');
     t.equal(s.library.filter(function (x) { return x.name === 'Wolf'; }).length, 1);
     var count = s.library.length;
     t.ok(seed(s).skipped); t.equal(s.library.length, count, 'a second time adds nothing');
+  });
+
+  test('a hero already in the library with another picture (an old test) is set to the table’s numbers and portrait, once, and so is its copy in a waiting encounter', function (t) {
+    var s = freshState();
+    s.library.push({ id: 'm', name: 'Magnus', type: 'pc', maxHp: 50, curHp: 50, initBonus: 0, ac: 12, passive: 10, avatar: 'data:image/png;base64,AAAA', refLink: '' });
+    s.encounter.roster.push({ encId: 'e1', baseId: 'm', name: 'Magnus', type: 'pc', maxHp: 50, curHp: 40, ac: 12, avatar: 'data:image/png;base64,AAAA', conditions: [], defeated: false });
+    var r = seed(s);
+    var m = s.library.filter(function (x) { return x.id === 'm'; })[0];
+    t.same([m.ac, m.maxHp, m.initBonus, m.passive, m.avatar], [21, 85, 5, 15, 'shared/art/party/magnus.png']);
+    t.equal(r.corrected, 1);
+    t.equal(s.library.filter(function (x) { return x.name === 'Magnus'; }).length, 1);
+    var e = s.encounter.roster[0];
+    t.same([e.maxHp, e.curHp, e.ac, e.avatar], [85, 40, 21, 'shared/art/party/magnus.png']);
+  });
+
+  test('a hero seeded earlier and then edited in the Party panel keeps the edit when the seed is run again', function (t) {
+    var s = freshState(); seed(s);
+    var k = s.library.filter(function (x) { return x.name === 'Kaelen'; })[0];
+    CB.editPartyMember(s, k.id, { ac: '19', maxHp: '90' });
+    s.seeded = 0;
+    var r = seed(s);
+    t.same([k.ac, k.maxHp], [19, 90]); t.equal(r.corrected, 0);
   });
 
   test('a seeded creature is matched by the Explorer fight’s hand-over (same name and hit points), so it is not added twice', function (t) {

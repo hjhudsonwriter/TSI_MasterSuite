@@ -322,6 +322,24 @@ const tvText = map => map.evaluate(() => document.body.innerText);
       await map.waitForFunction(() => /10\/85/.test((document.querySelector('[data-test=bm-strip-item][data-name=Magnus] [data-test=bm-health]') || {}).textContent || ''));
     });
 
+    await check('the Battlemap’s top bar folds away to give the map the window, comes back, and is remembered', async () => {
+      const h = () => map.$eval('[data-test=bm-stage]', e => e.getBoundingClientRect().height);
+      const open0 = await h();
+      await map.click('[data-test=bm-fold]');
+      await map.waitForTimeout(300);
+      equal(await map.isVisible('[data-test=bm-controls]'), false);
+      assert(await h() > open0 + 80, 'the map is taller: ' + open0 + ' → ' + await h());
+      equal(await map.getAttribute('[data-test=bm-fold]', 'aria-expanded'), 'false');
+      assert(await map.isVisible('[data-test=bm-strip]'), 'the strip stays');
+      await map.reload();
+      await map.waitForSelector('[data-test=bm-fold]');
+      equal(await map.isVisible('[data-test=bm-controls]'), false, 'still folded after a reload');
+      await map.click('[data-test=bm-fold]');
+      await map.waitForTimeout(300);
+      equal(await map.isVisible('[data-test=bm-controls]'), true);
+      equal(Math.round(await h()), Math.round(open0));
+    });
+
     await check('the strip fits the window with the map controls in view, with no sideways scrolling', async () => {
       const lay = await H.layoutCheck(map, ['[data-test=bm-strip]', '[data-test=bm-stage]']);
       assert(lay.scrollWidth <= lay.clientWidth, 'no sideways scrolling in the map window');
