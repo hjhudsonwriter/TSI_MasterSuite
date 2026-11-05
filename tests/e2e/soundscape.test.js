@@ -208,8 +208,10 @@ async function closeModals(page) { for (let i = 0; i < 4; i++) { const b = await
       const d = await pvSound(pv);
       assert(playingIds(d).length >= 1 && d.channels[playingIds(d)[0]].playing > 0, 'still playing after the Explorer closed: ' + JSON.stringify(wantedIds(d)));
       await page.click('[data-test=soundscape]');
+      /* Choose a different mood first, so the menu really changes whatever it showed on opening. */
+      await page.selectOption('[data-test=sc-mood]', 'tavern');
       await page.selectOption('[data-test=sc-mood]', 'mystery');
-      await until(async () => { const x = await pvSound(pv); return x.channels.mystery && x.channels.mystery.wanted; }, 'the mood from the Bastion');
+      await until(async () => { const x = await pvSound(pv); return x.channels.mystery && x.channels.mystery.wanted; }, 'the mood from the Bastion', 20000);
       await page.selectOption('[data-test=sc-mood]', '');
       await page.keyboard.press('Escape');
       await page.evaluate(() => TSI.shell.go('explorer'));
@@ -219,10 +221,11 @@ async function closeModals(page) { for (let i = 0; i < 4; i++) { const b = await
     });
 
     await check('a file that is not there is skipped quietly and named in the Sound control; nothing else is disturbed', async () => {
+      await page.waitForSelector('[data-test=map-select]', { timeout: 15000 });
       await pv.evaluate(() => { TSI_DATA.soundscape.beds.marsh.file = 'tools/explorer/assets/soundscape/not-there.mp3'; });
       await page.selectOption('[data-test=map-select]', 'eastern_province_north');
       await page.click('[data-test=load]');
-      await until(async () => { const d = await pvSound(pv); return d && d.channels.marsh && d.channels.marsh.missing; }, 'marsh to be found missing');
+      await until(async () => { const d = await pvSound(pv); return d && d.channels.marsh && d.channels.marsh.missing; }, 'marsh to be found missing', 20000);
       await page.click('[data-test=soundscape]');
       await until(async () => /Marsh: file missing/.test(await page.textContent('[data-test=sc-now]')), 'file missing in the control');
       await page.keyboard.press('Escape');

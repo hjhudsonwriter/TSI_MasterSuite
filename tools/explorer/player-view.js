@@ -153,18 +153,25 @@
       soundPrompt.hidden = !s.blocked;
       if (TSI.handoff) TSI.handoff.write('soundstatus', { at: Date.now(), playing: s.playing, missing: s.missing, blocked: s.blocked, from: 'player-view' });
     }
+    var soundSeenAt = null, soundPoll = null;
     function soundFollow() {
       var v = TSI.soundscapeRules.unpack(TSI.handoff.read('sound'));
       if (!v) return;
+      soundSeenAt = v.at;
       if (!soundEngine) soundEngine = TSI.soundscape.create({ makeAudio: function () { return new Audio(); }, setInterval: function (f, ms) { return window.setInterval(f, ms); }, clearInterval: function (t) { window.clearInterval(t); }, onStatus: soundStatus });
       soundEngine.apply(v.auto, v.mix);
     }
     if (TSI.soundscape && TSI.handoff) {
       window.addEventListener('storage', function (e) { if (e.key === TSI.storeRules.spaceNames(TSI.space).handoffSound) soundFollow(); });
+      /* The browser's "storage" message is best-effort and can be missed, so this window also looks for a newer choice twice a second. */
+      soundPoll = window.setInterval(function () {
+        var v = TSI.soundscapeRules.unpack(TSI.handoff.read('sound'));
+        if (v && v.at !== soundSeenAt) soundFollow();
+      }, 500);
       window.addEventListener('pointerdown', function () { if (soundEngine) soundEngine.resume(); }, true);
       window.addEventListener('keydown', function () { if (soundEngine) soundEngine.resume(); }, true);
       /* The window is closing: every sound stops, and the Sound control is told. */
-      window.addEventListener('pagehide', function () { if (soundEngine) { soundEngine.stop(); soundEngine = null; } if (TSI.handoff) TSI.handoff.write('soundstatus', { at: Date.now(), playing: [], missing: [], blocked: false, from: 'player-view', closed: true }); });
+      window.addEventListener('pagehide', function () { if (soundPoll) { window.clearInterval(soundPoll); soundPoll = null; } if (soundEngine) { soundEngine.stop(); soundEngine = null; } if (TSI.handoff) TSI.handoff.write('soundstatus', { at: Date.now(), playing: [], missing: [], blocked: false, from: 'player-view', closed: true }); });
       soundFollow();
     }
     TSI.explorer.soundDebug = function () { return soundEngine ? soundEngine.debug() : null; };
