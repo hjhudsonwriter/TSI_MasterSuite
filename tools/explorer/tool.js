@@ -3727,7 +3727,7 @@
 
       /* For the tests. */
       ns.debug = {
-        sound: function () { return { auto: scAuto(), mix: scMix(), local: scLocal ? scLocal.debug() : null }; },
+        sound: function () { return { holds: scCampHolds, until: scCampUntil - Date.now(), journeyOpen: journeyOpen, auto: scAuto(), mix: scMix(), local: scLocal ? scLocal.debug() : null }; },
         walking: function () { return !!walking; },
         prefs: function () { return JSON.parse(JSON.stringify(prefs)); },
         /* Fog modes and the explored map (the tests). */
