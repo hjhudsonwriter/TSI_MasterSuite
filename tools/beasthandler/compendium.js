@@ -63,6 +63,8 @@
         tabRow.appendChild(b);
       });
 
+      function missing() { return el('p', { class: 'tsi-bc__missing', 'data-test': 'bc-missing', text: 'The picture is still to come.' }); }
+
       function select(id) {
         var k = list.filter(function (x) { return x.id === id; })[0] || list[0];
         if (!k) return;
@@ -75,26 +77,26 @@
         });
         page.setAttribute('aria-labelledby', 'tsi-bc-tab-' + k.id);
         TSI.clear(page);
-        var art = el('div', { class: 'tsi-bc__art', 'data-test': 'bc-art' });
+        /* The page is the same shape as the engravings (4:3). The picture fills it; the writing sits in the empty side of the
+           picture (k.side: 'left' or 'right', opposite the beast). */
+        page.setAttribute('data-side', k.side === 'right' ? 'right' : 'left');
         if (k.image) {
           var im = el('img', { class: 'tsi-bc__img', alt: 'An engraving of a ' + k.name.toLowerCase(), draggable: 'false', src: TSI.path(folder + k.image), 'data-test': 'bc-img' });
-          im.addEventListener('error', function () { im.remove(); art.appendChild(el('p', { class: 'tsi-bc__missing', 'data-test': 'bc-missing', text: 'The picture is still to come.' })); });
-          art.appendChild(im);
+          im.addEventListener('error', function () { im.remove(); page.appendChild(missing()); });
+          page.appendChild(im);
         } else {
-          art.appendChild(el('p', { class: 'tsi-bc__missing', 'data-test': 'bc-missing', text: 'The picture is still to come.' }));
+          page.appendChild(missing());
         }
         var vs = varietiesOf(k.id);
-        var text = el('div', { class: 'tsi-bc__text' }, [
+        var text = el('div', { class: 'tsi-bc__text', 'data-test': 'bc-text' }, [
           el('h2', { class: 'tsi-bc__title', 'data-test': 'bc-title', text: k.name }),
           el('h3', { class: 'tsi-bc__sub', text: 'Regional varieties' }),
           el('ul', { class: 'tsi-bc__vars', 'data-test': 'bc-varieties' }, vs.map(function (v) {
-            return el('li', { class: 'tsi-bc__var', 'data-test': 'bc-variety' }, [el('b', { text: v.name }), areaOf(v) ? el('span', { class: 'tsi-bc__area', text: ' · ' + areaOf(v) }) : null]);
+            return el('li', { class: 'tsi-bc__var', 'data-test': 'bc-variety' }, [el('b', { text: v.name }), areaOf(v) ? el('span', { class: 'tsi-bc__area', text: ' \u00b7 ' + areaOf(v) }) : null]);
           })),
           el('div', { class: 'tsi-bc__desc', 'data-test': 'bc-desc' }, k.lines.map(function (p) { return el('p', { text: p }); }))
         ]);
-        page.appendChild(art);
         page.appendChild(text);
-        page.scrollTop = 0;
       }
 
       select(opts.start || (list[0] && list[0].id));

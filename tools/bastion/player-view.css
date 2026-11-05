@@ -449,7 +449,9 @@ img.tsi-bpv-panel__art.is-entering { opacity: 0; }
 .tsi-bpv-bookbtn .tsi-bc-icon { width: 62%; height: 62%; }
 .tsi-bpv-comphost { position: absolute; inset: 0; z-index: 38; display: grid; padding: 1.2vh 2vw; background: rgba(5, 3, 4, .78); pointer-events: auto; }
 .tsi-bpv-comphost[hidden] { display: none; }
-.tsi-bpv-comp { display: flex; flex-direction: column; min-height: 0; max-width: 1500px; width: 100%; margin: 0 auto; }
+.tsi-bpv-comp { --bc-chrome: 150px; display: flex; flex-direction: column; min-height: 0; width: 100%; margin: 0 auto; align-items: center; }
+.tsi-bpv-comp .tsi-bc { --bc-chrome: 150px; }
+.tsi-bpv-comp__head { align-self: stretch; }
 .tsi-bpv-comp__head { flex: 0 0 auto; position: relative; display: flex; justify-content: center; align-items: center; padding-bottom: .8vh; }
 .tsi-bpv-comp__title { margin: 0; font: 600 clamp(16px, 2.6vh, 28px) var(--tsi-font-display); letter-spacing: .08em; color: var(--tsi-gold-text); }
 .tsi-bpv-comphost__close { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: clamp(30px, 4.2vh, 44px); aspect-ratio: 1; border-radius: 999px; border: 1px solid var(--tsi-line-control); background: rgba(8, 5, 6, .7); color: var(--tsi-gold-text); font-size: clamp(18px, 3vh, 30px); line-height: 1; cursor: pointer; }

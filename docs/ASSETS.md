@@ -660,4 +660,4 @@ Harry's engravings (2000 x 1500, see-through background), kept byte for byte. Us
 | Harry's lynx picture | `tools/beasthandler/assets/compendium/fellcat.webp` |
 | Harry's griffin picture | `tools/beasthandler/assets/compendium/griffin.webp` |
 | Harry's sabrecat picture | `tools/beasthandler/assets/compendium/sabrecat.webp` |
-| Harry's wyvern picture (not received as a file yet) | `tools/beasthandler/assets/compendium/wyvern.webp` (to add; the page says "picture still to come" until then) |
+| Harry's wyvern picture (attached 5 November 2026) | `tools/beasthandler/assets/compendium/wyvern.webp` |

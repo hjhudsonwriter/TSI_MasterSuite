@@ -1,5 +1,5 @@
 /* The Compendium of Beasts (tools/beasthandler/compendium.js): a parchment page with tabs. Used in the DM's pop-up and the Player View. */
-.tsi-bc { display: flex; flex-direction: column; min-height: 0; width: 100%; color: #2a1c10; font-family: "IM Fell English", var(--tsi-font-body, Georgia), serif; }
+.tsi-bc { --bc-chrome: 230px; display: flex; flex-direction: column; min-height: 0; width: min(100%, calc((100vh - var(--bc-chrome)) * 4 / 3)); margin: 0 auto; color: #2a1c10; font-family: "IM Fell English", var(--tsi-font-body, Georgia), serif; }
 .tsi-bc__tabs { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 4px; padding: 0 10px; align-items: flex-end; }
 .tsi-bc__tab {
   appearance: none; cursor: pointer; padding: .45em 1em .4em; border: 1px solid #6b4a24; border-bottom: none; border-radius: 8px 8px 0 0;
@@ -9,29 +9,33 @@
 .tsi-bc__tab.is-on { background: linear-gradient(180deg, #f0e2b8, #e4d09b); color: #2a1c10; border-color: #b8924a; position: relative; top: 1px; }
 .tsi-bc__tab:focus-visible { outline: 2px solid var(--tsi-gold, #c9a45a); outline-offset: 1px; }
 .tsi-bc__page {
-  flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: clamp(10px, 2vw, 28px); align-items: start;
-  padding: clamp(14px, 2.4vh, 28px) clamp(14px, 2.4vw, 32px); border: 1px solid #b8924a; border-radius: 3px 6px 6px 6px;
+  /* The same shape as Harry's engravings (4:3), as large as the window allows; its type scales with its width (container units). */
+  position: relative; flex: 0 0 auto; container-type: inline-size; aspect-ratio: 4 / 3; overflow: hidden; width: 100%; border: 1px solid #b8924a; border-radius: 3px 6px 6px 6px;
   background:
     radial-gradient(ellipse at 20% 15%, rgba(255, 248, 220, .75) 0%, rgba(255, 248, 220, 0) 55%),
     radial-gradient(ellipse at 85% 90%, rgba(150, 105, 45, .28) 0%, rgba(150, 105, 45, 0) 60%),
     linear-gradient(135deg, #eddcab 0%, #e6d19c 50%, #dcc388 100%);
   box-shadow: inset 0 0 40px rgba(110, 70, 20, .35), 0 6px 30px rgba(0, 0, 0, .55);
 }
-.tsi-bc__art { aspect-ratio: 4 / 3; display: grid; place-items: center; min-width: 0; }
-.tsi-bc__img { width: 100%; height: 100%; object-fit: contain; display: block; filter: sepia(.28) contrast(1.04); mix-blend-mode: multiply; }
-.tsi-bc__missing { margin: 0; padding: 1em; text-align: center; font-style: italic; color: #6a5436; border: 1px dashed #a88d57; border-radius: 4px; }
-.tsi-bc__title { margin: 0 0 .1em; font: 700 clamp(22px, 4vh, 40px)/1.1 var(--tsi-font-display, "Cinzel", serif); letter-spacing: .05em; color: #4a1a10; }
-.tsi-bc__sub { margin: .6em 0 .25em; font: 600 clamp(12px, 1.8vh, 15px) var(--tsi-font-display, "Cinzel", serif); letter-spacing: .12em; text-transform: uppercase; color: #7a5a2c; border-bottom: 1px solid #b8924a; padding-bottom: .2em; }
-.tsi-bc .tsi-bc__vars { margin: 0 0 .9em; padding: 0; list-style: none; font-size: clamp(14px, 2.2vh, 19px); line-height: 1.35; }
-.tsi-bc__var { margin: .1em 0; }
+.tsi-bc__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; filter: sepia(.28) contrast(1.04); mix-blend-mode: multiply; }
+.tsi-bc__missing { position: absolute; top: 40%; margin: 0; padding: 1em; width: 40%; text-align: center; font-style: italic; font-size: 1.6cqw; color: #6a5436; border: 1px dashed #a88d57; border-radius: 4px; }
+.tsi-bc__page[data-side="left"] .tsi-bc__missing { right: 6%; }
+.tsi-bc__page[data-side="right"] .tsi-bc__missing { left: 6%; }
+/* The writing: in the empty side of the picture, never over the beast. */
+.tsi-bc__text { position: absolute; top: 5%; bottom: 5%; width: 42%; overflow: hidden; display: flex; flex-direction: column; }
+.tsi-bc__page[data-side="left"] .tsi-bc__text { left: 4%; }
+.tsi-bc__page[data-side="right"] .tsi-bc__text { right: 4%; width: 38%; }
+.tsi-bc .tsi-bc__title { margin: 0; font: 700 4.3cqw/1.05 var(--tsi-font-display, "Cinzel", serif); letter-spacing: .05em; color: #4a1a10; }
+.tsi-bc .tsi-bc__sub { margin: 1.1cqw 0 .6cqw; font: 600 1.35cqw var(--tsi-font-display, "Cinzel", serif); letter-spacing: .12em; text-transform: uppercase; color: #7a5a2c; border-bottom: 1px solid #b8924a; padding-bottom: .5cqw; }
+.tsi-bc .tsi-bc__vars { margin: 0 0 1.4cqw; padding: 0; list-style: none; font-size: 1.75cqw; line-height: 1.3; }
+.tsi-bc .tsi-bc__var { margin: .15cqw 0; }
 .tsi-bc__var b { font-weight: 400; color: #3c1a0e; }
-.tsi-bc__area { color: #6a5436; font-size: .9em; font-style: italic; }
-.tsi-bc .tsi-bc__desc p { margin: 0 0 .7em; font-size: clamp(14px, 2.3vh, 20px); line-height: 1.4; text-align: left; }
-@media (max-width: 760px) { .tsi-bc__page { grid-template-columns: 1fr; } }
+.tsi-bc__area { color: #6a5436; font-size: .88em; font-style: italic; }
+.tsi-bc .tsi-bc__desc p { margin: 0 0 1cqw; font-size: 1.85cqw; line-height: 1.38; text-align: left; }
 /* The small book button (the DM's Beast Pen panel and the players' panel). */
 .tsi-bc-btn { display: inline-flex; align-items: center; justify-content: center; gap: .5em; cursor: pointer; }
 .tsi-bc-icon { width: 1.3em; height: 1.3em; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
 .tsi-bc-icon__page { fill: rgba(240, 226, 190, .16); }
 /* The DM's pop-up is wide. */
-.tsi-modal.tsi-bc-modal { width: min(1100px, 94vw); max-width: 94vw; }
+.tsi-modal.tsi-bc-modal { width: calc(min(100vw - 60px, (100vh - 230px) * 4 / 3) + 40px); max-width: 96vw; }
 .tsi-modal.tsi-bc-modal .tsi-modal__body { padding-top: 6px; }

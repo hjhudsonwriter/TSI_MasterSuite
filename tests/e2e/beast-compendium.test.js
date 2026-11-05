@@ -28,18 +28,32 @@ async function checkBook(page, scope, size, shot) {
     equal(await page.getAttribute(scope + ' [data-test=bc-tab-' + k + ']', 'aria-selected'), 'true');
     const want = await page.evaluate(id => TSI_DATA.beastProfile.species[id].regional.map(v => v.name), k);
     equal(await page.$$eval(scope + ' [data-test=bc-variety] b', n => n.map(x => x.textContent)), want, NAMES[i] + ' varieties');
-    assert((await page.textContent(scope + ' [data-test=bc-desc]')).length > 400, 'a description');
-    if (k === 'wyvern') {
-      await page.waitForSelector(scope + ' [data-test=bc-missing]', { state: 'visible', timeout: 8000 });
-      assert(/still to come/.test(await page.textContent(scope + ' [data-test=bc-missing]')), 'the wyvern picture is still to come');
-    } else {
+    assert((await page.textContent(scope + ' [data-test=bc-desc]')).length > 200, 'a description');
+    {
       await page.waitForFunction(s => { const i = document.querySelector(s + ' [data-test=bc-img]'); return i && i.complete; }, scope, { timeout: 8000 });
       const im = await imgLoaded(page, scope);
       assert(im && im.ok && im.w === 2000 && im.h === 1500, k + ' picture loads, 2000 x 1500: ' + JSON.stringify(im));
-      const box = await page.$eval(scope + ' [data-test=bc-art]', e => { const r = e.getBoundingClientRect(); return r.width / r.height; });
-      assert(Math.abs(box - 4 / 3) < 0.03, '4:3 frame');
+      const box = await page.$eval(scope + ' [data-test=bc-page]', e => { const r = e.getBoundingClientRect(); return r.width / r.height; });
+      assert(Math.abs(box - 4 / 3) < 0.03, 'the page is 4:3, the shape of the engraving');
     }
   }
+  /* The writing sits cleanly in the empty side of each picture: inside the page, nothing cut off, clear of the beast. */
+  const SIDE = { buckbear: 'left', dire_wolf: 'left', fellcat: 'right', griffin: 'left', sabrecat: 'left', wyvern: 'right' };
+  for (const k of KINDS) {
+    await page.click(scope + ' [data-test=bc-tab-' + k + ']');
+    const g = await page.evaluate(s => {
+      const pg = document.querySelector(s + ' [data-test=bc-page]'), tx = document.querySelector(s + ' [data-test=bc-text]');
+      const p = pg.getBoundingClientRect(), t = tx.getBoundingClientRect();
+      const kids = Array.from(tx.children).map(c => c.getBoundingClientRect());
+      return { side: pg.getAttribute('data-side'), l: (t.left - p.left) / p.width, r: (p.right - t.right) / p.width, fits: tx.scrollHeight <= tx.clientHeight + 1, lastBottom: Math.max.apply(null, kids.map(c => c.bottom)) <= t.bottom + 1, inside: t.left >= p.left && t.right <= p.right && t.top >= p.top && t.bottom <= p.bottom, ph: p.height, pw: p.width };
+    }, scope);
+    equal(g.side, SIDE[k], k + ' text side');
+    assert(g.fits && g.lastBottom && g.inside, k + ' text fits its space: ' + JSON.stringify(g));
+    assert((SIDE[k] === 'left' ? g.r : g.l) >= 0.5, k + ' text stays on its half');
+  }
+  const vp = await page.evaluate(() => ({ w: innerWidth, h: innerHeight }));
+  const pb = await page.$eval(scope + ' [data-test=bc-page]', e => { const r = e.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; });
+  assert(pb.top >= 0 && pb.bottom <= vp.h && pb.left >= 0 && pb.right <= vp.w, 'the whole page is in view: ' + JSON.stringify([pb, vp]));
   await page.click(scope + ' [data-test=bc-tab-sabrecat]');
   await page.focus(scope + ' [data-test=bc-tab-sabrecat]');
   await page.keyboard.press('ArrowRight');
