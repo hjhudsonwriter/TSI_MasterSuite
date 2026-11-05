@@ -6,6 +6,8 @@
    null is a plain nameplate with no shield. The DM can change any town in play (Ruled by, saved as tsi.explorer.townclans),
    and that wins over this file.
 
+   The three First Temples (5 November 2026) belong to no clan: a plain nameplate.
+
    Two pins in the Explorer's data are not in Harry's table of 33, so they have no clan and get a plain nameplate: Leatherport
    (North Isle) and The River Rook (Midland). Redport is listed twice on the Western Province (south) map; one id, one clan. */
 window.TSI_DATA = window.TSI_DATA || {};
@@ -23,5 +25,7 @@ window.TSI_DATA.townClans = {
   /* Southern Province, east and west */
   moltenport: 'molten', cassmead: 'molten', lowland_farm: 'molten', fork_farm: 'molten', goldport: 'molten', city_of_coin: 'molten',
   /* Western Province (south) */
-  westreach: 'farmer', shadowhall: 'farmer', redport: 'farmer'
+  westreach: 'farmer', shadowhall: 'farmer', redport: 'farmer',
+  /* The First Temples: no clan */
+  temple_pelagos: null, temple_telluria: null, temple_aurush: null
 };

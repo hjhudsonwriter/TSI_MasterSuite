@@ -80,7 +80,7 @@
     var list = EX.markersByMapId.midland_province;
     var shown = list.filter(function (m) { return R.isPinVisible(s, EX, board, m); }).map(function (m) { return m.id; });
     t.same(shown, R.visibleMarkers(s, EX, board).map(function (m) { return m.id; }));
-    t.same(shown, ['river_rook', 'middlemount']);
+    t.same(shown, ['temple_telluria', 'river_rook', 'middlemount']);
   });
 
   group('Quest markers');
