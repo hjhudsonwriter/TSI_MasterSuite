@@ -172,7 +172,7 @@
           var out = {};
           Object.keys(channels).forEach(function (k) {
             var ch = channels[k];
-            out[k] = { state: ch.state, wanted: !!wanted[k], fade: Math.round(ch.cur * 100) / 100, missing: ch.missing, blocked: ch.blocked, crossfading: !!ch.xf,
+            out[k] = { state: ch.state, wanted: !!wanted[k], fade: Math.round(ch.cur * 100) / 100, missing: ch.missing, blocked: ch.blocked, crossfading: !!ch.xf, active: ch.active,
               volumes: ch.copies.map(function (a) { return Math.round(a.volume * 100) / 100; }), playing: ch.copies.filter(function (a) { return !a.paused; }).length, muted: ch.copies[0].muted, src: ch.copies[0].getAttribute('src') };
           });
           return { duck: Math.round(duck * 100) / 100, channels: out };

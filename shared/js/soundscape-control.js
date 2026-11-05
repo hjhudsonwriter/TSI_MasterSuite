@@ -22,17 +22,25 @@
     p = p && typeof p === 'object' ? p : {};
     return R().cleanMix({ volume: p.scVolume, muted: p.scMuted, mood: p.scMood });
   }
+  /* One save at a time, always of the newest choice, so quick changes (the slider, then the menu) can never land in the wrong order. */
+  var latest = null, writing = false, again = false;
+  function persist() {
+    if (writing) { again = true; return; }
+    writing = true;
+    TSI.store.fresh(PREFS, null).then(function (p) {
+      p = p && typeof p === 'object' ? JSON.parse(JSON.stringify(p)) : {};
+      p.scVolume = latest.volume; p.scMuted = latest.muted; p.scMood = latest.mood;
+      TSI.store.set(PREFS, p);
+    }, function () { /* the choice still reaches the TV */ }).then(function () { writing = false; if (again) { again = false; persist(); } });
+  }
   /* Keep the choices in the Explorer's prefs (read fresh, so nothing else in them is lost) and tell the playing window. */
   function setMix(mix) {
     mix = R().cleanMix(mix);
     var current = null;
     try { current = TSI.handoff.read('sound'); } catch (e) { current = null; }
     var auto = current && current.auto ? current.auto : null;
-    TSI.store.fresh(PREFS, null).then(function (p) {
-      p = p && typeof p === 'object' ? JSON.parse(JSON.stringify(p)) : {};
-      p.scVolume = mix.volume; p.scMuted = mix.muted; p.scMood = mix.mood;
-      TSI.store.set(PREFS, p);
-    }, function () { /* the choice still reaches the TV */ });
+    latest = mix;
+    persist();
     TSI.handoff.write('sound', R().pack(auto, mix));
     listeners.slice().forEach(function (fn) { try { fn(mix); } catch (e) { TSI.reportError(e, 'the Sound control'); } });
   }

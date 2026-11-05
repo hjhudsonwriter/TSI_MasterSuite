@@ -104,19 +104,18 @@ async function closeModals(page) { for (let i = 0; i < 4; i++) { const b = await
       await settled(pv, ['forest']);
     });
 
-    await check('Make Camp plays the campfire, then the night sound until the party moves; moving brings the road sound back', async () => {
+    await check('Make Camp plays the campfire and the night sound together at the same level, and both end together; then the road sound is back', async () => {
+      await page.evaluate(() => { TSI_DATA.soundscape.campSecs = 12; });   /* (30 seconds in real use) */
       await page.click('[data-test=camp]');
-      await until(async () => { const d = await pvSound(pv); return d && d.channels.campfire && d.channels.campfire.wanted; }, 'the campfire');
+      await settled(pv, ['campfire', 'night']);
+      const d = await pvSound(pv);
+      const v = k => d.channels[k].volumes[d.channels[k].active];
+      const lufs = { campfire: -12.0, night: -27.5 };
+      const db = k => lufs[k] + 20 * Math.log10(v(k) / (0.8 * 1));
+      assert(Math.abs(db('campfire') - db('night')) < 0.5, 'the same loudness: ' + db('campfire') + ' and ' + db('night'));
       await closeModals(page);
-      await settled(pv, ['night']);
-      const id = (await page.evaluate(() => TSI.explorer.debug.state().tokens[0].id));
-      const at = await page.evaluate(id => TSI.explorer.debug.tokenScreen(id), id);
-      const to = await page.evaluate(() => TSI.explorer.debug.hexScreen(6, 6));
-      await page.mouse.move(at.x, at.y); await page.mouse.down();
-      await page.mouse.move((at.x + to.x) / 2, (at.y + to.y) / 2, { steps: 5 });
-      await page.mouse.move(to.x, to.y, { steps: 5 });
-      await page.mouse.up();
       await settled(pv, ['forest']);
+      await page.evaluate(() => { TSI_DATA.soundscape.campSecs = 30; });
     });
 
     await check('a voice line on the laptop brings everything down to 30% on the TV, and back up when it ends', async () => {

@@ -28,6 +28,20 @@
     t.equal(S.autoPlan(sit({ mapId: 'nowhere' }), D).base, '');
   });
 
+  test('at camp the night sound plays together with the campfire, for exactly as long and at the same loudness (Harry, 5 November 2026)', function (t) {
+    var camp = S.autoPlan(sit({ mapId: 'the_east_isle', camp: true }), D);
+    t.same([camp.base, camp.also], ['campfire', 'night']);
+    t.same(ids(camp), ['base:campfire', 'base:night']);
+    t.same(ids(S.autoPlan(sit({ mapId: 'the_east_isle', camp: false }), D)), ['base:coast'], 'when the camp ends both go together');
+    /* Their loudness: each file's own level (EBU R128, measured 5 November 2026) times its volume setting, in LUFS. */
+    var LUFS = { campfire: -12.0, night: -27.5 };
+    var out = ['campfire', 'night'].map(function (k) { return LUFS[k] + 20 * Math.log10(D.beds[k].volume); });
+    t.ok(Math.abs(out[0] - out[1]) < 0.3, 'the same loudness: ' + out.join(' and '));
+    var mixed = S.layers(camp, { mood: 'mystery' }, D);
+    t.ok(Math.abs(mixed[0].level / D.beds.campfire.volume - mixed[1].level / D.beds.night.volume) < 1e-9, 'under a mood they are lowered together');
+    t.same(S.cleanAuto({ base: 'campfire', also: 'night' }).also, 'night');
+  });
+
   test('weather plays over the road sound, not instead of it: blizzard, storm, rain, heat', function (t) {
     var m = { mapId: 'northern_province_east' };
     [['blizzard', 'blizzard'], ['storm', 'storm'], ['rain', 'rain'], ['sun_heat', 'heat']].forEach(function (w) {
@@ -36,7 +50,7 @@
       t.same(ids(a), ['base:forest', 'overlay:' + w[1]]);
     });
     t.equal(S.autoPlan(sit({ mapId: 'the_east_isle', weather: 'fog' }), D).overlay, '', 'a weather with no sound adds none');
-    t.same(ids(S.autoPlan(sit({ mapId: 'the_east_isle', camp: true, weather: 'rain' }), D)), ['base:campfire', 'overlay:rain'], 'rain over the camp');
+    t.same(ids(S.autoPlan(sit({ mapId: 'the_east_isle', camp: true, weather: 'rain' }), D)), ['base:campfire', 'base:night', 'overlay:rain'], 'rain over the camp');
   });
 
   group('Soundscape: moods and the combat mood');
@@ -99,9 +113,9 @@
 
   test('messages between windows: kept clean, and a plan from over twelve hours ago is not followed', function (t) {
     var v = S.pack({ base: 'coast', overlay: 'rain', fight: true, voice: true }, { volume: 0.4, muted: true, mood: 'mystery' }, 1000);
-    t.same(S.unpack(v, 2000), { at: 1000, auto: { base: 'coast', overlay: 'rain', fight: true, voice: true }, mix: { volume: 0.4, muted: true, mood: 'mystery' } });
+    t.same(S.unpack(v, 2000), { at: 1000, auto: { base: 'coast', also: '', overlay: 'rain', fight: true, voice: true }, mix: { volume: 0.4, muted: true, mood: 'mystery' } });
     t.equal(S.unpack(v, 1000 + S.MAX_AGE_MS + 1), null); t.equal(S.unpack(null), null); t.equal(S.unpack({ at: 'x' }), null);
-    t.same(S.cleanAuto({ base: '../x', overlay: 5 }), { base: '', overlay: '', fight: false, voice: false });
+    t.same(S.cleanAuto({ base: '../x', overlay: 5 }), { base: '', also: '', overlay: '', fight: false, voice: false });
   });
 
   test('the cue tags accept the beds, the moods and off, and the old sound effects still work', function (t) {

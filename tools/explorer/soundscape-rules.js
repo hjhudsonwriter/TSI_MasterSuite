@@ -4,7 +4,7 @@
 
    situation   { mapId, town (a town's pin card is open on the TV), camp (Make Camp's fade or a campfire event), night (a night event is open),
                  weather (the weather kind or null), fight (a fight is with the Combat Tracker and not yet won) }
-   auto        { base, overlay, fight, voice }: the bed ids that play by themselves, whether the combat mood is wanted, and whether a voice line is playing
+   auto        { base, also, overlay, fight, voice } (also: a second sound that plays with the base, at its own level, such as the night with the campfire): the bed ids that play by themselves, whether the combat mood is wanted, and whether a voice line is playing
    mix         { volume (0 to 1), muted, mood }: the DM's choices ('' is Off (automatic))
    layers      [{ id, role: 'base' | 'overlay' | 'mood', level }]: what should be playing, each as loud as its file's own level and its role make it
                (the master volume and ducking are applied by the player) */
@@ -29,7 +29,7 @@
     },
     cleanAuto: function (raw) {
       var o = isObj(raw) ? raw : {};
-      return { base: id(o.base), overlay: id(o.overlay), fight: o.fight === true, voice: o.voice === true };
+      return { base: id(o.base), also: id(o.also), overlay: id(o.overlay), fight: o.fight === true, voice: o.voice === true };
     },
 
     /* ---------- What the table calls for ---------- */
@@ -42,8 +42,9 @@
       else if (sit.night) base = d.nightBed || '';
       else if (sit.town) base = d.townBed || '';
       else if (sit.mapId && d.mapBeds && d.mapBeds[sit.mapId]) base = d.mapBeds[sit.mapId];
+      var also = sit.camp && d.campWith && d.beds && d.beds[d.campWith] ? d.campWith : '';
       var overlay = sit.weather && d.weatherBeds && d.weatherBeds[sit.weather] ? d.weatherBeds[sit.weather] : '';
-      return { base: d.beds && d.beds[base] ? base : '', overlay: d.beds && d.beds[overlay] ? overlay : '', fight: !!sit.fight, voice: !!sit.voice };
+      return { base: d.beds && d.beds[base] ? base : '', also: also, overlay: d.beds && d.beds[overlay] ? overlay : '', fight: !!sit.fight, voice: !!sit.voice };
     },
 
     /* The mood in force: the DM's choice, else the combat mood while a fight is on, else none. Any bed id will do for a DM's choice. */
@@ -64,6 +65,7 @@
       var mood = R.moodNow(auto, mix, d);
       var list = [];
       if (auto.base) list.push({ id: auto.base, role: 'base', level: d.beds[auto.base].volume * (mood ? (d.moodBedLevel || 0.5) : 1) });
+      if (auto.also && d.beds[auto.also]) list.push({ id: auto.also, role: 'base', level: d.beds[auto.also].volume * (mood ? (d.moodBedLevel || 0.5) : 1) });
       if (auto.overlay) list.push({ id: auto.overlay, role: 'overlay', level: d.beds[auto.overlay].volume });
       if (mood) list.push({ id: mood, role: 'mood', level: d.beds[mood].volume });
       var seen = {}, out = [];

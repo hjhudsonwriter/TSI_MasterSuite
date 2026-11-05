@@ -1609,14 +1609,14 @@
         if (state.snap.enabled && drag.startAxial) {
           var target = R.dragSnap(state, board, drag, p);
           if (!target) return;
-          sfx.moving(); scNight = false;
+          sfx.moving();
           renderTokens();
           /* The fog clears as you drag (saved when you let go). */
           if (state.fog.enabled) { R.reveal(state, target, 2); drawFog(); }
           return;
         }
         R.dragFree(state, board, drag, p.x - drag.pointer.x, p.y - drag.pointer.y);
-        sfx.moving(); scNight = false;
+        sfx.moving();
         renderTokens();
         if (state.fog.enabled) { R.revealAroundFocus(state, board, focusId); drawFog(); }
       });
@@ -1703,7 +1703,7 @@
         var spacing = R.hexSize(state.grid) * Math.sqrt(3);
         var pos = R.pointAlong(w.plan.path, (now - w.t0) / R.WALK_MS_PER_HEX * spacing);
         R.dragFree(state, board, w.drag, pos.x - w.fromX, pos.y - w.fromY);
-        sfx.moving(); scNight = false;
+        sfx.moving();
         if (state.fog.enabled) {
           var a = R.token(state, w.drag.anchorId);
           var hex = a ? R.tokenHex(state, board, a) : null;
@@ -1794,8 +1794,7 @@
           pvCamp++;
           pvNightUntil = Date.now() + 4000;
           sfx.campStart();
-          scCampUntil = Date.now() + (Number(window.TSI_DATA.explorerSfx.campFadeMs) || 4000);
-          scNight = true;   /* it is night until the party moves again */
+          scCampUntil = Date.now() + 1000 * (Number(window.TSI_DATA.soundscape.campSecs) || 30);
           tableLog({ kind: 'camp', ref: 'day-' + state.travel.day, label: 'Camp, Day ' + state.travel.day });
           saveNow();
           /* A moment worth keeping a snapshot of (shared/js/snapshots.js). */
@@ -2086,7 +2085,7 @@
          TSI.handoff ('sound'). The Player View, the TV window, plays it, so it carries on when the tool is changed. With no Player View open the beds
          play from this window and stop when the tool is left. The Sound control in the top bar sets the volume, mute and mood. */
       var SC = TSI.soundscapeRules;
-      var scNight = false, scCampUntil = 0, scCampHolds = 0, scWeather = null, scLastKey = '', scLastValue = '', scLocal = null, scTold = false;
+      var scCampUntil = 0, scCampHolds = 0, scWeather = null, scLastKey = '', scLastValue = '', scLocal = null, scTold = false;
       var scVoiceEls = [];
       function scMix() { return SC.cleanMix({ volume: prefs.scVolume, muted: prefs.scMuted, mood: prefs.scMood }); }
       function scFightOn() {
@@ -2099,7 +2098,7 @@
         return SC.autoPlan({
           mapId: state.mapPresetId || '', town: pvPin !== null && pvPin !== undefined,
           camp: Date.now() < scCampUntil || scCampHolds > 0,
-          night: scNight || !!(journeyOpen && cur && cur.kind === 'night'),
+          night: !!(journeyOpen && cur && cur.kind === 'night'),
           weather: scWeather, fight: scFightOn(), voice: scVoiceOn()
         });
       }

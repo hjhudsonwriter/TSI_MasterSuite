@@ -9,7 +9,8 @@
      fadeSecs   crossfade between sounds; duckTo how loud everything is while a voice line plays (0.3 = 30%)
    A file that is not there is skipped quietly and the Sound control says "file missing". Folder: tools/explorer/assets/soundscape/ (the campfire,
    rain and storm beds reuse the Explorer's sound effect files in tools/explorer/assets/sfx/). Levels were measured on 5 November 2026 (EBU R128)
-   and brought to about -26 LUFS; the quietest files (the plains and the night) are already at full volume. */
+   and brought to about -26 LUFS; the quietest files (the plains and the night) are already at full volume. The campfire and the night play together at the
+   same level (both -27.5 LUFS, the night's own level), so the campfire is set a little lower than the rest. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.soundscape = {
   fadeSecs: 4,
@@ -28,7 +29,7 @@ window.TSI_DATA.soundscape = {
     heat: { file: 'tools/explorer/assets/soundscape/heat.mp3', volume: 0.32, label: 'Sun & Heatwave (a dry drone)' },
     combat: { file: 'tools/explorer/assets/soundscape/combat.mp3', volume: 0.22, label: 'Combat (tense battle music)' },
     mystery: { file: 'tools/explorer/assets/soundscape/mystery.ogg', volume: 0.37, label: 'Mystery (a low, uneasy drone)' },
-    campfire: { file: 'tools/explorer/assets/sfx/campfire.mp3', volume: 0.2, label: 'Campfire' },
+    campfire: { file: 'tools/explorer/assets/sfx/campfire.mp3', volume: 0.17, label: 'Campfire' },
     rain: { file: 'tools/explorer/assets/sfx/rain.mp3', volume: 0.54, label: 'Cold Downpour (rain)' },
     storm: { file: 'tools/explorer/assets/sfx/storm.mp3', volume: 0.17, label: 'Black Storm (thunder and rain)' }
   },
@@ -49,5 +50,7 @@ window.TSI_DATA.soundscape = {
   townBed: 'town',
   nightBed: 'night',
   campBed: 'campfire',
+  campSecs: 30,               /* a Make Camp keeps the campfire (and the night) going at least this long, so the 4 second fades are heard; a campfire event keeps them on until it is finished */
+  campWith: 'night',          /* plays together with the campfire, at the same level, for exactly as long (Harry, 5 November 2026) */
   weatherBeds: { blizzard: 'blizzard', storm: 'storm', rain: 'rain', sun_heat: 'heat' }
 };
