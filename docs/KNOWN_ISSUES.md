@@ -4501,3 +4501,7 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 ### CT-06 · Magnus, and a folding Battlemap bar (Harry's test, 5 November 2026)
 - Before: a hero already in the library under the same name (Harry's old test Magnus) kept its old picture and numbers, because the seed never overwrote anything. After: a hero of the same name whose picture is not that hero's portrait is set once to the table's numbers and portrait (its copy in an encounter that is waiting is updated too). A hero seeded earlier and edited in the Party panel since keeps the edit. Monsters still keep whatever numbers they had.
 - The Battlemap window's top bar has a **Hide controls / Show controls** button. Folded, only a slim bar is left and the map takes the room; the choice is remembered in that browser (`tsi.encounter.bmFolded`).
+
+### VOICE-01 · Tovin Ash's voice clip made as loud as Pell Ardwick's (5 November 2026, Harry)
+- Before: `tovin-ash.mp3` measured -32.4 LUFS (very quiet) beside Pell Ardwick's -21.0 LUFS, which plays straight after it. After: raised to -21.5 LUFS (about 11 dB louder), with the loudest peaks held at -1.3 dBFS so nothing clips. Same length, same format (mono MP3, 128 kbit/s). Nothing else was changed.
+- Left alone: Isla Tarrow (-24.6 LUFS) and Linnet (-23.1 LUFS) are a little quieter than the rest, and Dren Marr (-17.1 LUFS) a little louder; say if you want them matched too. The original Tovin file is in the git history if you ever want it back.
