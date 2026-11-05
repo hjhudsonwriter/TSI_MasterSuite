@@ -285,6 +285,20 @@ const waitBoard = (page, fn, what) => until(async () => fn(await board(page)), w
       assert(b.records.some(r => r.key === 'tsi.evidence.state'));
     });
 
+    await check('End session\'s named backup of everything holds the board (and the table log)', async () => {
+      await page.click('[data-test=end-session]');
+      await page.waitForSelector('.tsi-modal');
+      const [d] = await Promise.all([page.waitForEvent('download'), H.clickModal(page, 'Back up and finish')]);
+      const b = JSON.parse(require('fs').readFileSync(await d.path(), 'utf8'));
+      const keys = b.records.map(r => r.key);
+      assert(keys.includes('tsi.evidence.state'), keys.join());
+      assert(keys.includes('tsi.tablelog.entries'), keys.join());
+      const ev = b.records.find(r => r.key === 'tsi.evidence.state').value;
+      equal(ev.notes.length, 9);
+      await page.waitForSelector('[data-test=session-ended]');
+      await H.clickModal(page, 'Done');
+    });
+
     await context.close();
   }
 

@@ -53,7 +53,7 @@ window.TSI_DATA.bastionPlayerPanels = [
     blurb: 'Meet envoys and learn where each Clan stands.', widgets: ['level', 'orders'] },
   /* The Beast Pen shows no level, orders or blurb: only the beasts housed there (name, kind and handler). */
   { id: 'beast_pen', title: 'Beast Pen', tagline: 'Something stirs in the stalls...', art: 'beast_pen.jpg', focus: { x: 50, y: 50 },
-    blurb: '', widgets: ['beasts'] },
+    blurb: '', widgets: ['beasts', 'compendium'] },
   /* The Prison Tower's picture follows which cells are in use: art.states has a key 'cells-NNN' for each picture (one digit
      a cell, left to right: 1 is in use, 0 is empty). The picture is chosen by tools/bastion/player-view-art.js: the exact
      one, else the best that shows only cells really in use, else 'cells-000'. 'cells-011' is not painted yet. */

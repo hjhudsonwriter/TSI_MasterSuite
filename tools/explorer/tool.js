@@ -2206,6 +2206,12 @@
       TSI.evidence.read().then(function (s) { evBoard = s; queuePlayerSync(); });
       life.onStop(TSI.evidence.onChange(function (s) { evBoard = s; queuePlayerSync(); }));
       TSI.evidence.listen(life, function (s) { evBoard = s; queuePlayerSync(); });
+      /* A safety net: if a "the board changed" message from another window is ever missed, the board is read again every couple of
+         seconds while the players' window is open, so the two can never stay different for long. */
+      life.setInterval(function () {
+        if (document.hidden || !pvLink.isConnected()) return;
+        TSI.evidence.read().then(function (s) { if (life.alive && JSON.stringify(s) !== JSON.stringify(evBoard)) { evBoard = s; queuePlayerSync(); } });
+      }, 2000);
       function evidenceOp(p) {
         if (!p || typeof p !== 'object') return;
         var E = TSI.evidenceRules, day = state.travel.day;

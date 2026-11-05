@@ -153,7 +153,23 @@
     showFull();
     var waiting = el('div', { class: 'tsi-bpv-waiting', 'data-test': 'pv-waiting', role: 'status' }, [el('div', { class: 'tsi-bpv-waiting__text', text: 'Waiting for the DM...' })]);
 
-    var stage = el('div', { class: 'tsi-bpv', 'data-test': 'pv-stage' }, [map, row, badge, tray, panelHost, full, waiting]);
+    /* The Compendium of Beasts (5 November 2026): a small book in the Beast Pen's panel opens it over the panel; it is only drawn here. */
+    var compHost = el('div', { class: 'tsi-bpv-comphost', 'data-test': 'pv-compendium', hidden: true });
+    var compBook = null, compOpen = false;
+    function setCompendium(on) {
+      compOpen = !!on && focus === 'beast_pen';
+      compHost.hidden = !compOpen;
+      if (compOpen && !compBook) {
+        compBook = TSI.beastCompendium.create({});
+        var close = el('button', { type: 'button', class: 'tsi-bpv-comphost__close', 'data-test': 'pv-compendium-close', 'aria-label': 'Close the Compendium of Beasts', title: 'Close (Esc)' }, '\u00d7');
+        close.addEventListener('click', function () { setCompendium(false); });
+        compHost.appendChild(el('div', { class: 'tsi-bpv-comp', role: 'dialog', 'aria-label': 'Compendium of Beasts' }, [el('div', { class: 'tsi-bpv-comp__head' }, [el('h2', { class: 'tsi-bpv-comp__title', text: 'Compendium of Beasts' }), close]), compBook.node]));
+      }
+      var b = panelHost.querySelector('[data-test=pv-compendium-open]');
+      if (b) b.setAttribute('aria-expanded', compOpen ? 'true' : 'false');
+    }
+    window.addEventListener('keydown', function (e) { if (compOpen && e.key === 'Escape') { e.preventDefault(); setCompendium(false); } });
+    var stage = el('div', { class: 'tsi-bpv', 'data-test': 'pv-stage' }, [map, row, badge, tray, panelHost, compHost, full, waiting]);
     stage.classList.add('is-tray-closed');
     root.appendChild(stage);
 
@@ -567,13 +583,19 @@
       stage.classList.add('has-panel');
     }
 
+    function bookButton() {
+      var b = el('button', { type: 'button', class: 'tsi-bpv-bookbtn', 'data-test': 'pv-compendium-open', 'aria-label': 'Open the Compendium of Beasts', title: 'Open the Compendium of Beasts', 'aria-expanded': compOpen ? 'true' : 'false' }, TSI.beastCompendium.icon());
+      b.addEventListener('click', function () { setCompendium(!compOpen); });
+      return b;
+    }
+
     function drawPanel() {
       if (focus === 'dock' && view === 'routes' && snap && snap.routes) { drawRoutes(); return; }
       rv = null;
       TSI.clear(panelHost);
       var def = panelDef(focus);
       var f = snap && focus && (snap.facilities[focus] || (def && def.bare ? { name: def.title, level: 1, single: true, repair: 0, orders: [] } : null));
-      if (!f) { panelHost.hidden = true; stage.classList.remove('has-panel'); artWrap = null; artFac = null; ledgerEl = null; hotBtn = null; ledgerKey = ''; ledgerOpen = false; templeReset(); return; }
+      if (!f) { setCompendium(false); panelHost.hidden = true; stage.classList.remove('has-panel'); artWrap = null; artFac = null; ledgerEl = null; hotBtn = null; ledgerKey = ''; ledgerOpen = false; templeReset(); return; }
       var widgets = def ? def.widgets : ['level', 'orders'];
       var title = (def && def.title) || f.name;
       var info = [];
@@ -612,7 +634,8 @@
       var panel = el('div', { class: 'tsi-bpv-panel', 'data-test': 'pv-panel', 'data-fac': focus, role: 'dialog', 'aria-label': title }, [
         el('div', { class: 'tsi-bpv-panel__head' }, [
           el('h2', { class: 'tsi-bpv-panel__title', 'data-test': 'pv-panel-title', text: title }),
-          def && def.tagline ? el('div', { class: 'tsi-bpv-panel__tagline', 'data-test': 'pv-panel-tagline', text: def.tagline }) : null
+          def && def.tagline ? el('div', { class: 'tsi-bpv-panel__tagline', 'data-test': 'pv-panel-tagline', text: def.tagline }) : null,
+          widgets.indexOf('compendium') !== -1 ? bookButton() : null
         ]),
         artArea(def, f, title),
         info.length ? el('div', { class: 'tsi-bpv-panel__info' }, info) : null,
@@ -620,6 +643,7 @@
       ]);
       panelHost.appendChild(panel);
       panelHost.hidden = false;
+      setCompendium(compOpen);
       ledgerSync(def, f);
       templeSync(def, f);
       stage.classList.add('has-panel');

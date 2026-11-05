@@ -437,3 +437,21 @@ img.tsi-bpv-panel__art.is-entering { opacity: 0; }
   .tsi-bpv-hotspot { animation: none; }
   .tsi-bpv-ledger, .tsi-bpv-ledger.is-open { transition: none; }
 }
+
+/* ---------- The Compendium of Beasts: the small book in the Beast Pen's panel, and the book over the panel ---------- */
+.tsi-bpv-panel__head { position: relative; }
+.tsi-bpv-bookbtn {
+  pointer-events: auto; position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: clamp(32px, 4.4vh, 48px); aspect-ratio: 1; padding: 0;
+  border: 1px solid var(--tsi-line-control); border-radius: var(--tsi-radius-pill); background: rgba(8, 5, 6, .7); color: var(--tsi-gold-text); cursor: pointer;
+}
+.tsi-bpv-bookbtn:hover, .tsi-bpv-bookbtn[aria-expanded="true"] { border-color: var(--tsi-gold); background: rgba(122, 15, 26, .55); }
+.tsi-bpv-bookbtn:focus-visible { outline: 2px solid var(--tsi-gold); outline-offset: 2px; }
+.tsi-bpv-bookbtn .tsi-bc-icon { width: 62%; height: 62%; }
+.tsi-bpv-comphost { position: absolute; inset: 0; z-index: 38; display: grid; padding: 1.2vh 2vw; background: rgba(5, 3, 4, .78); pointer-events: auto; }
+.tsi-bpv-comphost[hidden] { display: none; }
+.tsi-bpv-comp { display: flex; flex-direction: column; min-height: 0; max-width: 1500px; width: 100%; margin: 0 auto; }
+.tsi-bpv-comp__head { flex: 0 0 auto; position: relative; display: flex; justify-content: center; align-items: center; padding-bottom: .8vh; }
+.tsi-bpv-comp__title { margin: 0; font: 600 clamp(16px, 2.6vh, 28px) var(--tsi-font-display); letter-spacing: .08em; color: var(--tsi-gold-text); }
+.tsi-bpv-comphost__close { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: clamp(30px, 4.2vh, 44px); aspect-ratio: 1; border-radius: 999px; border: 1px solid var(--tsi-line-control); background: rgba(8, 5, 6, .7); color: var(--tsi-gold-text); font-size: clamp(18px, 3vh, 30px); line-height: 1; cursor: pointer; }
+.tsi-bpv-comphost__close:hover { border-color: var(--tsi-gold); }
+.tsi-bpv-panel__head:has(.tsi-bpv-bookbtn) { padding-right: clamp(44px, 6.4vh, 70px); }

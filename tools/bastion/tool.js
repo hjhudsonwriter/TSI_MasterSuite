@@ -2828,11 +2828,18 @@
         return el('div', { class: 'tsi-bas-facpanel__cargo tsi-bas-facpanel__creatures', 'data-test': 'creatures-' + facId }, [
           label('Beasts'),
           el('div', { class: 'tsi-bas-creatures__room', 'data-test': 'creature-room-' + facId, text: 'The Beast Pen keeps ' + (unlimited ? 'as many beasts of each kind as the DM grants' : perKind === 1 ? 'one beast of each kind' : plural(perKind, 'beast') + ' of each kind') + ': wyvern, griffin, dire wolf, buckbear, fellcat and sabrecat. A beast housed here must pass Acclimatise With Beast before it can go out on the road and bond with its handler.' }),
+          /* The Compendium of Beasts (5 November 2026): a parchment page for each kind, in a pop-up. */
+          el('div', { class: 'tsi-bas-row' }, [el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-bc-btn', 'data-test': 'beast-compendium-open', title: 'Open the Compendium of Beasts', onclick: function () { openCompendium(); } }, [TSI.beastCompendium.icon(), el('span', { text: 'Compendium of Beasts' })])]),
           el('div', { class: 'tsi-bas-stalls', 'data-test': 'creatures-housed-' + facId }, stalls),
           !any ? muted('No beast yet. The Pen houses beasts the DM grants in the Explorer; nothing here makes one.') : null,
           beastDm ? label('Beast Handler (players)') : null,
           beastDm ? beastDm.node : null
         ]);
+      }
+
+      function openCompendium() {
+        var book = TSI.beastCompendium.create({});
+        return TSI.modal.open({ title: 'Compendium of Beasts', className: 'tsi-bc-modal', body: book.node, actions: [{ label: 'Close', value: 'close' }], escValue: 'close' });
       }
 
       /* ---------- The Temple (the Strip Back Overhaul, step S11, 22 October 2026) ----------

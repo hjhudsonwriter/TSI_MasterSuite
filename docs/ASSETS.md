@@ -650,3 +650,14 @@ Plainsmane, Ashmark and Boltback have no picture yet and show the honest blank f
 
 ### New town pictures (4 November 2026)
 Harry's new town paintings, 2000 x 1500, stored exactly as he sent them (WebP, about 0.4 MB each, far lighter than the older 5 MB PNGs): `tools/explorer/assets/submaps/port_brawdlyn.webp` (Port Brawdlyn), `the_river_rook.webp` (The River Rook) and `steelport.webp` (Steelport) are new, and `middlemount.webp` replaces the old Middlemount picture. Each opens from its town pin in the Explorer.
+
+## Compendium of Beasts (5 November 2026)
+Harry's engravings (2000 x 1500, see-through background), kept byte for byte. Used by the Compendium of Beasts (`tools/beasthandler/data/beast-compendium-data.js`).
+| Old name | New location |
+|---|---|
+| Harry's bear picture (attached to the session) | `tools/beasthandler/assets/compendium/buckbear.webp` |
+| Harry's wolf picture | `tools/beasthandler/assets/compendium/dire-wolf.webp` |
+| Harry's lynx picture | `tools/beasthandler/assets/compendium/fellcat.webp` |
+| Harry's griffin picture | `tools/beasthandler/assets/compendium/griffin.webp` |
+| Harry's sabrecat picture | `tools/beasthandler/assets/compendium/sabrecat.webp` |
+| Harry's wyvern picture (not received as a file yet) | `tools/beasthandler/assets/compendium/wyvern.webp` (to add; the page says "picture still to come" until then) |
