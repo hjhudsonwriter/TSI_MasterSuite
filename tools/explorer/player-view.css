@@ -338,3 +338,11 @@
 .tsi-xpv-ev__count, .tsi-xpv-ev__picname { font: 400 clamp(12px, 1.8vh, 16px) var(--tsi-font-body); color: #5a4630; }
 .tsi-xpv-ev__q { margin: 0; font: 400 clamp(20px, 3.2vh, 30px) "IM Fell English", serif; text-align: center; }
 @media (prefers-reduced-motion: reduce) { .tsi-xpv-ev__note.is-new { animation: none; } }
+
+/* The soundscape's one-click prompt (guide 5): shown only while the browser has refused to play sound in this window. */
+.tsi-xpv-soundprompt {
+  position: fixed; right: 16px; bottom: 16px; z-index: 95; padding: 8px 14px; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(214, 178, 94, .7); background: rgba(20, 8, 10, .85); color: #f3ead2; font: 600 14px var(--tsi-font-display, Georgia, serif); letter-spacing: .04em;
+}
+.tsi-xpv-soundprompt[hidden] { display: none; }
+.tsi-xpv-soundprompt:hover { background: rgba(60, 20, 26, .95); }

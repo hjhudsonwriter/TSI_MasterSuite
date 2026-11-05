@@ -45,9 +45,15 @@
   });
 
   var R = TSI.explorer.rules;
+  test('the soundscape choices are kept in the prefs: volume 0 to 1, mute, and a mood id', function (t) {
+    var c = R.cleanPrefs({ scVolume: 3, scMuted: true, scMood: 'mystery' });
+    t.same([c.scVolume, c.scMuted, c.scMood], [1, true, 'mystery']);
+    t.equal(R.cleanPrefs({ scMood: 'Bad Mood!' }).scMood, ''); t.equal(R.cleanPrefs({ scVolume: 'loud' }).scVolume, 0.8);
+  });
+
   test('the DM\'s settings are tidied: unknown or wrong-typed values fall back to the defaults', function (t) {
-    t.same(R.cleanPrefs(null), { sfxOn: true, sfxVolume: 0.8, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: false, clouds: true, dmFog: true, leftCollapsed: false, closedSections: [] });
-    t.same(R.cleanPrefs({ sfxOn: false, sfxVolume: 9, showReach: 'yes', showTerrain: true, junk: 1 }), { sfxOn: false, sfxVolume: 1, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: true, clouds: true, dmFog: true, leftCollapsed: false, closedSections: [] });
+    t.same(R.cleanPrefs(null), { sfxOn: true, sfxVolume: 0.8, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: false, clouds: true, dmFog: true, leftCollapsed: false, closedSections: [], scMuted: false, scVolume: 0.8, scMood: '' });
+    t.same(R.cleanPrefs({ sfxOn: false, sfxVolume: 9, showReach: 'yes', showTerrain: true, junk: 1 }), { sfxOn: false, sfxVolume: 1, autoplayVoice: true, clickMove: true, showCursor: true, showReach: true, showTerrain: true, clouds: true, dmFog: true, leftCollapsed: false, closedSections: [], scMuted: false, scVolume: 0.8, scMood: '' });
     t.same(R.cleanPrefs({ closedSections: ['map', 'map', 'Bad Name!', 5, 'fog'], leftCollapsed: true, dmFog: false }).closedSections, ['map', 'fog'], 'only real section names, once each');
     t.same([R.cleanPrefs({ leftCollapsed: true, dmFog: false }).leftCollapsed, R.cleanPrefs({ leftCollapsed: true, dmFog: false }).dmFog], [true, false]);
     t.same(R.cleanPrefs({ closedSections: 'map' }).closedSections, [], 'not a list');

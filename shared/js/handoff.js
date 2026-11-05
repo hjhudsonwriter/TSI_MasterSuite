@@ -17,6 +17,10 @@
    - 'live' (tsi.suite.handoff-live): { id, at }, what the Explorer has on the TV now ('card:<deck>/<card>', 'cast:<id>' or ''),
      so the DM doc can highlight that button, in whichever window it is.
    - 'evidence' (tsi.suite.handoff-evidence): { at }, "the Evidence Board was changed", so every other window reads it again.
+   - 'sound' (tsi.suite.handoff-sound): { at, auto: { base, overlay, fight, voice }, mix: { volume, muted, mood } }, the soundscape (guide 5): what the
+     Explorer says should play, and the DM's volume, mute and mood from the Sound control. The window playing the beds (the Explorer Player View)
+     follows it, whichever tool is open in the DM's window.
+   - 'soundstatus' (tsi.suite.handoff-soundstatus): { at, playing: [ids], missing: [ids], blocked }, what that window is doing, for the Sound control.
    A window with the other tool open hears at once (the browser's "storage"
    event); a tool opened later reads it as it starts. Only the latest of
    each is kept. They aren't saves, so they're not in backups. The test
@@ -27,7 +31,7 @@
 
   var TSI = window.TSI;
   var NAMES = TSI.storeRules.spaceNames(TSI.space);
-  var KEYS = { fight: NAMES.handoff, result: NAMES.handback, crest: NAMES.handoffCrest, cue: NAMES.handoffCue, live: NAMES.handoffLive, evidence: NAMES.handoffEvidence };
+  var KEYS = { fight: NAMES.handoff, result: NAMES.handback, crest: NAMES.handoffCrest, cue: NAMES.handoffCue, live: NAMES.handoffLive, evidence: NAMES.handoffEvidence, sound: NAMES.handoffSound, soundstatus: NAMES.handoffSoundStatus };
 
   function key(kind) {
     if (!KEYS[kind]) throw new Error('There is no hand-off called ' + kind + '.');

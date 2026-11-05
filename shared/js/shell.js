@@ -361,6 +361,8 @@
       }
     }
     /* The DM doc (shared/js/dmdoc.js), on every screen, just left of Switch tool. */
+    /* The Sound control (guide 5): volume, mute, what is playing and the Mood menu, on every screen. */
+    if (TSI.soundControl) actions.appendChild(TSI.soundControl.button());
     if (TSI.dmDoc) actions.appendChild(TSI.dmDoc.button());
     actions.appendChild(buildMenu(info ? info.id : null));
 

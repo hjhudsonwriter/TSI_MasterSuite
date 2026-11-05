@@ -1,0 +1,21 @@
+The Explorer's soundscape (guide 5, added 5 November 2026): background sound that follows the table, played from the Player View (the TV window).
+
+Save the files in this folder with these names. Each one is a loop of 1 to 3 minutes (or shorter, if it loops well), free to use, roughly even in loudness.
+The campfire, rain and storm beds reuse tools/explorer/assets/sfx/campfire.mp3, rain.mp3 and storm.mp3 by their path, so they are not here.
+To use a different file name or kind (mp3, wav and ogg all work), change it in tools/explorer/data/soundscape-data.js. A file that is not here is skipped
+quietly, and the Sound control (the Soundscape button in the top bar) says "file missing".
+
+  coast.wav       surf on rocks, gulls, wind                         plays on The North Isle and The East Isle
+  forest.mp3      wind in pines, distant birds                       Northern Province (East and West)
+  marsh.mp3       reeds, frogs, still water, insects                 Eastern Province (North and South)
+  plains.mp3      open wind over grass and fields                    Southern Province (East and West), Western Province (South)
+  mountain.mp3    high thin wind, distant echoing bells or stone     Midland Province
+  town.mp3        a market crowd at a low murmur, a far-off bell     while a town's card is on the TV
+  tavern.mp3      an inn interior: chatter, mugs, a fire             a mood (Mood menu, or {sound: tavern})
+  night.mp3       crickets, an owl, a light breeze                   after Make Camp, until the party moves again
+  blizzard.mp3    howling wind with driven snow                      White Blizzard weather, over the road sound
+  heat.mp3        a dry heat drone: cicadas, a still hot wind        Sun & Heatwave weather, over the road sound
+  combat.mp3      tense battle music, loopable, no vocals            the combat mood while a fight is with the Combat Tracker
+  mystery.ogg     a low, uneasy drone                                a mood (Mood menu, or {sound: mystery})
+
+Levels were measured and set in data/soundscape-data.js so they sound about the same; the files themselves are as supplied.

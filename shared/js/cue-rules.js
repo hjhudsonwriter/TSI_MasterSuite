@@ -9,7 +9,7 @@
      {fight: t2}           "Set up this fight" for that encounter
      {puzzle: tidal}       open the Pelagosi Puzzle Trials on that puzzle (tidal or marker)
      {camp}                Make Camp (it asks first)
-     {sound: rain}         a sound effect from the Explorer
+     {sound: rain}         a sound effect from the Explorer ({sound: mystery} a mood for the background sound; {sound: off} sets it back to automatic)
      {clue: id}            award a prepared clue to the Evidence Board ({clue: any words} pins those words as a note)
      {recap}               plays the latest recap on the TV ({recap: id} a particular one)
 
@@ -208,7 +208,8 @@
         cast: D.cast || [],
         fights: Object.keys((D.fights && D.fights.encounters) || {}),
         puzzles: PUZZLES.slice(),
-        sounds: Object.keys(sfx.sounds || {}).concat(Object.keys(sfx.groups || {})),
+        /* the sound effects and groups, then the soundscape's beds and moods and off (guide 5), each once */
+        sounds: Object.keys(sfx.sounds || {}).concat(Object.keys(sfx.groups || {})).concat(Object.keys((D.soundscape && D.soundscape.beds) || {}).concat(D.soundscape ? ['off'] : [])).filter(function (s, i, a) { return a.indexOf(s) === i; }),
         /* the Evidence Board's clues ready to award: [{ id, text }] (the board's own save, or the seed) */
         prepared: (prepared || []).map(function (c) { return c.id; }),
         boardIds: (boardIds || []).slice(),

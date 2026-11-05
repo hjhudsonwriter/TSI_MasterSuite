@@ -127,7 +127,8 @@
         life: life,
         config: window.TSI_DATA.explorerSfx,
         load: function () { return { on: prefs.sfxOn, volume: prefs.sfxVolume }; },
-        save: function (v) { prefs.sfxOn = !!v.on; prefs.sfxVolume = v.volume; savePrefs(); }
+        save: function (v) { prefs.sfxOn = !!v.on; prefs.sfxVolume = v.volume; savePrefs(); },
+        beds: true     /* the campfire and the weather play as the soundscape's beds (guide 5), not from here */
       });
 
       /* Not saved: selection, the hero whose miles show, drags and modes. */
@@ -1083,6 +1084,7 @@
         var w = R.currentWeather(state, DATA);
         if (w.changed) saveNow();
         sfx.weather(w.src && state.travel.activeWeather ? state.travel.activeWeather.kind : null);
+        scWeather = w.src && state.travel.activeWeather ? state.travel.activeWeather.kind : null;
         if (!w.src) {
           if (video.getAttribute('src')) {
             video.pause();
@@ -1607,14 +1609,14 @@
         if (state.snap.enabled && drag.startAxial) {
           var target = R.dragSnap(state, board, drag, p);
           if (!target) return;
-          sfx.moving();
+          sfx.moving(); scNight = false;
           renderTokens();
           /* The fog clears as you drag (saved when you let go). */
           if (state.fog.enabled) { R.reveal(state, target, 2); drawFog(); }
           return;
         }
         R.dragFree(state, board, drag, p.x - drag.pointer.x, p.y - drag.pointer.y);
-        sfx.moving();
+        sfx.moving(); scNight = false;
         renderTokens();
         if (state.fog.enabled) { R.revealAroundFocus(state, board, focusId); drawFog(); }
       });
@@ -1701,7 +1703,7 @@
         var spacing = R.hexSize(state.grid) * Math.sqrt(3);
         var pos = R.pointAlong(w.plan.path, (now - w.t0) / R.WALK_MS_PER_HEX * spacing);
         R.dragFree(state, board, w.drag, pos.x - w.fromX, pos.y - w.fromY);
-        sfx.moving();
+        sfx.moving(); scNight = false;
         if (state.fog.enabled) {
           var a = R.token(state, w.drag.anchorId);
           var hex = a ? R.tokenHex(state, board, a) : null;
@@ -1792,6 +1794,8 @@
           pvCamp++;
           pvNightUntil = Date.now() + 4000;
           sfx.campStart();
+          scCampUntil = Date.now() + (Number(window.TSI_DATA.explorerSfx.campFadeMs) || 4000);
+          scNight = true;   /* it is night until the party moves again */
           tableLog({ kind: 'camp', ref: 'day-' + state.travel.day, label: 'Camp, Day ' + state.travel.day });
           saveNow();
           /* A moment worth keeping a snapshot of (shared/js/snapshots.js). */
@@ -1827,11 +1831,11 @@
             /* A campfire event keeps the campfire sound on until it is finished. */
             var cur = state.journey && state.journey.current;
             var campy = item.kind === 'camp' || (item.kind === 'journey' && cur && cur.phase === 'camp');
-            if (campy) sfx.campHold(true);
+            if (campy) { sfx.campHold(true); scCampHolds++; }
             var shown = item.kind === 'journey' ? openJourney()
               : item.kind === 'word' ? openWord(item.news)
               : item.kind === 'weather' ? openWeather(item) : openEvent(item.kind, item.event);
-            return Promise.resolve(shown).then(function (v) { if (campy) sfx.campHold(false); return v; }, function (err) { if (campy) sfx.campHold(false); throw err; });
+            return Promise.resolve(shown).then(function (v) { if (campy) { sfx.campHold(false); scCampHolds = Math.max(0, scCampHolds - 1); } return v; }, function (err) { if (campy) { sfx.campHold(false); scCampHolds = Math.max(0, scCampHolds - 1); } throw err; });
           }).catch(function (err) {
             /* One broken pop-up mustn't stop the rest of the night's pop-ups. */
             if (window.console) console.error('[TSI] Explorer pop-up failed:', err);
@@ -1964,7 +1968,7 @@
         function playVoice() {
           var c = cards[cur];
           if (!c || !c.voice || status[cur].voice === 'missing') return;
-          if (!deckVoice) deckVoice = life.audio(null, { preload: 'none' });
+          if (!deckVoice) deckVoice = watchVoice(life.audio(null, { preload: 'none' }));
           var src = TSI.path(c.voice);
           if (deckVoice.getAttribute('src') !== src) deckVoice.setAttribute('src', src);
           try { deckVoice.currentTime = 0; } catch (e) { /* not loaded yet */ }
@@ -2075,6 +2079,72 @@
       }
       var deckDebug = null;
 
+
+      /* ---------- The soundscape (guide 5; data/soundscape-data.js, soundscape-rules.js, soundscape-player.js) ----------
+         Background sound that follows the table. The Explorer works out what the table calls for (the map's road sound, a town, camp, night, the
+         weather over it, the combat mood while a fight is with the Combat Tracker, everything ducked while a voice line plays) and says so through
+         TSI.handoff ('sound'). The Player View, the TV window, plays it, so it carries on when the tool is changed. With no Player View open the beds
+         play from this window and stop when the tool is left. The Sound control in the top bar sets the volume, mute and mood. */
+      var SC = TSI.soundscapeRules;
+      var scNight = false, scCampUntil = 0, scCampHolds = 0, scWeather = null, scLastKey = '', scLastValue = '', scLocal = null, scTold = false;
+      var scVoiceEls = [];
+      function scMix() { return SC.cleanMix({ volume: prefs.scVolume, muted: prefs.scMuted, mood: prefs.scMood }); }
+      function scFightOn() {
+        var f = TSI.handoff.read('fight'), r = TSI.handoff.read('result');
+        return !!(f && f.id && !(r && r.id === f.id && r.result === 'won'));
+      }
+      function scVoiceOn() { return scVoiceEls.some(function (a) { return !a.paused && !a.ended; }); }
+      function scAuto() {
+        var cur = state.journey && state.journey.current;
+        return SC.autoPlan({
+          mapId: state.mapPresetId || '', town: pvPin !== null && pvPin !== undefined,
+          camp: Date.now() < scCampUntil || scCampHolds > 0,
+          night: scNight || !!(journeyOpen && cur && cur.kind === 'night'),
+          weather: scWeather, fight: scFightOn(), voice: scVoiceOn()
+        });
+      }
+      function scPublish(force) {
+        if (!life.alive) return;
+        var auto = scAuto(), mix = scMix();
+        var value = JSON.stringify([auto, mix, pvLink.isConnected()]);
+        if (!force && value === scLastValue) return;
+        scLastValue = value;
+        TSI.handoff.write('sound', SC.pack(auto, mix));
+        /* No Player View open: this window plays them itself (and says so, once). */
+        var tv = pvLink.isConnected();
+        if (!tv && !scLocal) {
+          scLocal = TSI.soundscape.create({ makeAudio: function () { return life.audio(null, { preload: 'none' }); }, setInterval: function (f, ms) { return life.setInterval(f, ms); }, clearInterval: function (t) { life.clearInterval(t); },
+            onStatus: function (s) { TSI.handoff.write('soundstatus', { at: Date.now(), playing: s.playing, missing: s.missing, blocked: s.blocked, from: 'explorer' }); } });
+          life.onStop(function () { if (scLocal) scLocal.stop(); });
+        }
+        if (scLocal) {
+          scLocal.apply(tv ? { base: '', overlay: '', fight: false, voice: false } : auto, mix);
+          if (!tv && !scTold && SC.layers(auto, mix).length) { scTold = true; TSI.notify('No Player View is open, so the background sound plays from this window and stops if you change tool. Open the Player View on the TV and it plays there instead.', { type: 'info', title: 'Sound.', id: 'tsi-sound-fallback', timeout: 12000 }); }
+        }
+      }
+      /* Anything that can change the sound is looked at twice a second; a voice line or a change from the Sound control is looked at at once. */
+      life.setInterval(function () { scPublish(false); }, 500);
+      life.setTimeout(function () { scPublish(true); }, 300);
+      function watchVoice(a) {
+        if (!a || scVoiceEls.indexOf(a) !== -1) return a;
+        scVoiceEls.push(a);
+        ['playing', 'pause', 'ended', 'emptied', 'error'].forEach(function (ev) { a.addEventListener(ev, function () { scPublish(false); }); });
+        return a;
+      }
+      /* The DM changed the volume, mute or mood (the Sound control, in this window or another): keep it, and apply it. */
+      TSI.handoff.listen(life, 'sound', function (v) {
+        var u = SC.unpack(v);
+        if (!u || !u.mix) return;
+        var mine = scMix();
+        if (u.mix.volume === mine.volume && u.mix.muted === mine.muted && u.mix.mood === mine.mood) return;
+        prefs.scVolume = u.mix.volume; prefs.scMuted = u.mix.muted; prefs.scMood = u.mix.mood;
+        savePrefs();
+        scPublish(true);
+      });
+      /* A change made with the Sound control in this very window (a change from another window comes through the hand-off above). */
+      if (TSI.soundControl) life.onStop(TSI.soundControl.onMix(function (m) { prefs.scVolume = m.volume; prefs.scMuted = m.muted; prefs.scMood = m.mood; savePrefs(); scPublish(true); }));
+      function scSetMood(id) { prefs.scMood = id || ''; savePrefs(); scPublish(true); }
+
       /* ---------- Cue tags and the Cast list (guide 1; tools/explorer/cues.js, shared/js/cue-rules.js) ----------
          A card, a cast portrait or a name card goes on the TV straight away, with no pop-up. What is on the TV now is
          announced so the DM doc, in whichever window it is, can light that button. Each thing shown is also noted in the
@@ -2095,7 +2165,7 @@
       var cueAudio = null;
       function cueVoice(src) {
         if (!src) return;
-        if (!cueAudio) cueAudio = life.audio(null, { preload: 'none' });
+        if (!cueAudio) cueAudio = watchVoice(life.audio(null, { preload: 'none' }));
         cueAudio.setAttribute('src', TSI.path(src));
         try { cueAudio.currentTime = 0; } catch (e) { /* not loaded yet */ }
         var p = cueAudio.play();
@@ -2144,7 +2214,7 @@
         return new Promise(function (resolve) {
           TSI.recap.probeAudio(file, function (d) {
             if (!d || !life.alive) return resolve(false);
-            if (!recapSounds[key]) recapSounds[key] = life.audio(null, { preload: 'none' });
+            if (!recapSounds[key]) recapSounds[key] = key === 'narration' ? watchVoice(life.audio(null, { preload: 'none' })) : life.audio(null, { preload: 'none' });
             var a = recapSounds[key];
             a.loop = !!loop;
             a.volume = Math.max(0, Math.min(1, volume));
@@ -2274,6 +2344,10 @@
             .then(function (r) { return r.note ? '' : 'That note could not be added.'; });
         },
         sound: function (name) {
+          /* {sound: off} and the beds and moods of the soundscape (guide 5) set the mood; the sound effects work as before. */
+          var isSfx = sfx.names().indexOf(name) !== -1 || sfx.groups().indexOf(name) !== -1;
+          if (name === 'off') { scSetMood(''); return 'The mood is off: the sound is automatic again.'; }
+          if (!isSfx && window.TSI_DATA.soundscape.beds[name]) { scSetMood(name); return 'Mood: ' + SC.label(name) + '.'; }
           var r = sfx.cue(name);
           return r === 'muted' ? 'Sound effects are switched off in the Sound panel.' : r === 'none' ? 'There is no such sound.' : '';
         }
@@ -3654,6 +3728,7 @@
 
       /* For the tests. */
       ns.debug = {
+        sound: function () { return { auto: scAuto(), mix: scMix(), local: scLocal ? scLocal.debug() : null }; },
         walking: function () { return !!walking; },
         prefs: function () { return JSON.parse(JSON.stringify(prefs)); },
         /* Fog modes and the explored map (the tests). */
