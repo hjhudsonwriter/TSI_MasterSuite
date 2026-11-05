@@ -4531,3 +4531,16 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 ### RECAP-02 · Play recap in the Explorer, and a taller Quest box (Harry, 5 November 2026)
 - Before: the recap could only be played from the editor, the Quest box's `{recap}` chip or the cue. After: **Play recap** is a button in the Explorer's View section. It needs the Player View open (it says so if not).
 - Before: in the DM doc the Bastion panel was as tall as the Party panel beside it, leaving an empty gap above the Quest box. After: the right column is a stack: the Bastion panel is as tall as its contents (never over 45% of the column) and the Quest box has the rest.
+
+### SND-01 · Sound that follows the table (guide 5, 5 November 2026)
+- Before: the TV windows were silent and the Explorer played its campfire, rain and storm from the laptop. After: the Explorer Player View plays the background sound (see PROGRESS). Sound effects and voice lines are still on the laptop.
+- **A browser will not play sound in a window nobody has clicked.** The Player View shows "Click here once to turn the sound on" until it has had a click (anywhere in that window). It then plays what was wanted.
+- **The Player View now writes one thing:** a status line for the Sound control (`tsi.suite.handoff-soundstatus`: what is playing, a missing file, whether it needs a click). Never a save.
+- **No Player View open:** the Explorer's own window plays the sound, says so once, and stops when you change tool.
+- **Hidden TV window:** the browser only ticks a hidden or covered window about once a second, so the fades take their time from the clock, not from counting ticks.
+- **Not heard in testing:** the real loop crossfades, the levels against each other and the ducking, in Edge on the laptop and the TV, are on Harry's checklist.
+- Left alone: the weather's own videos and the Sound panel's effects are unchanged; the "Night" bed has no trigger of its own yet beyond a Make Camp (no night events exist).
+- **Tests that failed before and were corrected here:** `player-view-explorer` (a stale list of the Evidence Board's buttons) and `phase8` (the campaign file now holds the recap). `phase8`'s laptop-size fit check was already failing (the Explorer's left panel is a few pixels taller than a maximised Edge window; the Play recap button added a line).
+
+### SND-02 · Long sound files (5 November 2026, Harry)
+- Harry asked whether the long files were cut down. They were not. The player streams and loops a file with a crossfade, so length only changes file size: `plains.mp3` is 8 min 38 s (16.6 MB), `forest.mp3` 3 min 32 s, `heat.mp3` 2 min 14 s, `marsh.mp3` 2 min 24 s, `mystery.ogg` 1 min 59 s. The plains file also changes loudness a lot along its length (about -25 LUFS for the first two minutes, then much quieter), so trimming it is a choice about its sound. Waiting for Harry's say-so (where to cut).
