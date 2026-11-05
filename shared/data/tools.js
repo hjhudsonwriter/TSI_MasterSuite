@@ -29,13 +29,13 @@ window.TSI_DATA.tools = [
     art: 'shared/art/logo-crest-wide.png',
     files: {
       css: ['tools/encounter/encounter.css'],
-      js: ['tools/encounter/rules.js', 'tools/encounter/tool.js']
+      js: ['tools/encounter/data/party-data.js', 'tools/encounter/data/srd-monsters.js', 'tools/encounter/rules.js', 'tools/encounter/combat-rules.js', 'tools/encounter/stat-block.js', 'tools/encounter/tool.js']
     },
     /* The Battlemap: the map with its controls, which the DM drags to the TV. */
     playerViews: {
       battlemap: {
         css: ['tools/encounter/battlemap.css'],
-        js: ['shared/js/modal.js', 'tools/encounter/rules.js', 'tools/encounter/battlemap.js']
+        js: ['shared/js/modal.js', 'tools/encounter/rules.js', 'tools/encounter/combat-rules.js', 'tools/encounter/battlemap.js']
       }
     }
   },

@@ -1,0 +1,18 @@
+Condition icons: game-icons.net (https://game-icons.net), licensed CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/).
+Each is the original drawing with its black background square removed. Authors:
+  blinded        blindfold (Delapouite)
+  charmed        charm (Lorc)
+  deafened       speaker-off (Delapouite)
+  exhaustion     tired-eye (Delapouite)
+  frightened     terror (Lorc)
+  grappled       grapple (Lorc)
+  incapacitated  half-dead (Delapouite)
+  invisible      invisible (Delapouite)
+  paralyzed      frozen-body (Delapouite)
+  petrified      medusa-head (Cathelineau)
+  poisoned       poison-bottle (Lorc)
+  prone          half-body-crawling (Delapouite)
+  restrained     manacles (Lorc)
+  stunned        knocked-out-stars (Delapouite)
+  unconscious    night-sleep (Delapouite)
+  concentrating  concentration-orb (Lorc)

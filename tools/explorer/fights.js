@@ -59,7 +59,8 @@
     return list.map(function (g) {
       var m = data.monsters[g[0]];
       if (!m) return null;
-      return { name: g[2] || m.name, stat: m.name, count: g[1], ac: m.ac, hp: m.hp, init: m.init, link: m.link || '' };
+      /* srd: the stat block in the Combat Tracker's bundled SRD (data/srd-monsters.js), found by the key here unless a monster names another. */
+      return { name: g[2] || m.name, stat: m.name, count: g[1], ac: m.ac, hp: m.hp, init: m.init, link: m.link || '', srd: m.srd || String(g[0]).replace(/_/g, '-') };
     }).filter(Boolean);
   };
 

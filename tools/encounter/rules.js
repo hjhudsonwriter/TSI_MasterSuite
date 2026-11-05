@@ -46,6 +46,7 @@
     defaultState: function () {
       return {
         library: [],
+        seeded: 0,                      /* the party and the Explorer's monsters were added to the library (combat-rules.js, seedOnce) */
         selectedLibraryIds: new Set(),
         savedEncounters: [],
         encounter: { name: '', status: 'idle', roster: [], turnIndex: 0, round: 1, handoff: null, reported: false },
@@ -80,6 +81,7 @@
     fromSave: function (parsed) {
       var s = R.defaultState();
       s.library = Array.isArray(parsed.library) ? parsed.library : [];
+      s.seeded = Number.isFinite(parsed.seeded) ? parsed.seeded : 0;
       s.savedEncounters = Array.isArray(parsed.savedEncounters) ? parsed.savedEncounters : [];
       s.selectedLibraryIds = new Set(Array.isArray(parsed.selectedLibraryIds) ? parsed.selectedLibraryIds : []);
       var e = parsed.encounter || {};
@@ -106,6 +108,7 @@
     toSave: function (state) {
       return {
         library: state.library,
+        seeded: state.seeded || 0,
         selectedLibraryIds: Array.from(state.selectedLibraryIds || []),
         savedEncounters: state.savedEncounters,
         encounter: state.encounter,
@@ -236,6 +239,8 @@
         else if (!existing) target.conditions.push({ name: parsed.cond, remaining: parsed.turns });
       }
       if (target.curHp <= 0) target.defeated = true;
+      /* Healing above 0 HP clears a hero's death-save pips (combat-rules.js). */
+      if (target.curHp > 0 && target.death && enc.combat) enc.combat.clearDeathIfHealed(target);
     },
 
     /* Complete Turn: apply to the chosen target, count down the conditions of
@@ -254,7 +259,10 @@
       if (!e.roster.some(function (x) { return x.encId === state.ui.targetId; })) {
         state.ui.targetId = (e.roster[e.turnIndex] || {}).encId || (e.roster[0] || {}).encId || null;
       }
-      return { ok: true, ended: R.checkAutoEnd(e) };
+      var ended = R.checkAutoEnd(e);
+      /* The new turn begins: legendary action pips fill, spent recharge actions are rolled for (combat-rules.js). */
+      var turnNotes = !ended && enc.combat ? enc.combat.startTurn(e.roster[e.turnIndex]) : [];
+      return { ok: true, ended: ended, turnNotes: turnNotes };
     },
 
     /* Add Condition: the condition only, on the chosen target; the turn stays (old btnAddCondition). */
@@ -282,6 +290,8 @@
       var avatar = String(fields.avatar || '').trim();
       var refLink = String(fields.refLink || '').trim();
       var type = fields.type;
+      var acRaw = String(fields.ac == null ? '' : fields.ac).trim();
+      var ac = acRaw === '' || !Number.isFinite(Number(acRaw)) ? null : Math.floor(Number(acRaw));
 
       if (editingId) {
         var existing = state.library.filter(function (x) { return x.id === editingId; })[0];
@@ -293,6 +303,7 @@
         existing.initBonus = initBonus;
         existing.avatar = avatar || '';
         existing.refLink = refLink || '';
+        if ('ac' in fields) existing.ac = ac;
         /* Copies in the encounter follow, keeping their copy letter (ENC-23: kept). */
         state.encounter.roster.forEach(function (r) {
           if (r.baseId !== existing.id) return;
@@ -302,6 +313,7 @@
           r.maxHp = existing.maxHp;
           r.avatar = existing.avatar || '';
           r.refLink = existing.refLink || '';
+          if (Number.isFinite(existing.ac)) r.ac = existing.ac;
           r.curHp = Math.min(r.curHp, r.maxHp);
         });
         return { ok: true };
@@ -310,6 +322,7 @@
         id: R.uid(), name: name, type: type, maxHp: Math.floor(maxHp), curHp: Math.floor(maxHp),
         initBonus: initBonus, avatar: avatar || '', refLink: refLink || ''
       });
+      if (ac !== null) state.library[state.library.length - 1].ac = ac;
       return { ok: true };
     },
 
@@ -398,12 +411,25 @@
        then " b"... (old btnAddSelected). */
     rosterCopy: function (e, base) {
       var same = e.roster.filter(function (r) { return r.baseId === base.id; }).length;
-      return {
+      var copy = {
         encId: R.uid(), baseId: base.id,
         name: base.name + (same === 0 ? '' : ' ' + String.fromCharCode(96 + same)),
         type: base.type, maxHp: base.maxHp, curHp: base.maxHp, init: null,
         avatar: base.avatar || '', refLink: base.refLink || '', conditions: [], defeated: false
       };
+      R.carryStats(copy, base);
+      return copy;
+    },
+
+    /* The numbers and stat block a library entry carries into the encounter (guide 3): AC, passive Perception, the SRD slug or a homebrew
+       block, and the trackers that block calls for (legendary pips, recharge). Nothing is added for an entry that has none. */
+    carryStats: function (copy, base) {
+      if (Number.isFinite(base.ac)) copy.ac = base.ac;
+      if (Number.isFinite(base.passive)) copy.passive = base.passive;
+      if (base.srd) copy.srd = base.srd;
+      if (base.block && typeof base.block === 'object') copy.block = base.block;
+      if (enc.combat) enc.combat.initTrackers(copy, enc.combat.blockFor(copy));
+      return copy;
     },
 
     /* ---------- The fight ---------- */
@@ -433,7 +459,9 @@
       e.turnIndex = R.findNextLivingIndex(e, 0);
       e.round = 1;
       if (!state.ui.targetId) state.ui.targetId = (e.roster[e.turnIndex] || {}).encId || null;
-      return { ok: true, ended: R.checkAutoEnd(e) };
+      var ended = R.checkAutoEnd(e);
+      var turnNotes = !ended && enc.combat ? enc.combat.startTurn(e.roster[e.turnIndex]) : [];
+      return { ok: true, ended: ended, turnNotes: turnNotes };
     },
 
     /* ---------- Saved encounters ---------- */
@@ -444,7 +472,12 @@
       var snap = {
         id: R.uid(), name: name, updatedAt: (now || new Date()).toISOString(),
         roster: e.roster.map(function (c) {
-          return { baseId: c.baseId || null, name: c.name, type: c.type, maxHp: c.maxHp, init: c.init != null ? c.init : null, avatar: c.avatar || '', refLink: c.refLink || '' };
+          var o = { baseId: c.baseId || null, name: c.name, type: c.type, maxHp: c.maxHp, init: c.init != null ? c.init : null, avatar: c.avatar || '', refLink: c.refLink || '' };
+          if (Number.isFinite(c.ac)) o.ac = c.ac;
+          if (Number.isFinite(c.passive)) o.passive = c.passive;
+          if (c.srd) o.srd = c.srd;
+          if (c.block) o.block = c.block;
+          return o;
         })
       };
       state.savedEncounters.push(snap);
@@ -458,8 +491,8 @@
       var e = state.encounter;
       e.name = se.name || '';
       e.roster = (se.roster || []).map(function (x) {
-        return { encId: R.uid(), baseId: x.baseId || null, name: x.name, type: x.type, maxHp: x.maxHp, curHp: x.maxHp,
-          init: x.init != null ? x.init : null, avatar: x.avatar || '', refLink: x.refLink || '', conditions: [], defeated: false };
+        return R.carryStats({ encId: R.uid(), baseId: x.baseId || null, name: x.name, type: x.type, maxHp: x.maxHp, curHp: x.maxHp,
+          init: x.init != null ? x.init : null, avatar: x.avatar || '', refLink: x.refLink || '', conditions: [], defeated: false }, x);
       });
       e.turnIndex = 0;
       e.round = 1;
@@ -493,6 +526,11 @@
           initBonus: x.initBonus == null ? null : Math.floor(Number(x.initBonus)),
           avatar: x.avatar || '', refLink: x.refLink || ''
         });
+        var made = state.library[state.library.length - 1];
+        if (Number.isFinite(x.ac)) made.ac = Math.floor(x.ac);
+        if (Number.isFinite(x.passive)) made.passive = Math.floor(x.passive);
+        if (typeof x.srd === 'string' && x.srd) made.srd = x.srd;
+        if (x.block && typeof x.block === 'object' && !Array.isArray(x.block)) made.block = x.block;
         existingKey.add(key);
         added++;
       });
@@ -701,9 +739,14 @@
       if (found) {
         if (!Number.isFinite(found.initBonus) && init !== null) found.initBonus = init;
         if (!found.refLink && m.link) found.refLink = m.link;
+        /* The numbers already in the tracker win; only the stat block and a missing AC are filled in (guide 3). */
+        if (!found.srd && !found.block && m.srd) found.srd = m.srd;
+        if (!Number.isFinite(found.ac) && Number.isFinite(m.ac)) found.ac = Math.floor(m.ac);
         return found;
       }
       var entry = { id: R.uid(), name: m.name, type: 'monster', maxHp: hp, curHp: hp, initBonus: init, avatar: '', refLink: m.link || '' };
+      if (Number.isFinite(m.ac)) entry.ac = Math.floor(m.ac);
+      if (typeof m.srd === 'string' && m.srd) entry.srd = m.srd;
       state.library.push(entry);
       return entry;
     },
