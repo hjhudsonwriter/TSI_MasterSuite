@@ -4527,3 +4527,7 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
   - **A day that was not known.** Table log entries with no day used to be saved as day 0 (a quirk from guide 1). They now stay "no day". Entries already saved with day 0 stay as they are, so a recap's "days travelled" ignores nothing and may count a few extra days if an old entry had day 0.
   - **Only new play is recorded.** Fights won and Bond milestones from before this change are not in the table log, so the first recap will not mention them.
   - **Title card picture** is optional (`title.png`); without it the words show over the dimmed map.
+
+### RECAP-02 · Play recap in the Explorer, and a taller Quest box (Harry, 5 November 2026)
+- Before: the recap could only be played from the editor, the Quest box's `{recap}` chip or the cue. After: **Play recap** is a button in the Explorer's View section. It needs the Player View open (it says so if not).
+- Before: in the DM doc the Bastion panel was as tall as the Party panel beside it, leaving an empty gap above the Quest box. After: the right column is a stack: the Bastion panel is as tall as its contents (never over 45% of the column) and the Quest box has the rest.

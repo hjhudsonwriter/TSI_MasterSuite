@@ -229,6 +229,12 @@
       var btnFullscreen = btn('Fullscreen', toggleFullscreen, '', 'fullscreen');
       var btnPlayerView = btn('Open Player View', function () { pvLink.open(); }, 'tsi-btn--ghost', 'open-player-view');
       btnPlayerView.title = 'Open the players\' view of the map in a new window, to drag onto the TV. It only looks.';
+      /* Play recap (5 November 2026): the latest recap ("Previously, in the Scarlett Isles…") on the TV, from here, with no need for the Quest box or
+         the home screen. Back to the map is in the notice it leaves (or the {hide} cue). */
+      var btnRecap = btn('Play recap', function () {
+        Promise.resolve(cueActions.recap('')).then(function (text) { if (life.alive && text) TSI.notify(text, { type: 'info', id: 'tsi-exp-cue', timeout: 7000 }); });
+      }, 'tsi-btn--ghost', 'play-recap');
+      btnRecap.title = 'Play your latest recap on the TV (make one with Recap on the home screen). The Player View must be open.';
       /* Click to move (29 October 2026): with heroes picked, a click on the map sends them walking there. Not saved. */
       var clickMove = prefs.clickMove;
       var btnClickMove = btn('Click to move: On', function () { clickMove = !clickMove; setPref('clickMove', clickMove); updateButtons(); updateReach(); setNotice(clickMove ? 'Click to move: pick heroes, then click where they should go.' : 'Click to move is off. Dragging works as always.'); }, '', 'click-move');
@@ -355,7 +361,7 @@
           row([mapSelect, btn('Load', onLoadPreset, '', 'load')], 'tsi-exp-row--select'),
           row([uploadLabel, btn('Clear map', onClearMap, '', 'clear-map')])
         ]),
-        sectionWith('View', el('span', { class: 'tsi-exp-pvbox' }, [btnPlayerView, pvStatus]), [row([btnFullscreen, btnHideUi])]),
+        sectionWith('View', el('span', { class: 'tsi-exp-pvbox' }, [btnPlayerView, pvStatus]), [row([btnFullscreen, btnHideUi]), row([btnRecap])]),
         section('Hex grid', [
           row([btnGrid, btnLockGrid]),
           row(gridBtns, 'tsi-exp-row--tight'),

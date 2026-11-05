@@ -195,6 +195,15 @@ async function seedLog(page) {
       equal(resolved, { ok: true, soon: false, label: 'Recap' });
     });
 
+    await check('the Explorer has its own Play recap button: with no TV window it says so; with the Player View open it plays the latest recap, and Back to the map in its notice ends it', async () => {
+      assert(await exp.isVisible('[data-test=play-recap]'), 'the button is on the Explorer\'s left panel');
+      await exp.click('[data-test=play-recap]');
+      await pv.waitForSelector('[data-test=reel]', { timeout: 10000 });
+      await exp.waitForSelector('.tsi-notice button:text-is("Back to the map")');
+      await exp.click('.tsi-notice button:text-is("Back to the map")');
+      await until(async () => !(await pv.$('[data-test=reel]')), 'the reel to go');
+    });
+
     await check('a message sent to the TV carries pictures and words only', async () => {
       const sent = await exp.evaluate(async () => {
         const st = await TSI.recap.read();
