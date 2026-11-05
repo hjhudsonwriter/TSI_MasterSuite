@@ -682,4 +682,4 @@ Harry's `SC_Plainsmane` and `SC_Boltback` pictures and videos were turned into t
 |---|---|
 | `SC_Plainsmane.png` / `SC_Plainsmane.mp4` | `tools/beasthandler/assets/sabrecat/plainsmane.webp` / `.mp4` |
 | `SC_Boltback.png` / `SC_Boltback.mp4` | `tools/beasthandler/assets/sabrecat/boltback.webp` / `.mp4` |
-| `SC_Ashmark.png` (a picture only; Harry is regenerating it, so it was left out for now) | not in the suite; Ashmark still shows the blank frame |
+| Harry's regenerated Ashmark picture (attached to the session, 768 x 1360 WebP, kept as sent) and `SC_Ashmark.mp4` | `tools/beasthandler/assets/sabrecat/ashmark.webp` / `.mp4` |
