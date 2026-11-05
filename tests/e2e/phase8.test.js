@@ -1148,7 +1148,7 @@ function serve(dir) {
       await page.waitForFunction(() => document.querySelector('[data-test=notice]').textContent === 'Save exported.');
       const file = JSON.parse(d.text);
       assert(/^tsi-campaign-\d{4}-\d\d-\d\d-\d{4}\.json$/.test(d.name), d.name);
-      equal([file.kind, file.tools], ['campaign', ['explorer', 'bastion']], 'one campaign save: the Explorer and the Bastion together (Harry, 8 October 2026)');
+      equal([file.kind, file.tools], ['campaign', ['explorer', 'bastion', 'evidence']], 'one campaign save: the Explorer and the Bastion together (Harry, 8 October 2026; the Evidence Board joined on 4 November)');
       assert(JSON.stringify(file).indexOf('the_north_isle') > 0);
       equal(await text(page, 'notice'), 'Save exported.');
     });
