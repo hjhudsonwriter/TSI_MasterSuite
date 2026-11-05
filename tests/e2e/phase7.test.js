@@ -24,6 +24,7 @@ const MAP_SRC = path.join(H.ROOT, 'tools/arenas/assets/maps/middlemount_lions_cr
 
 /* Before the page loads: seedable or fixed dice, and a storage that can pretend to be full. */
 function setup() {
+  window.TSI_NO_SEED = true; /* the old checks count the library from empty; the new party and monsters have their own test (combat-table.test.js) */
   window.__seed = function (a) {
     Math.random = function () {
       a |= 0; a = a + 0x6D2B79F5 | 0;
@@ -225,13 +226,13 @@ function mapOfSize(bytes, name) {
         return Object.keys(seen).filter(k => seen[k] > 1);
       });
       equal(dupes, []);
-      for (const [file, scope, prefix] of [['tools/encounter/encounter.css', '.tsi-tool--encounter', /^\.tsi-(enc|tool--encounter|btn|input|field|pill)/], ['tools/encounter/battlemap.css', '.tsi-player--battlemap', /^\.tsi-(bm|player--battlemap|btn)/]]) {
+      for (const [file, scope, prefix] of [['tools/encounter/encounter.css', '.tsi-tool--encounter', /^\.tsi-(enc|sb|tool--encounter|btn|input|field|pill)/], ['tools/encounter/battlemap.css', '.tsi-player--battlemap', /^\.tsi-(bm|player--battlemap|btn)/]]) {
         const css = fs.readFileSync(path.join(H.ROOT, file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/@keyframes[^{]+\{([^{}]*\{[^}]*\})*[^}]*\}/g, '');
         const selectors = [];
         css.replace(/([^{}]+)\{[^{}]*\}/g, (m, sel) => { selectors.push(sel.trim()); return m; });
         selectors.filter(s => s && !s.startsWith('@')).forEach(s => s.split(',').forEach(one => {
           one = one.trim();
-          assert(one.startsWith(scope), 'unscoped rule in ' + file + ': ' + one);
+          assert(one.startsWith(scope) || /^\.tsi-enc-(srd|newblock|quickedit)\b/.test(one), 'unscoped rule in ' + file + ': ' + one);
           (one.match(/\.[\w-]+/g) || []).forEach(cls => assert(prefix.test(cls), 'unprefixed class in ' + file + ': ' + cls));
         }));
       }
@@ -806,13 +807,13 @@ function mapOfSize(bytes, name) {
       equal((await roster(page)).find(c => c.name === 'Orc').defeated, false, 'the tracker is unchanged');
     });
 
-    await check('a monster knocked out on the desk leaves the map; healed, it comes back (C2)', async () => {
+    await check('a monster knocked out on the desk stays as a greyed fallen marker (guide 3); healed, it is a living token again (C2)', async () => {
       await completeTurn(page, { target: 'Goblin', damage: 50 });
       await map.waitForTimeout(200);
-      assert(!(await tokens(map)).some(t => t.name === 'Goblin'), 'gone');
+      assert(await map.evaluate(() => !!document.querySelector('[data-test=bm-token][data-name=Goblin].tsi-bm-token--fallen .tsi-bm-fallen-x')), 'a fallen marker with a cross');
       await completeTurn(page, { target: 'Goblin', damage: -4 });
       await map.waitForTimeout(200);
-      assert((await tokens(map)).some(t => t.name === 'Goblin'), 'back');
+      assert(await map.evaluate(() => !!document.querySelector('[data-test=bm-token][data-name=Goblin]:not(.tsi-bm-token--fallen)')), 'back');
     });
 
     await check('Ctrl + drag selects several tokens, and they move together', async () => {

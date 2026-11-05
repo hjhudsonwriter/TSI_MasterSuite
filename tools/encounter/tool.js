@@ -57,27 +57,27 @@
         ctx.store.set('battlemap', vtt);
       }
       load('mapImage', R.isMapSave, '');
+      var CB = enc.combat;
+      /* The first time the tracker opens after guide 3: the five heroes and the 13 Explorer monsters join the library (numbers already
+         there are kept; only the stat block is attached). Once only. */
+      /* (window.TSI_NO_SEED is a switch for the old click-through tests, which count the library from empty.) */
+      var seeded = window.TSI_NO_SEED ? { skipped: true } : CB.seedOnce(state, null, R.uid);
+      if (!seeded.skipped) save();
 
       function note(message, title) { return TSI.modal.alert({ title: title || 'Combat Tracker', message: message }); }
       function ask(message, okLabel, title) { return TSI.modal.confirm({ title: title || 'Combat Tracker', message: message, okLabel: okLabel || 'OK' }); }
 
       /* ---------- The Battlemap window ---------- */
-      function trackerView() {
-        var e = state.encounter;
-        return {
-          name: e.name, status: e.status, turnIndex: e.turnIndex,
-          roster: e.roster.map(function (c) {
-            return { encId: c.encId, name: c.name, type: c.type, avatar: c.avatar || '', curHp: c.curHp, maxHp: c.maxHp, defeated: !!c.defeated };
-          })
-        };
-      }
+      /* What the Battlemap window is sent (combat-rules.js, tvView): names, pictures, conditions, a hero's HP, and for a monster only its
+         health in words. Never a monster's HP, AC or stat block. */
+      function trackerView() { return CB.tvView(state.encounter); }
       var link = ctx.playerLink({
         view: 'battlemap',
         name: 'ScarlettVTT',
         features: 'popup=yes,width=1400,height=900',
         getState: function () { return { tracker: trackerView(), vtt: vtt, map: ctx.store.get('mapImage', '') }; },
         onMessage: function (type, payload) {
-          if (type === 'vtt' && payload && typeof payload === 'object') saveVtt(payload);
+          if (type === 'vtt' && payload && typeof payload === 'object') { saveVtt(payload); }
           else if (type === 'map' && payload && R.isMapSave(payload.dataUrl)) {
             if (payload.dataUrl) ctx.store.set('mapImage', payload.dataUrl);
             else ctx.store.remove('mapImage');
@@ -95,11 +95,14 @@
       function input(test, attrs) { return el('input', Object.assign({ class: 'tsi-input tsi-enc-input', 'data-test': test }, attrs || {})); }
       function hint(text, test) { return el('div', { class: 'tsi-enc-hint', text: text, 'data-test': test }); }
       function badge(text, cls) { return el('span', { class: 'tsi-enc-badge' + (cls ? ' tsi-enc-badge--' + cls : ''), text: text }); }
-      function avatarImg(src, type, alt, cls) {
-        var img = el('img', { class: 'tsi-enc-avatar' + (cls ? ' ' + cls : ''), alt: alt || '', src: src || R.defaultAvatar(type) });
-        img.onerror = function () { img.onerror = null; img.src = R.defaultAvatar(type); };
+      /* The creature's picture, or (guide 3) a plain round name token: its initial on a neutral colour. */
+      function avatarImg(src, type, alt, cls, name) {
+        var token = CB.nameToken(name || alt, type);
+        var img = el('img', { class: 'tsi-enc-avatar' + (cls ? ' ' + cls : ''), alt: alt || '', src: src ? CB.src(src) : token });
+        img.onerror = function () { img.onerror = null; img.src = token; };
         return img;
       }
+      function pic(entry) { return entry.avatar || CB.pictureFor(entry); }
 
       /* Top actions */
       var battlemapBtn = btn('Battlemap', 'open-battlemap', '', function () { link.open(); }, { title: 'Open the battlemap in a new window' });
@@ -115,6 +118,7 @@
       ]);
       var newMaxHp = input('new-max-hp', { type: 'number', min: '1', placeholder: '45' });
       var newInit = input('new-init', { type: 'number', step: '1', placeholder: '3' });
+      var newAc = input('new-ac', { type: 'number', min: '0', step: '1', placeholder: '14' });
       var newAvatar = input('new-avatar', { placeholder: 'Image URL (or leave blank)' });
       var newRef = input('new-ref', { placeholder: 'Paste D&D Beyond link (or any URL)' });
       var addLibBtn = btn('Add to Library', 'add-to-library', 'tsi-btn--primary', function () { addToLibrary(); });
@@ -123,6 +127,7 @@
       var countMonsters = el('span', { class: 'tsi-pill tsi-enc-pill', 'data-test': 'count-monsters', text: 'Monsters: 0' });
       var addSelectedBtn = btn('Add Selected', 'add-selected', 'tsi-btn--small', function () { guardedAddSelected(); });
       var libraryList = el('div', { class: 'tsi-enc-list', 'data-test': 'library' });
+      var partyBox = el('div', { class: 'tsi-enc-party', 'data-test': 'party-panel' });
 
       /* Storage: the Encounters tab */
       var saveEncBtn = btn('Save Current Encounter', 'save-encounter', '', function () { guardedSaveEncounter(); });
@@ -148,10 +153,15 @@
           field('Name', newName),
           row([field('Type', newType), field('Max HP', newMaxHp)], 'tsi-enc-row--two'),
           field('Init Bonus (optional)', newInit),
+          field('Armour Class (optional)', newAc),
           field('Avatar (optional)', newAvatar), hint('Tip: for best visuals, use square images.'),
           field('Stat Block Link (optional)', newRef), hint('Tip: This will show an "Open Stat Block" button when that monster is selected.'),
           row([addLibBtn, cancelEditBtn]),
+          row([btn('From the SRD…', 'srd-open', 'tsi-btn--small', function () { openSrd(); }, { title: 'Add any SRD monster, with its full stat block (no internet needed)' }), btn('New stat block…', 'new-block', 'tsi-btn--small', function () { openBlockForm(); }, { title: 'Make a stat block of your own' })]),
           row([el('div', { class: 'tsi-enc-pills' }, [countPCs, countMonsters]), addSelectedBtn], 'tsi-enc-row--split'),
+          sectionTitle('Party'),
+          hint('Change a hero\u2019s numbers when they level up. They show in the next fight.'),
+          partyBox,
           sectionTitle('Saved Combatants'),
           hint('Click to select. Shift + click to edit.'),
           libraryList
@@ -230,6 +240,8 @@
       var addCondBtn = btn('Add', 'add-condition', 'tsi-btn--ghost', function () { addCondition(); });
       var completeBtn = btn('Complete Turn', 'complete-turn', 'tsi-btn--primary', function () { guardedCompleteTurn(); });
       var momentumText = el('div', { class: 'tsi-enc-muted', 'data-test': 'momentum', text: 'Add combatants to begin tracking.' });
+      var focusCard = el('div', { class: 'tsi-enc-subcard tsi-enc-focus', 'data-test': 'focus-card', hidden: true });
+      var blockCard = el('div', { class: 'tsi-enc-subcard tsi-enc-blockcard', 'data-test': 'block-card', hidden: true });
 
       function panelHead(title, sub, extra) {
         return el('div', { class: 'tsi-enc-panel-head' }, [
@@ -278,11 +290,15 @@
                 el('div', { class: 'tsi-enc-cond-row' }, [field('Add Condition', conditionInput, 'tsi-enc-grow'), field('Turns', conditionTurns, 'tsi-enc-turns'), addCondBtn]),
                 row([completeBtn])
               ]),
-              subcard([el('h4', { class: 'tsi-enc-subcard-title', text: 'Round & Momentum' }), momentumText])
+              subcard([el('h4', { class: 'tsi-enc-subcard-title', text: 'Round & Momentum' }), momentumText]),
+              focusCard,
+              blockCard
             ])
           ])
         ])
       ]));
+
+      var focusId = null, lastCurId = null;
 
       /* ---------- Render (old render) ---------- */
       function condBadges(c) {
@@ -307,12 +323,15 @@
 
         /* Turn pill and inspector */
         var cur = R.current(e);
+        /* When a creature's turn begins, its stat block and trackers come up (guide 3); clicking any row shows that one instead. */
+        if (cur && cur.encId !== lastCurId) { lastCurId = cur.encId; focusId = cur.encId; }
+        if (!cur) lastCurId = null;
         if (!cur) {
           turnPill.textContent = e.status === 'paused' ? 'Paused' : 'Not started';
           inspName.textContent = 'No active turn';
           inspMeta.textContent = 'Start an encounter to see the active combatant.';
           inspAvatar.onerror = null;
-          inspAvatar.src = R.defaultAvatar('pc');
+          inspAvatar.src = CB.nameToken('?', 'pc');
           inspStats.hidden = true;
           statBlock.hidden = true;
         } else {
@@ -320,8 +339,8 @@
           turnPill.textContent = cur.name + ' (Init ' + init + ')';
           inspName.textContent = cur.name;
           inspMeta.textContent = String(cur.type).toUpperCase() + ' • Init ' + init + ' • Round ' + e.round;
-          inspAvatar.onerror = function () { inspAvatar.onerror = null; inspAvatar.src = R.defaultAvatar(cur.type); };
-          inspAvatar.src = cur.avatar || R.defaultAvatar(cur.type);
+          inspAvatar.onerror = function () { inspAvatar.onerror = null; inspAvatar.src = CB.nameToken(cur.name, cur.type); };
+          inspAvatar.src = pic(cur) ? CB.src(pic(cur)) : CB.nameToken(cur.name, cur.type);
           inspStats.hidden = false;
           inspHp.textContent = 'HP: ' + cur.curHp + '/' + cur.maxHp;
           var linkUrl = cur.type === 'monster' && cur.refLink ? cur.refLink : '';
@@ -354,7 +373,7 @@
               'data-test': 'library-item', 'data-name': item.name, role: 'button', tabindex: '0',
               'aria-pressed': state.selectedLibraryIds.has(item.id) ? 'true' : 'false'
             }, [
-              avatarImg(item.avatar, item.type, item.name),
+              avatarImg(pic(item), item.type, item.name, '', item.name),
               el('div', { class: 'tsi-enc-item-main' }, [
                 el('div', { class: 'tsi-enc-item-title', text: item.name }),
                 el('div', { class: 'tsi-enc-item-meta' }, [
@@ -403,19 +422,23 @@
               class: 'tsi-enc-roster-row' + (isCurrent ? ' tsi-enc-roster-row--current' : '') + (c.defeated ? ' tsi-enc-roster-row--defeated' : '') + (state.ui.targetId === c.encId ? ' tsi-enc-roster-row--target' : ''),
               'data-test': 'roster-row', 'data-name': c.name
             }, [
-              avatarImg(c.avatar, c.type, c.name),
+              avatarImg(pic(c), c.type, c.name, '', c.name),
               c.arrival ? arrivalInit(c) : el('div', { class: 'tsi-enc-cell', 'data-test': 'row-init', text: String(c.init != null ? c.init : '—') }),
               el('div', { class: 'tsi-enc-name' }, [
                 el('span', { class: 'tsi-enc-name-text', text: c.name }),
                 c.defeated ? badge('DEFEATED', 'defeated') : null,
-                badge(String(c.type).toUpperCase(), c.type)
+                !c.defeated && CB.isBloodied(c.curHp, c.maxHp) ? el('span', { class: 'tsi-enc-badge tsi-enc-badge--bloodied', 'data-test': 'row-bloodied', text: CB.healthLabel(c.curHp, c.maxHp) }) : null,
+                c.concentrating ? el('span', { class: 'tsi-enc-badge', 'data-test': 'row-conc', text: 'Concentrating' }) : null,
+                badge(String(c.type).toUpperCase(), c.type),
+                c.type === 'pc' ? el('span', { class: 'tsi-enc-tiny tsi-enc-muted', 'data-test': 'row-passive', text: 'Passive ' + (Number.isFinite(c.passive) ? c.passive : '\u2014') }) : null
               ]),
-              el('div', { class: 'tsi-enc-cell', 'data-test': 'row-hp', text: c.curHp + '/' + c.maxHp }),
+              el('div', { class: 'tsi-enc-cell', 'data-test': 'row-hp' }, [c.curHp + '/' + c.maxHp, el('small', { class: 'tsi-enc-ac', 'data-test': 'row-ac', text: 'AC ' + (Number.isFinite(c.ac) ? c.ac : '\u2014') })]),
               el('div', { class: 'tsi-enc-conds', 'data-test': 'row-conds' }, condBadges(c)),
-              el('div', { class: 'tsi-enc-cell tsi-enc-cell--actions' }, remove)
+              el('div', { class: 'tsi-enc-cell tsi-enc-cell--actions' }, [c.type === 'pc' ? editPencil(c) : null, remove])
             ]);
             r.addEventListener('click', function () {
               state.ui.targetId = c.encId;
+              focusId = c.encId;
               save();
               render();
             });
@@ -470,8 +493,279 @@
           });
         }
 
+        renderParty();
+        renderFocus();
         /* Tell the Battlemap (the old tool's "storage" event). */
         link.send('tracker', trackerView());
+      }
+
+      /* ---------- The party panel and the quick edit (guide 3) ---------- */
+      /* The five heroes in one table: AC, max HP, initiative bonus and passive Perception, editable in place. A blank shows "set me". */
+      function renderParty() {
+        var pcs = R.libraryOrder(state.library).filter(function (x) { return x.type === 'pc'; });
+        /* The same heroes: only bring the numbers up to date, so a box being typed in is never rebuilt under the cursor. */
+        var sig = pcs.map(function (x) { return x.id + '|' + x.name + '|' + x.avatar; }).join(';');
+        if (partyBox.dataset.sig === sig && partyBox.firstChild) {
+          Array.prototype.forEach.call(partyBox.querySelectorAll('input[data-key]'), function (inp) {
+            var pc = pcs.filter(function (x) { return x.id === inp.dataset.id; })[0];
+            if (pc && document.activeElement !== inp) inp.value = Number.isFinite(pc[inp.dataset.key]) ? pc[inp.dataset.key] : '';
+          });
+          return;
+        }
+        partyBox.dataset.sig = sig;
+        TSI.clear(partyBox);
+        if (!pcs.length) { partyBox.appendChild(hint('No heroes in the library yet.')); return; }
+        var table = el('table', { class: 'tsi-enc-partytable' }, [
+          el('thead', null, el('tr', null, ['Hero', 'AC', 'Max HP', 'Init', 'Passive'].map(function (h) { return el('th', { text: h }); }))),
+          el('tbody', null, pcs.map(function (pc) {
+            function cell(key, label, min) {
+              var v = pc[key];
+              var inp = el('input', { type: 'number', min: String(min), step: '1', class: 'tsi-input tsi-enc-input tsi-enc-partyin', 'aria-label': pc.name + ' ' + label, 'data-test': 'party-' + key + '-' + pc.name.toLowerCase().replace(/[^a-z]+/g, '-'), placeholder: 'set me', 'data-key': key, 'data-id': pc.id });
+              inp.value = Number.isFinite(v) ? v : '';
+              inp.addEventListener('change', function () {
+                var f = {}; f[key] = inp.value;
+                CB.editPartyMember(state, pc.id, f);
+                save(); render();
+              });
+              return el('td', { 'data-label': { ac: 'AC', maxHp: 'Max HP', initBonus: 'Init', passive: 'Passive' }[key] }, inp);
+            }
+            return el('tr', { 'data-test': 'party-row', 'data-name': pc.name }, [
+              el('th', { scope: 'row', class: 'tsi-enc-partyname' }, [avatarImg(pic(pc), 'pc', pc.name, 'tsi-enc-avatar--sm', pc.name), el('span', { text: pc.name })]),
+              cell('ac', 'Armour Class', 0), cell('maxHp', 'Max HP', 1), cell('initBonus', 'Initiative bonus', -20), cell('passive', 'Passive Perception', 0)
+            ]);
+          }))
+        ]);
+        partyBox.appendChild(table);
+      }
+      function editPencil(c) {
+        return btn('✎', 'roster-edit', 'tsi-btn--ghost tsi-btn--small', function (ev) { ev.stopPropagation(); openQuickEdit(c); }, { title: 'Change ' + c.name + '’s AC and max HP', 'aria-label': 'Edit ' + c.name + '’s AC and max HP' });
+      }
+      function openQuickEdit(c) {
+        var ac = input('qe-ac', { type: 'number', min: '0', step: '1' }); ac.value = Number.isFinite(c.ac) ? c.ac : '';
+        var hp = input('qe-hp', { type: 'number', min: '1', step: '1' }); hp.value = c.maxHp;
+        var heal = el('input', { type: 'checkbox', id: 'tsi-enc-qe-heal', 'data-test': 'qe-heal' });
+        var msg = el('p', { class: 'tsi-enc-muted', role: 'status', 'data-test': 'qe-msg' });
+        var closeIt = null;
+        var save1 = btn('Save', 'qe-save', 'tsi-btn--primary', function () {
+          var res = CB.quickEdit(state, c.encId, { ac: ac.value, maxHp: hp.value, healDiff: heal.checked });
+          if (!res.ok) { msg.textContent = res.message; return; }
+          save(); render();
+          if (closeIt) closeIt(true);
+        });
+        TSI.modal.open({
+          title: c.name + ': AC and max HP',
+          className: 'tsi-enc-quickedit',
+          body: [
+            el('p', { class: 'tsi-enc-muted', text: 'Current HP is ' + c.curHp + '. Only the Armour Class and the maximum change here.' }),
+            field('Armour Class', ac), field('Max HP', hp),
+            el('label', { class: 'tsi-enc-check', for: 'tsi-enc-qe-heal' }, [heal, el('span', { text: 'Heal by the difference (if max HP goes up)' })]),
+            msg, row([save1])
+          ],
+          actions: [{ label: 'Cancel', value: false }],
+          escValue: false,
+          onOpen: function (o) { closeIt = o.close; ac.focus(); }
+        });
+      }
+
+      /* ---------- The trackers and the stat block for the creature in focus (guide 3) ---------- */
+      function focusCombatant() {
+        var e = state.encounter;
+        return e.roster.filter(function (x) { return x.encId === focusId; })[0] || R.current(e) || e.roster.filter(function (x) { return x.encId === state.ui.targetId; })[0] || null;
+      }
+      function pips(label, tracker, test, onClick) {
+        var row = el('div', { class: 'tsi-enc-pips', 'data-test': test }, [el('span', { class: 'tsi-enc-pips__label', text: label })]);
+        for (var i = 0; i < tracker.max; i++) {
+          (function (i) {
+            var used = i < tracker.used;
+            row.appendChild(el('button', {
+              type: 'button', class: 'tsi-enc-pip' + (used ? ' tsi-enc-pip--used' : ''), 'aria-pressed': used ? 'true' : 'false', 'data-test': test + '-pip',
+              'aria-label': label + ' ' + (i + 1) + (used ? ' (used)' : ' (left)'), title: used ? 'Used. Click to take it back.' : 'Click when used.',
+              onclick: function () { CB.setPips(tracker, i < tracker.used ? i : i + 1); save(); render(); }
+            }));
+          }(i));
+        }
+        row.appendChild(el('span', { class: 'tsi-enc-muted tsi-enc-tiny', text: (tracker.max - tracker.used) + ' left' }));
+        return row;
+      }
+      function applyDirect(f, raw, heal) {
+        var n = Number(String(raw).trim());
+        if (!String(raw).trim() || !isFinite(n) || n <= 0) { note('Type a number above 0.'); return; }
+        R.applyToTarget(f, { dmg: heal ? -n : n, cond: '', turns: 1 });
+        var cn = heal ? null : CB.concentrationNote(f, n);
+        if (cn) TSI.notify(f.name + ': ' + cn.text, { type: 'warn', title: 'Concentration', id: 'tsi-enc-conc', timeout: 14000 });
+        R.checkAutoEnd(state.encounter);
+        reportIfWon();
+        save(); render();
+      }
+      function renderFocus() {
+        var f = focusCombatant();
+        TSI.clear(focusCard);
+        TSI.clear(blockCard);
+        focusCard.hidden = !f;
+        if (!f) { blockCard.hidden = true; return; }
+        var block = CB.blockFor(f);
+        var amount = input('fx-amount', { type: 'number', min: '1', step: '1', placeholder: 'amount', 'aria-label': 'Amount of damage or healing for ' + f.name });
+        var kids = [
+          el('h4', { class: 'tsi-enc-subcard-title', 'data-test': 'fx-name', text: f.name }),
+          el('p', { class: 'tsi-enc-muted tsi-enc-fxline', 'data-test': 'fx-line' }, [
+            'AC ' + (Number.isFinite(f.ac) ? f.ac : '—') + ' • HP ' + f.curHp + '/' + f.maxHp +
+            (!f.defeated && CB.isBloodied(f.curHp, f.maxHp) ? ' • ' + CB.healthLabel(f.curHp, f.maxHp) : '') +
+            (f.type === 'pc' ? ' • Passive Perception ' + (Number.isFinite(f.passive) ? f.passive : '—') : '')
+          ]),
+          el('div', { class: 'tsi-enc-hpctl' }, [
+            amount,
+            btn('Damage', 'fx-damage', 'tsi-btn--small', function () { applyDirect(f, amount.value, false); }),
+            btn('Heal', 'fx-heal', 'tsi-btn--small', function () { applyDirect(f, amount.value, true); })
+          ])
+        ];
+        var conc = el('input', { type: 'checkbox', id: 'tsi-enc-conc', 'data-test': 'fx-conc' });
+        conc.checked = !!f.concentrating;
+        conc.addEventListener('change', function () { f.concentrating = conc.checked; if (!conc.checked) delete f.concentrating; save(); render(); });
+        kids.push(el('label', { class: 'tsi-enc-check', for: 'tsi-enc-conc' }, [conc, el('span', { text: 'Concentrating (a hit shows the save’s DC)' })]));
+        if (f.legendary) kids.push(pips('Legendary actions', f.legendary, 'fx-legendary'));
+        if (f.lres) kids.push(pips('Legendary resistance', f.lres, 'fx-lres'));
+        if (f.recharge) {
+          kids.push(el('div', { class: 'tsi-enc-recharge', 'data-test': 'fx-recharge' }, Object.keys(f.recharge).map(function (name) {
+            var rc = f.recharge[name];
+            return el('div', { class: 'tsi-enc-recharge__one', 'data-test': 'fx-recharge-one', 'data-ready': rc.ready ? 'yes' : 'no' }, [
+              el('span', { class: 'tsi-enc-recharge__name', text: name + ' (Recharge ' + rc.min + '–6)' }),
+              el('span', { class: 'tsi-enc-badge' + (rc.ready ? '' : ' tsi-enc-badge--defeated'), 'data-test': 'fx-recharge-state', text: rc.ready ? 'Ready' : 'Spent' + (rc.lastRoll ? ' (rolled ' + rc.lastRoll + ')' : '') }),
+              rc.ready ? btn('Used', 'fx-recharge-use', 'tsi-btn--small tsi-btn--ghost', function () { CB.spendRecharge(f, name); save(); render(); })
+                : btn('Mark ready', 'fx-recharge-ready', 'tsi-btn--small tsi-btn--ghost', function () { rc.ready = true; save(); render(); })
+            ]);
+          })));
+        }
+        if (f.type === 'pc' && (f.curHp <= 0 || f.death)) {
+          var d = f.death || CB.newDeath();
+          var state1 = CB.deathState(f);
+          var dsRow = el('div', { class: 'tsi-enc-death', 'data-test': 'fx-death' }, [el('b', { text: 'Death saves ' })]);
+          [['success', 'Successes', d.s], ['fail', 'Failures', d.f]].forEach(function (g) {
+            var grp = el('span', { class: 'tsi-enc-death__grp', 'data-kind': g[0] }, [el('span', { class: 'tsi-enc-tiny', text: g[1] })]);
+            for (var i = 0; i < 3; i++) {
+              (function (i) {
+                var on = i < g[2];
+                grp.appendChild(el('button', {
+                  type: 'button', class: 'tsi-enc-pip tsi-enc-pip--' + g[0] + (on ? ' tsi-enc-pip--used' : ''), 'aria-pressed': on ? 'true' : 'false', 'data-test': 'fx-death-' + g[0],
+                  'aria-label': g[1] + ' ' + (i + 1), title: on ? 'Click to take this back.' : 'Click to tick it.',
+                  onclick: function () { deathPip(f, g[0], on); }
+                }));
+              }(i));
+            }
+            dsRow.appendChild(grp);
+          });
+          kids.push(dsRow);
+          if (state1 && state1 !== 'down') kids.push(el('p', { class: 'tsi-enc-muted', 'data-test': 'fx-death-state', text: state1 === 'stable' ? 'Stable: three successes.' : 'Dead.' }));
+          else kids.push(el('p', { class: 'tsi-enc-muted tsi-enc-tiny', text: 'Tick each save yourself; nothing rolls. Healing clears them.' }));
+        }
+        TSI.append(focusCard, kids);
+        if (block) {
+          blockCard.hidden = false;
+          TSI.append(blockCard, [
+            el('h4', { class: 'tsi-enc-subcard-title', text: 'Stat block' }),
+            enc.statBlock.render(block, { note: CB.srdNote(f, block) }),
+            f.refLink ? el('a', { class: 'tsi-btn tsi-btn--small tsi-btn--ghost', href: f.refLink, target: '_blank', rel: 'noopener', 'data-test': 'sb-ddb', title: 'Opens in your browser (needs internet)', text: 'D&D Beyond (needs internet)' }) : null
+          ]);
+        } else if (f.type === 'monster') {
+          blockCard.hidden = false;
+          TSI.append(blockCard, [el('h4', { class: 'tsi-enc-subcard-title', text: 'Stat block' }), enc.statBlock.render(null)]);
+        } else {
+          blockCard.hidden = true;
+        }
+      }
+      function deathPip(f, kind, wasOn) {
+        if (wasOn) { CB.untickDeath(f, kind); save(); render(); return; }
+        var res = CB.tickDeath(f, kind);
+        if (res.confirmDead) {
+          ask(f.name + ' has failed three death saves. Mark them dead?', 'Mark dead').then(function (yes) {
+            if (yes) CB.confirmDead(f); else CB.untickDeath(f, 'fail');
+            save(); render();
+          });
+          return;
+        }
+        save(); render();
+      }
+
+      /* ---------- From the SRD, and New stat block (guide 3) ---------- */
+      function openSrd() {
+        var q = input('srd-search', { type: 'search', placeholder: 'Search the SRD monsters (e.g. owlbear)', 'aria-label': 'Search the SRD monsters' });
+        var list = el('div', { class: 'tsi-enc-srdlist', 'data-test': 'srd-results' });
+        var msg = el('p', { class: 'tsi-enc-muted', role: 'status', 'data-test': 'srd-msg' });
+        var srd = window.TSI_DATA.srdMonsters || {};
+        function show() {
+          TSI.clear(list);
+          var hits = CB.searchSrd(q.value, 30);
+          if (!q.value.trim()) { list.appendChild(hint(Object.keys(srd).length + ' monsters are bundled in the suite. Type part of a name.')); return; }
+          if (!hits.length) { list.appendChild(hint('No SRD monster matches that.')); return; }
+          hits.forEach(function (slug) {
+            var b = srd[slug];
+            list.appendChild(el('div', { class: 'tsi-enc-item tsi-enc-item--plain', 'data-test': 'srd-hit', 'data-slug': slug }, [
+              el('div', { class: 'tsi-enc-item-main' }, [
+                el('div', { class: 'tsi-enc-item-title', text: b.n }),
+                el('div', { class: 'tsi-enc-item-meta' }, [badge((b.sz ? b.sz + ' ' : '') + b.t), badge('CR ' + (b.cr === 0.25 ? '1/4' : b.cr === 0.5 ? '1/2' : b.cr === 0.125 ? '1/8' : b.cr)), badge('AC ' + b.ac), badge('HP ' + b.hp)])
+              ]),
+              el('div', { class: 'tsi-enc-item-actions' }, btn('Add to Library', 'srd-add', 'tsi-btn--small', function () {
+                var entry = CB.srdLibraryEntry(slug, R.uid);
+                var have = state.library.filter(function (x) { return x.type === 'monster' && x.srd === slug && x.name === entry.name; })[0];
+                if (have) { msg.textContent = b.n + ' is already in the library.'; return; }
+                state.library.push(entry);
+                save(); render();
+                msg.textContent = 'Added ' + b.n + ' to the library, with its stat block.';
+              }))
+            ]));
+          });
+        }
+        q.addEventListener('input', show);
+        show();
+        TSI.modal.open({ title: 'From the SRD', className: 'tsi-enc-srd', body: [q, msg, list, el('p', { class: 'tsi-enc-muted tsi-enc-tiny', text: 'System Reference Document 5.2 © Wizards of the Coast, CC BY 4.0. Thug and Veteran are from SRD 5.1.' })], actions: [{ label: 'Close', value: true }], escValue: true, onOpen: function () { q.focus(); } });
+      }
+      function openBlockForm() {
+        var f = {};
+        function txt(key, label, attrs) { var i = input('nb-' + key, Object.assign({ 'aria-label': label }, attrs || {})); f[key] = i; return field(label, i); }
+        function area(key, label, hintText) {
+          var a = el('textarea', { class: 'tsi-input tsi-enc-input', rows: '3', 'aria-label': label, 'data-test': 'nb-' + key, placeholder: hintText || '' });
+          f[key] = a; return field(label, a);
+        }
+        var msg = el('p', { class: 'tsi-enc-hint', role: 'status', 'data-test': 'nb-msg' });
+        var closeIt = null;
+        var saveBtn = btn('Save to the library', 'nb-save', 'tsi-btn--primary', function () {
+          var vals = {};
+          Object.keys(f).forEach(function (k) { vals[k] = f[k].value; });
+          var res = CB.makeBlock(vals);
+          if (!res.ok) { msg.textContent = res.message; return; }
+          var b = res.block;
+          var dex = CB.modifier(b.ab[1]);
+          var dupe = state.library.filter(function (x) { return x.type === 'monster' && x.name === b.n && Number(x.maxHp) === b.hp; })[0];
+          if (dupe) { dupe.block = b; dupe.ac = b.ac; }
+          else state.library.push({ id: R.uid(), name: b.n, type: 'monster', maxHp: b.hp, curHp: b.hp, initBonus: dex, ac: b.ac, block: b, avatar: '', refLink: '' });
+          save(); render();
+          TSI.notify(b.n + ' is in the library with its stat block.', { type: 'ok', title: 'Stat block saved.' });
+          if (closeIt) closeIt(true);
+        });
+        TSI.modal.open({
+          title: 'New stat block',
+          className: 'tsi-enc-newblock',
+          body: [
+            el('p', { class: 'tsi-enc-muted', text: 'For a creature of your own. It joins the library as a monster, and its block shows when it is in a fight. One entry a line: "Name. Description".' }),
+            row([txt('name', 'Name', { placeholder: 'e.g. Reedwraith' }), txt('size', 'Size', { placeholder: 'Medium' })], 'tsi-enc-row--two'),
+            row([txt('type', 'Type', { placeholder: 'undead' }), txt('alignment', 'Alignment', { placeholder: 'neutral evil' })], 'tsi-enc-row--two'),
+            row([txt('ac', 'Armour Class', { type: 'number', min: '0' }), txt('hp', 'Hit points', { type: 'number', min: '1' })], 'tsi-enc-row--two'),
+            row([txt('hd', 'Hit dice', { placeholder: '8d8 + 16' }), txt('cr', 'Challenge rating', { placeholder: '3' })], 'tsi-enc-row--two'),
+            txt('speed', 'Speed', { placeholder: '30 ft., swim 40 ft.' }),
+            el('div', { class: 'tsi-enc-abil' }, [['str', 'STR'], ['dex', 'DEX'], ['con', 'CON'], ['int', 'INT'], ['wis', 'WIS'], ['cha', 'CHA']].map(function (a) { return txt(a[0], a[1], { type: 'number', min: '1', max: '30', placeholder: '10' }); })),
+            row([txt('saves', 'Saves', { placeholder: 'DEX +4, WIS +3' }), txt('skills', 'Skills', { placeholder: 'Stealth +6' })], 'tsi-enc-row--two'),
+            txt('resist', 'Resistances / immunities', { placeholder: 'cold; poison' }),
+            txt('senses', 'Senses', { placeholder: 'darkvision 60 ft., passive Perception 11' }),
+            txt('languages', 'Languages', { placeholder: 'Common' }),
+            area('traits', 'Traits', 'Slippery. It can move through gaps as narrow as an inch.'),
+            area('actions', 'Actions', 'Claw. Melee Attack Roll: +5, reach 5 ft. Hit: 9 (2d6 + 2) slashing damage.'),
+            area('reactions', 'Reactions'), area('legendary', 'Legendary actions'),
+            txt('legendaryResistance', 'Legendary resistances a day (if any)', { type: 'number', min: '0', max: '9' }),
+            msg, row([saveBtn])
+          ],
+          actions: [{ label: 'Cancel', value: false }],
+          escValue: false,
+          onOpen: function (o) { closeIt = o.close; f.name.focus(); }
+        });
       }
 
       /* ---------- The Add Combatant form ---------- */
@@ -483,6 +777,7 @@
         newInit.value = c.initBonus != null ? c.initBonus : '';
         newAvatar.value = c.avatar || '';
         newRef.value = c.refLink || '';
+        newAc.value = c.ac != null ? c.ac : '';
       }
       /* As before, Type keeps its last choice. */
       function resetAddForm() {
@@ -492,12 +787,13 @@
         newInit.value = '';
         newAvatar.value = '';
         newRef.value = '';
+        newAc.value = '';
         addLibBtn.textContent = 'Add to Library';
         cancelEditBtn.hidden = true;
       }
       function addToLibrary() {
         var res = R.saveLibraryEntry(state, {
-          name: newName.value, type: newType.value, maxHp: newMaxHp.value, initBonus: newInit.value, avatar: newAvatar.value, refLink: newRef.value
+          name: newName.value, type: newType.value, maxHp: newMaxHp.value, initBonus: newInit.value, avatar: newAvatar.value, refLink: newRef.value, ac: newAc.value
         }, editingId);
         if (!res.ok) { note(res.message); return; }
         if (!res.missing) { save(); render(); }
@@ -549,6 +845,7 @@
         if (!res.ok) return;
         save();
         render();
+        showTurnNotes(res);
       }
 
       /* The three boxes, read with the browser's own "couldn't read that number" flag (ENC-28). */
@@ -573,10 +870,22 @@
         save();
         render();
       }
+      /* A turn began (Begin, or Complete Turn): any recharge rolled for the creature is shown. */
+      function showTurnNotes(res) {
+        if (!res || !res.turnNotes || !res.turnNotes.length) return;
+        var cur = R.current(state.encounter);
+        TSI.notify(res.turnNotes.map(function (n) { return n.text; }).join(' \u00b7 '), { type: 'info', title: (cur ? cur.name : 'Recharge') + ':', id: 'tsi-enc-recharge', timeout: 10000 });
+      }
       var guardedCompleteTurn = TSI.oneAtATime(function () {
         var inp = turnInput();
+        var tgt = state.encounter.roster.filter(function (x) { return x.encId === inp.targetId; })[0];
+        var dmgIn = Number(String(inp.damage).trim());
         var res = R.completeTurn(state, inp);
         if (!res.ok) { if (!res.silent) note(res.message); return; }
+        /* Damage to a creature that is concentrating: the save's DC is shown (nothing rolls). */
+        var cn = tgt && String(inp.damage).trim() !== '' ? CB.concentrationNote(tgt, dmgIn) : null;
+        if (cn) TSI.notify(tgt.name + ': ' + cn.text, { type: 'warn', title: 'Concentration', id: 'tsi-enc-conc', timeout: 14000 });
+        showTurnNotes(res);
         clearUsedBoxes(inp, false);
         reportIfWon();
         save();
@@ -734,6 +1043,8 @@
         if (!R.handoffWon(e)) return;
         e.reported = true;
         TSI.handoff.write('result', { id: e.handoff, result: 'won', at: new Date().toISOString() });
+        /* The table log (guide 1) notes the fight: what the players won, for the recap. */
+        if (TSI.tablelog) TSI.tablelog.add({ kind: 'fight', ref: 'won:' + e.handoff, label: 'Won: ' + (e.name || 'a fight') });
         TSI.notify('Every enemy is down. The Explorer has been told: click Won there to carry on.', { title: 'Fight won.', type: 'ok', id: 'tsi-enc-handoff-won' });
       }
       TSI.handoff.listen(life, 'fight', function () { checkHandoff(); });

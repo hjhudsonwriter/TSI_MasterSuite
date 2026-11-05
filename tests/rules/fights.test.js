@@ -70,7 +70,7 @@
 
   test('the groups match the events\' suggested enemies', function (t) {
     /* From each fight's suggest line in journey-events.js. */
-    var expected = { t2: [11, 14], t13: [11, 13], c6: [13, 15], c9: [3, 3], c10ride: [13, 15], c10camp: [13, 15], c12: [9, 13], f1: [8, 10], t9: [1, 1] };
+    var expected = { t2: [11, 14], t13: [11, 13], c6: [13, 15], c9: [3, 3], c10ride: [13, 15], c10camp: [13, 15], c12: [9, 13], f1: [8, 10], t20: [4, 4] };
     Object.keys(expected).forEach(function (id) {
       var enc = FD.encounters[id];
       t.equal(count(F.groups(FD, enc, 'low')), expected[id][0], id + ' levels 7–10');
@@ -94,7 +94,6 @@
     t.same([M.spy.ac, M.spy.hp, M.spy.init], [12, 27, 2]);
     t.same([M.ogre.ac, M.ogre.hp, M.ogre.init], [11, 59, -1]);
     t.same([M.hill_giant.ac, M.hill_giant.hp, M.hill_giant.init], [13, 105, -1]);
-    t.same([M.rootbound_husk.hp, M.rootbound_husk.ac], [35, null], 'the Husk: 35 HP, as in the Heartwood Ritual');
   });
 
   test('every map\'s start corners are on its grid, and every region has a look', function (t) {
@@ -430,10 +429,12 @@
 
   test('a completed turn that drops the last monster: the fight ends and is won', function (t) {
     var s = tracker([pc('Kaelen')]);
-    ER.loadHandoff(s, build('t9'));
+    var h = build('f1');
+    h.monsters = [Object.assign({}, h.monsters[0], { count: 1, hp: 11 })];       /* one enemy, so the last one drops at once */
+    ER.loadHandoff(s, h);
     ER.begin(s);
     var husk = s.encounter.roster.filter(function (c) { return c.type === 'monster'; })[0];
-    var res = ER.completeTurn(s, { targetId: husk.encId, damage: '35', condition: '', turns: '' });
+    var res = ER.completeTurn(s, { targetId: husk.encId, damage: String(husk.hp || 99), condition: '', turns: '' });
     t.ok(res.ok && res.ended);
     t.equal(ER.handoffWon(s.encounter), true);
   });

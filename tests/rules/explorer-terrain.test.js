@@ -238,9 +238,11 @@
     });
   });
 
-  test('T20\'s fight is set up for both bands with stat blocks the Combat Tracker knows', function (t) {
+  test('T20\'s fight (4 crocodiles at every level) is set up for both bands with stat blocks the Combat Tracker knows', function (t) {
     var F = window.TSI_DATA.fights;
     t.ok(F.encounters.t20 && F.encounters.t20.low && F.encounters.t20.high);
-    ['crocodile', 'shambling_mound'].forEach(function (m) { t.ok(F.monsters[m] && F.monsters[m].hp > 0, m); });
+    ['crocodile'].forEach(function (m) { t.ok(F.monsters[m] && F.monsters[m].hp > 0, m); });
+    t.same([F.monsters.shambling_mound, F.monsters.rootbound_husk, F.encounters.t9], [undefined, undefined, undefined], 'the Shambling Mound, the Rootbound Husk and T9 are gone (Harry, 5 November 2026)');
+    t.same(F.encounters.t20.high, [['crocodile', 4]]);
   });
 }());

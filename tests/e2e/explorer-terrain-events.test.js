@@ -69,7 +69,7 @@ async function done(page) { await jClick(page, 'event-done'); await page.waitFor
       await jClick(page, 'check-failure');
       await jClick(page, 'choice-0');
       const act = await page.textContent(MODAL + ' [data-test=journey-act]');
-      assert(/Levels 7–10: 4 crocodiles/.test(act), act);
+      assert(/4 crocodiles/.test(act), act);
       await page.waitForTimeout(380);
       const [win] = await Promise.all([context.waitForEvent('page'), page.click(MODAL + ' [data-test=fight-send]')]);
       await win.waitForLoadState();

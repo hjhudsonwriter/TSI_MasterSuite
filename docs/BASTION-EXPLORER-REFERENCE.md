@@ -485,7 +485,7 @@ During an event's checks, pace adds reminders: "Slow pace: advantage on Stealth 
 - particular provinces (the Region);
 - particular gods (the Region's god).
 
-T2 also needs a river nearby (within 2 hexes, 12 miles). T9 is switched off.
+T2 also needs a river nearby (within 2 hexes, 12 miles). T9 (The Husk in the Furrows) was removed on 5 November 2026.
 
 **Drawing like cards.** Travel and campfire events each have a "used" list shared across maps. Nothing repeats until every event that could come up here has been used.
 
@@ -506,7 +506,7 @@ T2 also needs a river nearby (within 2 hexes, 12 miles). T9 is switched off.
 - The event goes back into its pool, and for a travel event the day no longer counts as having had one.
 - The day's road roll stays used.
 
-**There are 17 travel events** (T1–T16 and T18; there is no T17), of which T9 is off. **There are 12 campfire events and 3 follow-ups.**
+**There are 16 travel events** (T1–T8 and T10–T16 and T18; there is no T9 or T17, both removed). **There are 12 campfire events and 3 follow-ups.**
 
 | Code | Title | Where | Possible results (summary) |
 |---|---|---|---|
@@ -518,7 +518,6 @@ T2 also needs a river nearby (within 2 hexes, 12 miles). T9 is switched off.
 | T6 | The Dying Messenger | any | thread The Sealed Dispatch (resolving gives +250 and +1 honour, or 0 and −1) |
 | T7 | Rootfall | Telluria's lands | −6 miles; −50 and Telluria's Footing (3 days); or +150 and Root-Cursed (7 days) |
 | T8 | The Waystone Riddle | Telluria's lands | +100 with a DM note (potion); or −6 miles |
-| T9 (off) | The Husk in the Furrows | Telluria's lands | fight t9; +60; −6; thread The Spreading Rot |
 | T10 | The Muster Checkpoint | Eastern Province (North) map | thread Slade's Worry; lose the day or −100; No long rest; DM note −1 honour with Clan Slade |
 | T11 | The Light Coin | Southern Province (West) map | +100 or −50; thread False Gold |
 | T12 | The Sunburst Shrine | Southern and Western Provinces | Aurush's Warmth (until Make Camp); −50 |
