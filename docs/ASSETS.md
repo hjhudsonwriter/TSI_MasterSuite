@@ -675,3 +675,11 @@ Harry's pictures, kept byte for byte (all square, 512 × 512). Used by `tools/en
 | Condition icons (16 SVGs, from game-icons.net, CC BY 3.0, black background square removed; credits in the folder's `CREDITS.txt`) | `shared/art/conditions/<condition>.svg` |
 
 Data (not art): `tools/encounter/data/srd-monsters.js` (343 SRD stat blocks, built by `tools/encounter/dev/build-srd.py` from the 5e-bits database) and `tools/encounter/data/party-data.js` (the party and the 13 monsters' numbers).
+
+### Sabrecat: Plainsmane and Boltback (5 November 2026)
+Harry's `SC_Plainsmane` and `SC_Boltback` pictures and videos were turned into the same kind of files as the first two (picture as WebP, 768 x 1360; video H.264, CRF 30, no audio, 720 x 1280, 8 seconds). His uploaded originals were removed from the folder (they are in the git history).
+| Old name | New location |
+|---|---|
+| `SC_Plainsmane.png` / `SC_Plainsmane.mp4` | `tools/beasthandler/assets/sabrecat/plainsmane.webp` / `.mp4` |
+| `SC_Boltback.png` / `SC_Boltback.mp4` | `tools/beasthandler/assets/sabrecat/boltback.webp` / `.mp4` |
+| `SC_Ashmark.png` (a picture only; Harry is regenerating it, so it was left out for now) | not in the suite; Ashmark still shows the blank frame |

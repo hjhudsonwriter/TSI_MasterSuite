@@ -4509,3 +4509,11 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 ### VOICE-02 · Isla Tarrow, Linnet and Dren Marr matched to the other voice clips (5 November 2026, Harry)
 - Before: Isla Tarrow -24.6 LUFS, Linnet -23.1 LUFS, Dren Marr -17.1 LUFS. After: all three at about -21.5 LUFS, the same as Tovin Ash and Pell Ardwick (Isla +3.6 dB, Linnet +2.1 dB, Dren -3.9 dB, loudest peaks held under -1 dBFS). Same format (mono MP3, 128 kbit/s); lengths are 25 milliseconds longer (MP3 padding).
 - Left alone: Seris Thane (-21.4 LUFS) was already level, and the Maerys letter (-19.5 LUFS) is a different kind of clip (a letter read out) so it was not touched. The originals are in the git history.
+
+### CHK-01 · Harry's checklist, part 1 (5 November 2026)
+- **Sabrecat tables:** Attachment Cue 7 is now "Stays close beside its handler in the dark" and Instinctive Trigger 1 is "Being approached from behind". The other 14 lines were approved as drafted. A Sabrecat already in the Beast Pen keeps the personality it rolled (saved words); only new rolls use the new lines.
+- **Compendium of Beasts:** Harry's edits to the Buckbear, Dire Wolf, Fellcat, Griffin and Sabrecat descriptions are in (the Wyvern was fine as it was). His wording is kept exactly, including "Dire Wolves" with capitals.
+- **Sabrecat pictures:** Plainsmane and Boltback now have their picture and looping video. Ashmark still shows the blank frame: Harry is regenerating its picture, so the uploaded `SC_Ashmark.png` was left out.
+- **Evidence Board:** six of the seven "Session 3 (confirm)" clues were confirmed as played (Ships out of time, Captain Isela Morrow, Knocking on the hull, Charts that don't fit, Korlis's lost weeks, The covenant): they are pinned from the start. Maerys Vell stays hidden, ready to award.
+  - Before: a board already in use (like Harry's) kept those six waiting. After: the board is brought up to date once (a board marked "seedRev 2"): each of the six still waiting is pinned, in free space; one the DM already pinned or removed is left alone. It is saved with the next change to the board. The board now has 13 seed notes (it had 7).
+- Part 2 of the checklist (sounds and board art) was not filled in, so nothing was done for it.

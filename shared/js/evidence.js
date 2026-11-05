@@ -17,7 +17,8 @@
   var cached = null;
 
   function seed() { return (window.TSI_DATA && window.TSI_DATA.evidenceSeed) || { notes: [], prepared: [] }; }
-  function fromRaw(raw) { return R.clean(raw) || R.fresh(seed()); }
+  /* A saved board is read, cleaned, and brought up to the current seed (R.upgradeSeed: the same every time, saved with the next change). */
+  function fromRaw(raw) { var c = R.clean(raw); return c ? R.upgradeSeed(c, seed()) : R.fresh(seed()); }
   function day() {
     try {
       var ex = TSI.store.get('tsi.explorer.save', null);
