@@ -61,8 +61,8 @@
     });
   });
 
-  test('Harry\'s choices: T9 is switched off; T17 The Second Marker is gone', function (t) {
-    t.ok(J.def(E, 't9').off);
+  test('Harry\'s choices: T9 The Husk in the Furrows and T17 The Second Marker are gone', function (t) {
+    t.equal(J.def(E, 't9'), null, 'removed (Harry, 5 November 2026)');
     ['northern_province', 'midland_province', 'eastern_province'].forEach(function (region) {
       t.ok(poolIds(fresh(region)).indexOf('t9') === -1, 'no T9 in ' + region);
     });

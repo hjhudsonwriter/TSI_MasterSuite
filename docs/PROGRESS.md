@@ -4,6 +4,9 @@
 
 **Strip Back Overhaul (steps S01 to S17, 22 to 25 October 2026) is built and merged; S19 (art) and S20 (guide and home-screen text) and S21 (these docs) are done. S18 (removing the internal Day Log data) is done (26 October 2026, BAS-SB-83).** The war game, Clan founding, the Hall's trade system, the three Shrines, the Library, Arcane Laboratory, Clan Influence and the Day Log screens are gone or folded into the Temple, Beast Pen, Dock and Workshop. Details: `docs/STRIP-BACK-PLAN.md`, `docs/strip-back/*-built.md`, and the new "Strip Back Overhaul" section at the end of `docs/KNOWN_ISSUES.md` (BAS-SB-01 onwards).
 
+### 5 November 2026: Shambling Mound, Rootbound Husk and T9 taken out of the Explorer's fights
+- At Harry's request: the Explorer's Shambling Mound and Rootbound Husk stat lines are gone, and so is event T9 (The Husk in the Furrows; it was already switched off). T20 The Marsh Lights is now 4 crocodiles at every level. The Heartwood Ritual's own Rootbound Husk is untouched. KNOWN_ISSUES EXP-FIGHT-03.
+
 ### 5 November 2026: Compendium of Beasts
 - **Done:** a small book button in the Beast Pen's panel, in the DM's view (opens a pop-up) and in the Bastion's Player View (opens a book over the panel; × or Esc closes it). Six tabs, one for each kind (Buckbear, Dire Wolf, Fellcat, Griffin, Sabrecat, Wyvern). Each page is Harry's engraving on a parchment page, the kind's name, its Regional Varieties (read from `tools/beasthandler/data/profile-tables.js`, so the list always matches the Beast Handler's, with each variety's area) and a general description (not about any one region). It only shows things; it saves nothing.
 - **Descriptions are my own draft for Harry to review**, as asked. Edit them in `tools/beasthandler/data/beast-compendium-data.js` (one `lines` list per kind).
