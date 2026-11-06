@@ -3,7 +3,7 @@
    - the Artisan Tools card is gone; the Workshop's panel has five staff cards side by side (Handyman, Smith, Scholar,
      Alchemist, Artisan) that open one by one as the Workshop is upgraded; a staff member who is not open yet is greyed, with
      the level that opens them;
-   - the Handyman's list is marked as a placeholder, the Artisan says "Extra options: to come";
+   - the Handyman's and the Artisan's lists are Harry's own (6 November 2026): no placeholder, and the Artisan crafts;
    - each open staff member can be given an order; each does one job at a time (a second one is refused, the button says Busy)
      and the five work side by side; Craft Magic Item sits beneath, labelled "Not a staff job", and runs beside them;
    - the Scholar's Research and Overland charts and the Alchemist's four jobs are chosen from a dropdown on the card;
@@ -90,7 +90,7 @@ async function issue(ba, test) {
     const h = await cardState(ba, 'handyman');
     equal([h.locked, h.level, h.issue.length], [false, 'Level 1 · open', 1]);
     equal(h.issue[0].test, 'issue-workshop__craft');
-    assert(/PLACEHOLDER/.test(h.text) && /to be supplied/.test(h.text), 'the Handyman\'s list is marked as a placeholder: ' + h.text);
+    assert(!/PLACEHOLDER/i.test(h.text) && !/to be supplied/.test(h.text), 'the Handyman\'s list is no longer a placeholder: ' + h.text);
     for (const [id, lvl] of [['smith', 2], ['scholar', 3], ['alchemist', 4], ['artisan', 5]]) {
       const c = await cardState(ba, id);
       equal([c.locked, c.ariaDisabled, c.level, c.issue.length], [true, 'true', 'Opens at Level ' + lvl, 0], id);
@@ -99,24 +99,24 @@ async function issue(ba, test) {
     equal((await ba.$$('[data-test=workshop-magic] button[data-test=issue-workshop__craft_magic_item]')).length, 1, 'Craft Magic Item is there from Level 1');
   });
 
-  await check('the Handyman has a list of 100 or so items from the six tool tables, 3 days; an order goes in, with his name on it', async () => {
+  await check('the Handyman has Harry\'s list of 26 items (four tool tables and his own extra), 3 days; an order goes in, with his name on it', async () => {
     const n = await ba.$$eval('[data-test=sel-workshop__craft] option', os => os.length);
-    assert(n > 90, 'items: ' + n);
+    equal(n, 26, 'items');
     equal(await bare(ba, '[data-test=days-workshop__craft]'), 'Takes 3 days');
-    const i = await ba.$$eval('[data-test=sel-workshop__craft] option', os => os.findIndex(o => o.textContent === 'Backpack'));
+    const i = await ba.$$eval('[data-test=sel-workshop__craft] option', os => os.findIndex(o => o.textContent === 'Costume clothes'));
     await ba.selectOption('[data-test=sel-workshop__craft]', String(i));
     await issue(ba, 'issue-workshop__craft');
     const s = await bas(ba);
-    equal(s.pendingOrders.map(o => [o.label, o.dueDay - o.issuedDay]), [['Workshop: Handyman - Backpack', 3]]);
+    equal(s.pendingOrders.map(o => [o.label, o.dueDay - o.issuedDay]), [['Workshop: Handyman - Costume clothes', 3]]);
     const h = await cardState(ba, 'handyman');
     equal([h.issue[0].text, h.issue[0].off], ['Busy', true], 'the Handyman is busy');
-    assert(/Working on: Workshop: Handyman - Backpack/.test(h.text), h.text);
+    assert(/Working on: Workshop: Handyman - Costume clothes/.test(h.text), h.text);
     assert(/The Handyman is busy/.test(h.text), h.text);
   });
 
   section('They open one by one as the Workshop is upgraded');
 
-  await check('Level 2 opens the Smith (Smith\'s Tools, 30 items), Level 3 the Scholar, Level 4 the Alchemist, Level 5 the Artisan', async () => {
+  await check('Level 2 opens the Smith (Smith\'s Tools, 14 items), Level 3 the Scholar, Level 4 the Alchemist, Level 5 the Artisan', async () => {
     for (const [lvl, id] of [[2, 'smith'], [3, 'scholar'], [4, 'alchemist'], [5, 'artisan']]) {
       await setLevel(ba, lvl);
       await openWorkshop(ba);
@@ -128,11 +128,13 @@ async function issue(ba, test) {
     }
     await setLevel(ba, 2);
     await openWorkshop(ba);
-    equal(await ba.$$eval('[data-test=sel-workshop__craft_smith] option', os => os.length), 30);
+    equal(await ba.$$eval('[data-test=sel-workshop__craft_smith] option', os => os.length), 14);
     await setLevel(ba, 5);
     await openWorkshop(ba);
-    assert(/Extra options: to come/.test((await cardState(ba, 'artisan')).text), (await cardState(ba, 'artisan')).text);
-    equal((await cardState(ba, 'artisan')).issue, [], 'the Artisan gives no orders yet');
+    const art = await cardState(ba, 'artisan');
+    assert(!/to come/.test(art.text), art.text);
+    equal(art.issue.map(b => b.test), ['issue-workshop__craft_artisan'], 'the Artisan crafts his own list');
+    equal(await ba.$$eval('[data-test=sel-workshop__craft_artisan] option', os => os.map(o => o.textContent)), ['Beast Muzzle', 'Falconer’s Hood & Jesses', 'Handler’s Gauntlets', 'Jaw-Strap & Tail Sheath']);
   });
 
   await check('the Upgrade row names who opens next', async () => {
@@ -149,16 +151,16 @@ async function issue(ba, test) {
   await check('the Scholar and the Alchemist choose their job from a dropdown on the card', async () => {
     await setLevel(ba, 5);
     await openWorkshop(ba);
-    equal((await cardState(ba, 'scholar')).jobs, ['Craft (Calligrapher’s Supplies)', 'Research (scriptures)', 'Prepare Overland Travel Charts']);
-    equal((await cardState(ba, 'alchemist')).jobs, ['Craft (Alchemist’s Supplies)', 'Alchemy (three poisons)', 'Craft Common', 'Craft Uncommon']);
+    equal((await cardState(ba, 'scholar')).jobs, ['Craft (Calligrapher’s Supplies)', 'Prepare Overland Travel Charts']);
+    equal((await cardState(ba, 'alchemist')).jobs, ['Craft (Alchemist’s Supplies)', 'Craft Uncommon']);
     equal((await cardState(ba, 'smith')).jobs, null, 'one job: no dropdown');
-    await ba.selectOption('[data-test=staff-job-scholar]', '2');
+    await ba.selectOption('[data-test=staff-job-scholar]', '1');
     await ba.waitForSelector('[data-test=issue-workshop__prepare_overland_travel_charts]');
     equal(await bare(ba, '[data-test=days-workshop__prepare_overland_travel_charts]'), 'Takes 4 days');
-    await ba.selectOption('[data-test=staff-job-alchemist]', '3');
+    await ba.selectOption('[data-test=staff-job-alchemist]', '1');
     await ba.waitForSelector('[data-test=issue-workshop__craft_uncommon]');
     equal(await bare(ba, '[data-test=days-workshop__craft_uncommon]'), 'Takes 10 days');
-    equal(await ba.$$eval('[data-test=sel-workshop__craft_uncommon] option', os => os.length), 9);
+    equal(await ba.$$eval('[data-test=sel-workshop__craft_uncommon] option', os => os.length), 8);
   });
 
   await check('one order for each staff member and Craft Magic Item: six at once; a second for a busy one is refused', async () => {
@@ -166,28 +168,28 @@ async function issue(ba, test) {
     await ba.evaluate(() => TSI.bastion.debug.change(s => { s.pendingOrders = []; }));
     await openWorkshop(ba);
     await ba.selectOption('[data-test=staff-job-scholar]', '1');
-    await ba.waitForSelector('[data-test=issue-workshop__research]');
-    await ba.selectOption('[data-test=staff-job-alchemist]', '2');
-    await ba.waitForSelector('[data-test=issue-workshop__craft_common]');
-    for (const t of ['craft', 'craft_smith', 'research', 'craft_common', 'craft_magic_item']) await issue(ba, 'issue-workshop__' + t);
+    await ba.waitForSelector('[data-test=issue-workshop__prepare_overland_travel_charts]');
+    await ba.selectOption('[data-test=staff-job-alchemist]', '1');
+    await ba.waitForSelector('[data-test=issue-workshop__craft_uncommon]');
+    for (const t of ['craft', 'craft_smith', 'prepare_overland_travel_charts', 'craft_uncommon', 'craft_artisan', 'craft_magic_item']) await issue(ba, 'issue-workshop__' + t);
     let s = await bas(ba);
-    equal(s.pendingOrders.map(o => o.fnId), ['craft', 'craft_smith', 'research', 'craft_common', 'craft_magic_item']);
+    equal(s.pendingOrders.map(o => o.fnId), ['craft', 'craft_smith', 'prepare_overland_travel_charts', 'craft_uncommon', 'craft_artisan', 'craft_magic_item']);
     equal(s.pendingOrders.map(o => o.label), [
-      'Workshop: Handyman - Backpack', 'Workshop: Smith - Battleaxe', 'Workshop: Scholar - Research (Geographical Scriptures)', 'Workshop: Alchemist - Craft Common (Bead of Nourishment)', 'Workshop: Craft Magic Item (Bead of Nourishment)'
-    ].map((l, i) => i === 0 ? s.pendingOrders[0].label : l));
-    equal(s.pendingOrders.map(o => o.dueDay - o.issuedDay), [3, 3, 5, 5, 10]);
-    for (const id of ['handyman', 'smith', 'scholar', 'alchemist']) {
+      s.pendingOrders[0].label, 'Workshop: Smith - Battleaxe', 'Workshop: Scholar - Prepare Overland Travel Charts', 'Workshop: Alchemist - Craft Uncommon (Bag of Holding)', 'Workshop: Artisan - Beast Muzzle', 'Workshop: Craft Magic Item (Boots of the Winterlands)'
+    ]);
+    equal(s.pendingOrders.map(o => o.dueDay - o.issuedDay), [3, 3, 4, 10, 3, 10]);
+    for (const id of ['handyman', 'smith', 'scholar', 'alchemist', 'artisan']) {
       const c = await cardState(ba, id);
       equal([c.issue[0].text, c.issue[0].off], ['Busy', true], id + ' is busy');
     }
-    /* The Alchemist is busy whatever he is asked: his other jobs refuse too. */
-    await ba.selectOption('[data-test=staff-job-alchemist]', '1');
-    await ba.waitForSelector('[data-test=issue-workshop__alchemy]');
-    equal(await ba.$eval('[data-test=issue-workshop__alchemy]', b => b.disabled), true);
+    /* The Alchemist is busy whatever he is asked: his other job refuses too. */
+    await ba.selectOption('[data-test=staff-job-alchemist]', '0');
+    await ba.waitForSelector('[data-test=issue-workshop__craft_alchemist]');
+    equal(await ba.$eval('[data-test=issue-workshop__craft_alchemist]', b => b.disabled), true);
     assert(/The Alchemist is busy/.test(await bare(ba, '[data-test=staff-alchemist]')));
     await H.shot(ba, 'workshop-busy');
-    /* The Artisan alone is idle (nothing to give); Craft Magic Item is not blocked by anyone. */
-    equal((await bas(ba)).pendingOrders.length, 5);
+    /* Craft Magic Item is not blocked by anyone. */
+    equal((await bas(ba)).pendingOrders.length, 6);
   });
 
   await check('a reload changes nothing: the orders are still there and the same staff are still busy', async () => {
@@ -196,7 +198,7 @@ async function issue(ba, test) {
     await ba.waitForFunction(() => window.TSI && TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state(), null, { timeout: 8000 });
     await H.dismissNotices(ba);
     const s = await bas(ba);
-    equal(s.pendingOrders.map(o => o.fnId), ['craft', 'craft_smith', 'research', 'craft_common', 'craft_magic_item']);
+    equal(s.pendingOrders.map(o => o.fnId), ['craft', 'craft_smith', 'prepare_overland_travel_charts', 'craft_uncommon', 'craft_artisan', 'craft_magic_item']);
     equal(s.facilityLevels.workshop, 5);
     equal(['artisanTools', 'legacyFacilities'].filter(k => k in s), []);
     await openWorkshop(ba);

@@ -1,7 +1,7 @@
-/* The Ironbow Bastion Manager: the 12 tool and supply tables (only the 9 ending in "Tools" or "Supplies" can be picked as artisan tools).
+/* The Ironbow Bastion Manager: the tool and supply tables. Harry's review of the Workshop (6 November 2026) cut every list to the items he kept, removed the Mason's Tools and Brewer's Supplies tables
+   (nothing was left in them) and added two short tables of his own: "Handyman’s Extras" and "Artisan’s Extras". The Arcana, Armaments and Magic Items tables are only a reference (the Compendium) and were left as they were. Originally 12 tables, the old tool's data/tools_tables.json (only the 9 ending in "Tools" or "Supplies" could be picked as artisan tools).
    A word-for-word copy of the old tool's data/tools_tables.json, stored as a script so it
    loads from a double-clicked file. Edit it here. */
-window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionTools = {
   "Arcana Table": [
     "Bead of Nourishment",
@@ -50,43 +50,23 @@ window.TSI_DATA.bastionTools = {
   ],
   "Smith’s Tools": [
     "Battleaxe",
-    "Handaxe",
     "Greataxe",
     "Warhammer",
-    "War pick",
     "Longsword",
     "Shortsword",
     "Greatsword",
-    "Scimitar",
-    "Rapier",
-    "Dagger",
-    "Spear",
-    "Javelin",
-    "Trident",
-    "Mace",
     "Morningstar",
-    "Flail",
-    "Halberd",
     "Glaive",
-    "Pike",
-    "Lance",
     "Chain shirt",
-    "Scale mail",
-    "Chain mail",
     "Plate armor",
-    "Ring mail",
-    "Half plate",
     "Manacles",
-    "Caltrops",
-    "Grappling hook"
+    "Grappling hook",
+    "Beast-Collar & Lead",
+    "Beast-Chain Rig"
   ],
   "Alchemist’s Supplies": [
-    "Acid vial",
     "Alchemist’s fire",
-    "Basic poison",
     "Antitoxin",
-    "Firebomb (reskinned alchemist’s fire)",
-    "Frost vial (cold variant)",
     "Sticky bomb (glue grenade)",
     "Potion of healing (common)",
     "Potion of greater healing (base item)",
@@ -97,15 +77,15 @@ window.TSI_DATA.bastionTools = {
     "Potion of resistance (base item)",
     "Darkvision draught (base item)",
     "Stoneskin varnish (base item)",
-    "Vitality tonic (base item)"
+    "Vitality tonic (base item)",
+    "Stillroot Salve",
+    "Dreamroot Salve",
+    "Beast Salve",
+    "Beast Scent Lure"
   ],
   "Weaver’s Tools": [
-    "Common clothes",
     "Costume clothes",
     "Fine clothes",
-    "Traveler’s clothes",
-    "Robe",
-    "Cloak",
     "Clan Farmer Warrior Disguise",
     "Clan Blackstone Warden Disguise",
     "Clan Bacca Warrior Disguise",
@@ -115,110 +95,29 @@ window.TSI_DATA.bastionTools = {
     "Clan Karr Warrior Disguise",
     "Agent of Aurush Disguise",
     "Pelagosi Tide-Preacher Disguise",
-    "Tellurian Priest Disguise",
-    "Blanket",
-    "Bedroll",
-    "Backpack"
+    "Tellurian Priest Disguise"
   ],
   "Leatherworker’s Tools": [
-    "Leather armor",
-    "Studded leather armor",
-    "Hide armor",
-    "Leather shield cover",
-    "Leather shield straps",
-    "Leather scabbard",
-    "Leather sheath",
-    "Boots",
-    "Gloves",
-    "Bracers",
-    "Leather coat",
-    "Reinforced cloak",
-    "Backpack",
-    "Saddlebags",
-    "Quiver",
-    "Map case (leather)",
     "Whip",
-    "Sling pouch",
-    "Saddle",
-    "Tack and reins",
-    "Tent (leather panels)",
-    "Bedroll straps",
-    "Waterproof cover",
     "Boots (magic item base)",
     "Belt (magic item base)",
     "Cloak (magic item base)",
     "Bracers (magic item base)"
   ],
   "Carpenter’s Tools": [
-    "Wooden shield",
-    "Wood‑cored shield",
-    "Wooden laminar armor piece",
-    "Door frame",
-    "Window frame",
-    "Gate frame",
-    "Portcullis frame",
     "Chest (wooden)",
     "Coffer (wooden)",
     "Lockbox (wooden body)",
-    "Ladder",
-    "Scaffolding section",
-    "Platform",
-    "Stake",
-    "Barricade",
-    "Palisade section",
-    "Small boat hull (simple)",
-    "Cabin (wooden structure)",
-    "Interior wall (wood)",
-    "Wooden floor section",
-    "Bridge (wood)"
-  ],
-  "Mason’s Tools": [
-    "Stone wall section",
-    "Brick wall section",
-    "Tower (stone)",
-    "Keep (stone)",
-    "Cellar (stone)",
-    "Foundation (stone)",
-    "Stone staircase",
-    "Brick fireplace",
-    "Brick chimney",
-    "Stone door",
-    "Stone threshold",
-    "Stone bridge",
-    "Stone road section",
-    "Statue",
-    "Flagstone floor",
-    "Stone tile",
-    "Moat lining (stone)"
+    "Ladder"
   ],
   "Glassblower’s Tools": [
     "Arcane focus (crystal)",
     "Arcane focus (orb)",
     "Bottle, glass",
-    "Vial, glass",
-    "Spyglass",
-    "Window pane",
-    "Stained glass window"
-  ],
-  "Brewer’s Supplies": [
-    "Fermented ale",
-    "Fermented beer",
-    "Fermented cider",
-    "Fermented mead",
-    "Fermented wine (table)",
-    "Strong liquor (simple)",
-    "Weak beer / small beer",
-    "Keg of ale",
-    "Keg of beer",
-    "Cask of wine",
-    "Bottle of wine",
-    "Bottle of spirits",
-    "Brewing yeast culture"
+    "Vial, glass"
   ],
   "Calligrapher’s Supplies": [
-    "Spell scroll (mundane script)",
     "Certificate or deed",
-    "Official seal script",
     "Chart of Southern Province",
     "Chart of Western Province",
     "Chart of Eastern Province",
@@ -228,5 +127,14 @@ window.TSI_DATA.bastionTools = {
     "Chart of The East Isle",
     "Chart of The Bolt Isle",
     "Chart of the Great Sea Road"
+  ],
+  "Handyman’s Extras": [
+    "Beast-Catcher’s Kit"
+  ],
+  "Artisan’s Extras": [
+    "Falconer’s Hood & Jesses",
+    "Jaw-Strap & Tail Sheath",
+    "Handler’s Gauntlets",
+    "Beast Muzzle"
   ]
 };

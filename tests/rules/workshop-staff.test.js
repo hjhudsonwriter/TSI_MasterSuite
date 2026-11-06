@@ -66,25 +66,30 @@
   test('five staff open one by one: Handyman 1, Smith 2, Scholar 3, Alchemist 4, Artisan 5; the Workshop is not raised by the change', function (t) {
     t.same(R.workshopStaff(data).map(function (s) { return [s.id, s.name, s.level]; }),
       [['handyman', 'Handyman', 1], ['smith', 'Smith', 2], ['scholar', 'Scholar', 3], ['alchemist', 'Alchemist', 4], ['artisan', 'Artisan', 5]]);
-    t.same(R.workshopStaff(data).filter(function (s) { return s.placeholder; }).map(function (s) { return s.id; }), ['handyman', 'artisan'], 'the Handyman and the Artisan are marked placeholders in the data');
-    t.ok(/PLACEHOLDER/.test(R.workshopStaff(data)[0].note) && /to come/.test(R.workshopStaff(data)[4].note));
+    t.same(R.workshopStaff(data).filter(function (s) { return s.placeholder; }).map(function (s) { return s.id; }), [], 'no staff list is a placeholder any more (Harry supplied the Handyman\'s and the Artisan\'s, 6 November 2026)');
     t.equal(R.defaultState(data).facilityLevels.workshop === undefined || R.defaultState(data).facilityLevels.workshop === 1, true, 'a new Workshop starts at Level 1');
     R.workshopStaff(data).forEach(function (st) {
       R.staffOrders(WS, st.id).forEach(function (fn) {
         t.equal(fn.requiredFacilityLevel || 1, st.level, st.name + ': ' + fn.id + ' opens at the staff member\'s level');
       });
     });
-    t.same(R.staffOrders(WS, 'artisan'), [], 'the Artisan has no orders of his own yet (Extra options: to come)');
+    t.same(R.staffOrders(WS, 'artisan').map(function (f) { return f.id; }), ['craft_artisan'], 'the Artisan crafts his own list');
+    t.same(R.staffOrders(WS, 'scholar').map(function (f) { return f.id; }), ['craft_scholar', 'prepare_overland_travel_charts'], 'the Scholar\'s Research was retired (Harry, 6 November 2026)');
+    t.same(R.staffOrders(WS, 'alchemist').map(function (f) { return f.id; }), ['craft_alchemist', 'craft_uncommon'], 'the Alchemist\'s Alchemy and Craft Common were retired');
     t.same(R.staffOrders(WS, 'smith').map(function (f) { return f.id; }), ['craft_smith'], 'the retired Smithing is not offered');
   });
 
   test('a locked staff member\'s orders say which level opens them, and open when the Workshop reaches it', function (t) {
     var b = bastion(1);
     t.ok(issue(b, 'craft').ok, 'the Handyman works from Level 1');
-    [['craft_smith', 2], ['craft_scholar', 3], ['research', 3], ['prepare_overland_travel_charts', 3], ['craft_alchemist', 4], ['alchemy', 4], ['craft_common', 4], ['craft_uncommon', 4]].forEach(function (p) {
+    [['craft_smith', 2], ['craft_scholar', 3], ['prepare_overland_travel_charts', 3], ['craft_alchemist', 4], ['craft_uncommon', 4], ['craft_artisan', 5]].forEach(function (p) {
       t.equal(issue(b, p[0]).message, 'Needs Level ' + p[1] + '.', p[0]);
       var open = bastion(p[1]);
       t.ok(issue(open, p[0]).ok, p[0] + ' opens at Level ' + p[1]);
+    });
+    ['research', 'alchemy', 'craft_common'].forEach(function (id) {
+      var hidden = issue(bastion(5), id);
+      t.same([hidden.ok, hidden.message], [false, 'That order isn\'t given any more.'], id + ' was retired: never offered');
     });
     t.equal(R.upgradeCheck(bastion(1), data, 'workshop').ok, true, 'the Workshop upgrades as before');
     t.equal(R.levelUnlocks(data, 'workshop', 4)[0].indexOf('The Alchemist'), 0, 'the Upgrade row names who opens next');
@@ -93,25 +98,28 @@
   /* ---------------------------------------------------------------- */
   group('Workshop staff: what each one makes');
 
-  test('the Handyman (a placeholder) crafts from the six tool tables nobody else claims, 3 days each', function (t) {
+  test('the Handyman crafts Harry\'s list (4 tool tables and his own extras), 3 days each', function (t) {
     var fn = fnOf('craft');
     t.equal(fn.days, 3);
-    t.same(fn.craftTables, ['Weaver’s Tools', 'Leatherworker’s Tools', 'Carpenter’s Tools', 'Mason’s Tools', 'Glassblower’s Tools', 'Brewer’s Supplies']);
+    t.same(fn.craftTables, ['Weaver’s Tools', 'Leatherworker’s Tools', 'Carpenter’s Tools', 'Glassblower’s Tools', 'Handyman’s Extras']);
+    t.equal(data.tools['Mason’s Tools'], undefined, 'the Mason\'s Tools list had nothing left and is gone');
+    t.equal(data.tools['Brewer’s Supplies'], undefined, 'and so is the Brewer\'s Supplies list');
     var items = itemsOf('craft');
-    t.equal(items.length, unique(items).length, 'each item once ("Backpack" is in two tables)');
+    t.equal(items.length, unique(items).length, 'each item once');
     var others = [].concat(data.tools['Smith’s Tools'], data.tools['Alchemist’s Supplies'], data.tools['Calligrapher’s Supplies']);
     t.same(items.filter(function (i) { return others.indexOf(i) !== -1; }), [], 'nothing another staff member claims');
-    t.equal(items.length, unique([].concat.apply([], fn.craftTables.map(function (n) { return data.tools[n]; }))).length, 'every item of the six tables');
-    t.ok(items.length > 90 && items.indexOf('Backpack') !== -1 && items.indexOf('Stained glass window') !== -1);
-    t.ok(fn.placeholder === true && /PLACEHOLDER/.test(fn.notes), 'marked in the data');
+    t.equal(items.length, 12 + 5 + 4 + 4 + 1, 'Harry\'s kept items and his own extra');
+    t.ok(items.indexOf('Beast-Catcher’s Kit') !== -1 && items.indexOf('Costume clothes') !== -1 && items.indexOf('Backpack') === -1 && items.indexOf('Stained glass window') === -1);
+    t.ok(!fn.placeholder && fn.notes === null, 'no longer a placeholder');
     var b = bastion(1);
-    var o = (issue(b, 'craft', items.indexOf('Backpack')), b.pendingOrders[0]);
-    t.same([o.dueDay - o.issuedDay, o.optionLabel, o.label], [3, 'Backpack', 'Workshop: Handyman - Backpack']);
+    var o = (issue(b, 'craft', items.indexOf('Costume clothes')), b.pendingOrders[0]);
+    t.same([o.dueDay - o.issuedDay, o.optionLabel, o.label], [3, 'Costume clothes', 'Workshop: Handyman - Costume clothes']);
   });
 
-  test('the Smith crafts Smith\'s Tools (30 items), the Scholar Calligrapher\'s Supplies (12), 3 days each; the old Smithing is retired but would still finish', function (t) {
+  test('the Smith crafts Smith\'s Tools (14 items), the Scholar Calligrapher\'s Supplies (10), 3 days each; the old Smithing is retired but would still finish', function (t) {
     t.same(itemsOf('craft_smith'), data.tools['Smith’s Tools'].slice().sort(function (a, b) { return a.localeCompare(b); }));
-    t.equal(itemsOf('craft_smith').length, 30);
+    t.equal(itemsOf('craft_smith').length, 14);
+    t.ok(itemsOf('craft_smith').indexOf('Beast-Collar & Lead') !== -1 && itemsOf('craft_smith').indexOf('Beast-Chain Rig') !== -1, 'Harry\'s two additions');
     t.equal(itemsOf('craft_scholar').length, data.tools['Calligrapher’s Supplies'].length);
     t.same([fnOf('craft_smith').days, fnOf('craft_scholar').days], [3, 3]);
     var smithing = fnOf('smithing');
@@ -130,27 +138,30 @@
     t.ok(/^The Smith is busy/.test(R.staffBusy(smithBusy, data, WS, fnOf('craft_smith'))), 'a Smithing order already running keeps the Smith busy');
   });
 
-  test('the Scholar: Research (4 scriptures, 5 days) and Prepare Overland Travel Charts (4 days, no gold, 1 Overland chart), as the Library gave them', function (t) {
-    t.same([fnOf('research').days, fnOf('prepare_overland_travel_charts').days], [5, 4]);
-    t.same(itemsOf('research'), ['Geographical Scriptures', 'Religious Scriptures', 'Combat Scriptures', 'Political scriptures']);
+  test('the Scholar: Prepare Overland Travel Charts (4 days, no gold, 1 Overland chart); Research was retired (Harry, 6 November 2026) but a Research order already running still finishes', function (t) {
+    t.same([fnOf('research').retired, fnOf('prepare_overland_travel_charts').days], [true, 4]);
     var b = bastion(3);
     var o = (issue(b, 'prepare_overland_travel_charts'), b.pendingOrders[0]);
     t.same([o.costGP, o.label, o.dueDay], [0, 'Workshop: Scholar - Prepare Overland Travel Charts', 14]);
     t.same(finish(b, o), [['Order Completed', 'Workshop: Scholar - Prepare Overland Travel Charts → Added to Warehouse: 1 Overland chart.']]);
     t.equal(R.goodsQty(b, 'overland_chart'), 1, 'the chart source the Explorer and the Courier read');
+    var r = bastion(3);
+    var running = pending('rs', 'workshop', 'research', 'Workshop: Scholar - Research (Combat Scriptures)', 'Combat Scriptures', 12);
+    r.pendingOrders.push(running);
+    t.equal(finish(r, running).length, 1, 'a retired Research order finishes');
   });
 
-  test('the Alchemist: 33 items and no party level; the 17 Alchemist\'s Supplies at 3 days, the 3 extra poisons at 5, Craft Common (4) at 5 and Craft Uncommon (9) at 10; the three duplicate potions are left out', function (t) {
+  test('the Alchemist: 25 items and no party level; the 17 Alchemist\'s Supplies at 3 days and Craft Uncommon (8) at 10; Alchemy and Craft Common were retired (Harry, 6 November 2026)', function (t) {
     var mine = R.staffOrders(WS, 'alchemist');
-    t.same(mine.map(function (f) { return [f.id, f.days]; }), [['craft_alchemist', 3], ['alchemy', 5], ['craft_common', 5], ['craft_uncommon', 10]]);
-    var all = [].concat.apply([], mine.map(itemsOf2));
-    function itemsOf2(fn) { return itemsOf(fn.id); }
-    t.equal(all.length, 33);
-    t.equal(unique(all).length, 33, 'no item twice');
+    t.same(mine.map(function (f) { return [f.id, f.days]; }), [['craft_alchemist', 3], ['craft_uncommon', 10]]);
+    var all = [].concat.apply([], mine.map(function (fn) { return itemsOf(fn.id); }));
+    t.equal(all.length, 25);
+    t.equal(unique(all).length, 25, 'no item twice');
     t.equal(itemsOf('craft_alchemist').length, 17);
-    t.same(itemsOf('alchemy'), ['Burnt Othur Fumes (Poison)', 'Essence of Ether (Poison)', 'Torpor (Poison)']);
-    t.equal(itemsOf('craft_common').length, 4);
-    t.equal(itemsOf('craft_uncommon').length, 9);
+    t.ok(['Stillroot Salve', 'Dreamroot Salve', 'Beast Salve', 'Beast Scent Lure'].every(function (n) { return itemsOf('craft_alchemist').indexOf(n) !== -1; }), 'Harry\'s four additions');
+    t.equal(itemsOf('craft_uncommon').length, 8);
+    t.equal(itemsOf('craft_uncommon').indexOf('Sending Stones'), -1, 'Sending Stones was removed');
+    ['alchemy', 'craft_common'].forEach(function (id) { t.equal(fnOf(id).retired, true, id + ' is retired'); });
     var lower = all.map(function (x) { return x.toLowerCase(); });
     ['potion of climbing', 'potion of resistance', 'potion of water breathing'].forEach(function (p) {
       t.equal(lower.filter(function (x) { return x === p || x === p + ' (base item)'; }).length, 1, p + ' is offered once');
@@ -158,12 +169,20 @@
     mine.forEach(function (fn) { t.equal(fn.requiredPartyLevel, undefined, fn.id + ' has no party-level gate'); });
     var b = bastion(4);
     b.partyLevel = 1;
-    t.ok(issue(b, 'craft_alchemist').ok && issue(b, 'alchemy').ok === false, 'one job at a time, and no party level needed');
+    t.ok(issue(b, 'craft_alchemist').ok && issue(b, 'craft_uncommon').ok === false, 'one job at a time, and no party level needed');
   });
 
-  test('Craft Magic Item stays a separate order: 22 items, 10 days, no staff, no party-level gate, from Level 1', function (t) {
+  test('the Artisan crafts his own list at Level 5 (Harry, 6 November 2026): four handler\'s items, 3 days', function (t) {
+    var fn = fnOf('craft_artisan');
+    t.same([fn.days, fn.staff, fn.requiredFacilityLevel, fn.craftTables], [3, 'artisan', 5, ['Artisan’s Extras']]);
+    t.same(itemsOf('craft_artisan'), ['Falconer’s Hood & Jesses', 'Handler’s Gauntlets', 'Jaw-Strap & Tail Sheath', 'Beast Muzzle'].sort(function (a, b) { return a.localeCompare(b); }));
+    t.equal(issue(bastion(4), 'craft_artisan').message, 'Needs Level 5.');
+    t.ok(issue(bastion(5), 'craft_artisan').ok);
+  });
+
+  test('Craft Magic Item stays a separate order: 8 items, 10 days, no staff, no party-level gate, from Level 1', function (t) {
     var fn = fnOf('craft_magic_item');
-    t.same([fn.options.length, fn.days, fn.staff, fn.requiredPartyLevel, fn.requiredFacilityLevel], [22, 10, undefined, undefined, undefined]);
+    t.same([fn.options.length, fn.days, fn.staff, fn.requiredPartyLevel, fn.requiredFacilityLevel], [8, 10, undefined, undefined, undefined]);
     var b = bastion(1);
     b.partyLevel = 1;
     t.ok(issue(b, 'craft_magic_item').ok);
@@ -183,18 +202,18 @@
     var first = issue(b, 'craft_alchemist');
     t.ok(first.ok);
     var alch = b.pendingOrders[0];
-    ['craft_alchemist', 'alchemy', 'craft_common', 'craft_uncommon'].forEach(function (id) {
+    ['craft_alchemist', 'craft_uncommon'].forEach(function (id) {
       var r = issue(b, id);
       t.same([r.ok, r.message], [false, 'The Alchemist is busy: ' + alch.label + ', due on Day ' + alch.dueDay + '.'], id);
     });
-    ['craft', 'craft_smith', 'research'].forEach(function (id) { t.ok(issue(b, id).ok, id + ': another staff member is free'); });
-    t.equal(issue(b, 'craft_scholar').ok, false, 'the Scholar is now busy with Research');
-    t.equal(b.pendingOrders.length, 4, 'four at once');
+    ['craft', 'craft_smith', 'prepare_overland_travel_charts', 'craft_artisan'].forEach(function (id) { t.ok(issue(b, id).ok, id + ': another staff member is free'); });
+    t.equal(issue(b, 'craft_scholar').ok, false, 'the Scholar is now busy with the charts');
+    t.equal(b.pendingOrders.length, 5, 'five at once');
     t.ok(issue(b, 'craft_magic_item').ok, 'and Craft Magic Item beside them');
-    t.equal(b.pendingOrders.length, 5);
+    t.equal(b.pendingOrders.length, 6);
     b.day = alch.dueDay;
     finish(b, alch);
-    t.ok(issue(b, 'alchemy').ok, 'the Alchemist is free again once the job is done');
+    t.ok(issue(b, 'craft_uncommon').ok, 'the Alchemist is free again once the job is done');
     var up = bastion(1);
     t.ok(R.issueUpgrade(up, data, 'workshop', dice([0.3])).ok);
     t.ok(issue(up, 'craft').ok, 'an upgrade does not keep a staff member busy');
@@ -214,7 +233,7 @@
     fn.artisanExtras = ['Zweihander'];
     t.equal(R.craftItemsFor(data, fn, 4).indexOf('Zweihander'), -1, 'not before Level 5');
     t.ok(R.craftItemsFor(data, fn, 5).indexOf('Zweihander') !== -1, 'at Level 5');
-    t.equal(R.craftItemsFor(data, fnOf('craft_smith'), 5).length, 30, 'nothing added today');
+    t.equal(R.craftItemsFor(data, fnOf('craft_smith'), 5).length, 14, 'nothing added today');
   });
 
   test('a craft order made before the change finishes: a pending Craft with a chosen item completes, whichever list it came from', function (t) {
@@ -229,10 +248,10 @@
     var idx = R.compendiumIndex(data.facilities, data.tools);
     function by(item) { return idx.links[item].map(function (l) { return l.fnLabel; }); }
     t.ok(by('Longsword').indexOf('Craft (Smith)') !== -1);
-    t.ok(by('Backpack').indexOf('Craft (Handyman)') !== -1);
+    t.ok(by('Costume clothes').indexOf('Craft (Handyman)') !== -1);
+    t.ok(by('Falconer’s Hood & Jesses').indexOf('Craft (Artisan)') !== -1);
     t.ok(by('Chart of Southern Province').indexOf('Craft (Scholar)') !== -1);
-    t.ok(by('Acid vial').indexOf('Craft (Alchemist)') !== -1);
-    t.ok(by('Geographical Scriptures').indexOf('Research') !== -1);
+    t.ok(by('Antitoxin').indexOf('Craft (Alchemist)') !== -1);
     ['Dread Helm', 'Moon-Touched Sword', 'Smoldering Armor'].forEach(function (n) { t.same(by(n), ['Compendium only'], n); });
     t.equal(JSON.stringify(idx.links).indexOf('Artisan Tools'), -1, 'no word of the Artisan Tools');
     t.equal(idx.items.filter(function (k) { return !idx.links[k].length; }).length, 0);
@@ -303,7 +322,7 @@
     t.ok(/Workshop's own level has not been raised/.test(text) && /your Library & Scriptorium was at Level 2/.test(text), 'the Level 2 versus Level 3 change is said');
     t.ok(/The Artisan Tools card is gone\. You had chosen Smith’s Tools, Alchemist’s Supplies, Weaver’s Tools and Calligrapher’s Supplies/.test(text), text);
     t.ok(/Smith’s Tools now belongs to the Smith \(opens at Workshop Level 2\)/.test(text));
-    t.ok(/Weaver’s Tools now belongs to the Handyman \(opens at Workshop Level 1; his list is a placeholder until you supply it\)/.test(text));
+    t.ok(/Weaver’s Tools now belongs to the Handyman \(opens at Workshop Level 1\)/.test(text));
     t.ok(/Smithy's old Smithing order is replaced by the Smith's Craft/.test(text));
     t.ok(/Upgrade to Level 3/.test(text) && /nothing to upgrade/.test(text), 'the cancelled upgrade is listed with its reason');
     t.equal(res.report.gold.refunded, 0, 'free: nothing to give back');

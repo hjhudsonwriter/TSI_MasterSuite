@@ -48,8 +48,10 @@
     /* The Compendium lists what the facilities offer, and nothing else: the entries match the index one for one (the war game's units
        and beasts went in S06; the Shrines' six Craft charms and nine prayers went with the Temple in S11). */
     var index = R.compendiumIndex(data.facilities, data.tools).items;
-    t.equal(Object.keys(T.bastionCompendium.items).length, index.length, 'one entry for each item listed');
-    t.same(Object.keys(T.bastionCompendium.items).filter(function (k) { return index.indexOf(k) === -1; }), [], 'no entry for anything the Compendium does not list');
+    /* Harry's review of the Workshop (6 November 2026) removed many items from the lists and added eleven of his own. The entries of the removed
+       items stay in compendium-data.js, unused (kept in case he adds any back); the new items have no entry yet and are stubbed. */
+    var NEW_ITEMS = ['Beast-Catcher’s Kit', 'Beast-Collar & Lead', 'Beast-Chain Rig', 'Stillroot Salve', 'Dreamroot Salve', 'Beast Salve', 'Beast Scent Lure', 'Falconer’s Hood & Jesses', 'Jaw-Strap & Tail Sheath', 'Handler’s Gauntlets', 'Beast Muzzle'].sort();
+    t.same(index.filter(function (k) { return !(k in T.bastionCompendium.items); }).sort(), NEW_ITEMS, 'every item listed has an entry, except Harry\'s eleven new ones');
     t.same(['Tellurian Root Charm', 'Aurush Sun Charm', 'Pelagos Tide Charm', 'Telluria\'s Guidance', 'Pelagos\'s Deep Rest'].filter(function (k) { return index.indexOf(k) !== -1 || k in T.bastionCompendium.items; }), [], 'none of the Shrines\' charms or prayers');
     t.equal(T.bastionWar, undefined, 'the war data file is gone');
   });
@@ -313,7 +315,9 @@
     var s = fresh();
     s.treasuryGP = 100;
     s.facilityLevels.workshop = 3;
-    var o = order(s, 'workshop', 'research', 0);
+    /* Research was retired on 6 November 2026, so the order is made by hand, as one already running would be. */
+    var o = { id: 'rs', facId: 'workshop', fnId: 'research', chosen: { label: 'Geographical Scriptures' }, optionLabel: 'Geographical Scriptures', notes: '', label: 'Workshop: Scholar - Research (Geographical Scriptures)', costGP: 0, issuedDay: 9, dueDay: 12 };
+    s.pendingOrders.push(o);
     t.equal(o.optionLabel, 'Geographical Scriptures');
     t.equal(o.label, 'Workshop: Scholar - Research (Geographical Scriptures)');
     t.equal(o.notes, '');
@@ -519,7 +523,7 @@
     t.equal(out.kept, idx.items.filter(function (k) { var e = T.bastionCompendium.items[k]; return e && String(e.summary || '').trim(); }).length, 'the kept ones are the items whose entry has a summary');
     t.equal(out.file.version, 1);
     t.equal(T.bastion.compendiumCards.length, 36);
-    t.same(T.bastion.compendiumCards.filter(function (n) { return idx.items.indexOf(n) === -1; }), [], 'every card belongs to an item');
+    t.same(T.bastion.compendiumCards.filter(function (n) { return idx.items.indexOf(n) === -1; }), ['Rope of Climbing'], 'every card belongs to an item (the Rope of Climbing was removed from Craft Magic Item on 6 November 2026; its card is kept, unused)');
     t.ok(out.file.items['Bag of Holding'].summary);
   });
 
@@ -905,8 +909,8 @@
     s.partyLevel = 8;
     s.facilityLevels.workshop = 4;
     var ws = R.facility(data, 'workshop');
-    t.same(R.fnAvailable(s, ws, R.fn(ws, 'alchemy')), { ok: true }, 'no party level gate on Alchemy');
-    t.ok(R.issueOrder(s, data, 'workshop', 'alchemy', 0, dice([0.3])).ok);
+    t.same(R.fnAvailable(s, ws, R.fn(ws, 'craft_uncommon')), { ok: true }, 'no party level gate on Craft Uncommon');
+    t.ok(R.issueOrder(s, data, 'workshop', 'craft_uncommon', 0, dice([0.3])).ok);
     t.equal(R.issueOrder(s, data, 'herbal_gardens', 'cultivate', 0, dice([0.3])).message, 'Needs party level 9.');
     t.ok(R.issueOrder(s, data, 'herbal_gardens', 'harvest', 0, dice([0.3])).ok);
     s.partyLevel = 9;
@@ -1233,7 +1237,7 @@
     t.same([R.goodsQty(s, 'fresh_fish'), R.goodsQty(s, 'preserved_fish')], [3, 3], 'the Fresh Fish is not used up');
   });
 
-  test('the Scholar (Harry, 14 October 2026 for the Library; moved to the Workshop at Level 3 by step S12): Prepare Overland Travel Charts makes 1 Overland chart in 4 days, no gold; the Scholar does one job at a time, so Research waits', function (t) {
+  test('the Scholar (Harry, 14 October 2026 for the Library; moved to the Workshop at Level 3 by step S12): Prepare Overland Travel Charts makes 1 Overland chart in 4 days, no gold; the Scholar does one job at a time, so a craft order waits', function (t) {
     var s = fresh();
     s.day = 10;
     t.equal(R.issueOrder(s, data, 'workshop', 'prepare_overland_travel_charts', 0, dice([0.3])).message, 'Needs Level 3.');
@@ -1242,13 +1246,12 @@
     var o = order(s, 'workshop', 'prepare_overland_travel_charts', 0);
     t.same([o.dueDay, s.treasuryGP, o.label], [14, gp, 'Workshop: Scholar - Prepare Overland Travel Charts']);
     t.equal(R.issueOrder(s, data, 'workshop', 'prepare_overland_travel_charts', 0, dice([0.3])).ok, false, 'one chart order at a time');
-    var busy = R.issueOrder(s, data, 'workshop', 'research', 0, dice([0.3]));
+    var busy = R.issueOrder(s, data, 'workshop', 'craft_scholar', 0, dice([0.3]));
     t.same([busy.ok, busy.message], [false, 'The Scholar is busy: Workshop: Scholar - Prepare Overland Travel Charts, due on Day 14.'], 'one job at a time for each staff member');
     t.same(finish(s, o), [['Order Completed', 'Workshop: Scholar - Prepare Overland Travel Charts → Added to Warehouse: 1 Overland chart.']]);
     t.same([R.goodsQty(s, 'overland_chart'), s.treasuryGP], [1, gp], 'one chart, no gold');
-    t.ok(order(s, 'workshop', 'research', 0), 'then the Scholar can research');
-    t.same(R.fn(R.facility(data, 'workshop'), 'research').options.map(function (x) { return x.label; }),
-      ['Geographical Scriptures', 'Religious Scriptures', 'Combat Scriptures', 'Political scriptures'], 'the scripture choices are unchanged');
+    t.ok(order(s, 'workshop', 'craft_scholar', 0), 'then the Scholar can craft');
+    t.equal(R.fn(R.facility(data, 'workshop'), 'research').retired, true, 'Research was retired (Harry, 6 November 2026)');
   });
 
   /* Pull request 8b (Harry's Shrine specification, 15 October 2026), changed by the Strip Back Overhaul (22 October 2026): the Shrines are
