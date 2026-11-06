@@ -131,7 +131,7 @@ async function openTile(ba, fac) {
 /* The Workshop's panel with the Scholar's chart job chosen (the Library's order moved to the Scholar, step S12). */
 async function showChart(ba) {
   await openTile(ba, 'workshop');
-  await ba.selectOption('[data-test=staff-job-scholar]', '2');
+  await ba.selectOption('[data-test=staff-job-scholar]', '1');
   await ba.waitForSelector('[data-test=issue-' + CHART_ORDER + ']');
 }
 /* Construct a facility from the first empty construction slot. Resolves with the question. */

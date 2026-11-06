@@ -103,6 +103,11 @@
    level is needed). The two facilities are gone (a saved Bastion is converted: R.migrateToV4, step workshopStaff). Craft
    Magic Item has no staff member. The Smithy's Smithing is "retired": hidden, kept only so one already pending still finishes
    (the Smith crafts the same items). The Artisan Tools (six picked tool tables) are gone. */
+/* Harry's review of the Workshop's lists (6 November 2026): every list was cut to what he kept, and new items were added (Smith: the Beast-Collar & Lead
+   and Beast-Chain Rig; Alchemist: four salves and a scent lure; Handyman and Artisan: their own short lists, in the "Handyman’s Extras" and
+   "Artisan’s Extras" tables of tools-data.js). The Mason's Tools and Brewer's Supplies lists, Research (scriptures), Alchemy (three poisons) and
+   Craft Common had nothing left, so those orders are "retired": hidden and never offered, but kept so one already pending still finishes. The
+   Handyman's and Artisan's lists are no longer placeholders: the Artisan crafts his own list (Craft, Level 5). */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionFacilities = [
   {
@@ -114,9 +119,7 @@ window.TSI_DATA.bastionFacilities = [
         "id": "handyman",
         "name": "Handyman",
         "level": 1,
-        "blurb": "Common crafting",
-        "placeholder": true,
-        "note": "PLACEHOLDER: the Handyman’s list is to be supplied. Until then he crafts from the six tool tables nobody else claims."
+        "blurb": "Common crafting"
       },
       {
         "id": "smith",
@@ -128,21 +131,19 @@ window.TSI_DATA.bastionFacilities = [
         "id": "scholar",
         "name": "Scholar",
         "level": 3,
-        "blurb": "Calligraphy, Overland charts and scripture Research"
+        "blurb": "Calligraphy and Overland charts"
       },
       {
         "id": "alchemist",
         "name": "Alchemist",
         "level": 4,
-        "blurb": "Alchemist’s Supplies, poisons and the laboratory’s magic items"
+        "blurb": "Alchemist’s Supplies and uncommon magic items"
       },
       {
         "id": "artisan",
         "name": "Artisan",
         "level": 5,
-        "blurb": "Extra options for every list above",
-        "placeholder": true,
-        "note": "Extra options: to come."
+        "blurb": "Handler’s gear"
       }
     ],
     "functions": [
@@ -160,13 +161,11 @@ window.TSI_DATA.bastionFacilities = [
           "Weaver’s Tools",
           "Leatherworker’s Tools",
           "Carpenter’s Tools",
-          "Mason’s Tools",
           "Glassblower’s Tools",
-          "Brewer’s Supplies"
+          "Handyman’s Extras"
         ],
         "artisanExtras": [],
-        "notes": "PLACEHOLDER (Harry will supply the Handyman’s list): until then the Handyman crafts from the six tool tables no other staff member claims.",
-        "placeholder": true
+        "notes": null
       },
       {
         "id": "craft_smith",
@@ -220,6 +219,7 @@ window.TSI_DATA.bastionFacilities = [
         ],
         "costGP": 0,
         "costText": "0",
+        "retired": true,
         "notes": null,
         "jobLabel": "Research (scriptures)",
         "staff": "scholar",
@@ -281,6 +281,7 @@ window.TSI_DATA.bastionFacilities = [
         ],
         "costGP": 0,
         "costText": "0",
+        "retired": true,
         "notes": "The three poisons the Alchemist’s Supplies list does not cover (5 days each).",
         "jobLabel": "Alchemy (three poisons)",
         "staff": "alchemist",
@@ -306,6 +307,7 @@ window.TSI_DATA.bastionFacilities = [
         ],
         "costGP": 0,
         "costText": "0",
+        "retired": true,
         "notes": null,
         "jobLabel": "Craft Common",
         "staff": "alchemist",
@@ -339,9 +341,6 @@ window.TSI_DATA.bastionFacilities = [
           },
           {
             "label": "Saddle of the Cavalier"
-          },
-          {
-            "label": "Sending Stones"
           }
         ],
         "costGP": 0,
@@ -352,25 +351,26 @@ window.TSI_DATA.bastionFacilities = [
         "requiredFacilityLevel": 4
       },
       {
+        "id": "craft_artisan",
+        "label": "Craft",
+        "jobLabel": "Craft (Artisan’s Extras)",
+        "days": 3,
+        "options": [],
+        "costGP": 0,
+        "costText": "0",
+        "staff": "artisan",
+        "requiredFacilityLevel": 5,
+        "craftTables": [
+          "Artisan’s Extras"
+        ],
+        "artisanExtras": [],
+        "notes": null
+      },
+      {
         "id": "craft_magic_item",
         "label": "Craft Magic Item",
         "days": 10,
         "options": [
-          {
-            "label": "Bead of Nourishment"
-          },
-          {
-            "label": "Bead of Refreshment"
-          },
-          {
-            "label": "Charlatan's Die"
-          },
-          {
-            "label": "Bag of Holding"
-          },
-          {
-            "label": "Boots of Striding and Springing"
-          },
           {
             "label": "Boots of the Winterlands"
           },
@@ -387,40 +387,13 @@ window.TSI_DATA.bastionFacilities = [
             "label": "Potion of Water Breathing"
           },
           {
-            "label": "Ring of Jumping"
-          },
-          {
-            "label": "Ring of Swimming"
-          },
-          {
             "label": "Ring of Warmth"
-          },
-          {
-            "label": "Rope of Climbing"
           },
           {
             "label": "Stone of Good Luck"
           },
           {
-            "label": "Shield of Expression"
-          },
-          {
             "label": "Walloping Ammunition"
-          },
-          {
-            "label": "Saddle of the Cavalier"
-          },
-          {
-            "label": "Sentinel Shield"
-          },
-          {
-            "label": "Shield, +1"
-          },
-          {
-            "label": "Sword of Vengeance"
-          },
-          {
-            "label": "Wraps of Unarmed Power, +1"
           }
         ],
         "costGP": 0,
