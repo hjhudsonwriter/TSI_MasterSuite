@@ -81,7 +81,7 @@ window.TSI_DATA.bastionTools = {
     "Stillroot Salve",
     "Dreamroot Salve",
     "Beast Salve",
-    "Beast Scent Lure"
+    "Scent Lure"
   ],
   "Weaver’s Tools": [
     "Costume clothes",

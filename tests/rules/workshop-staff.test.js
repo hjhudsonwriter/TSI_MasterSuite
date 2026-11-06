@@ -158,7 +158,7 @@
     t.equal(all.length, 25);
     t.equal(unique(all).length, 25, 'no item twice');
     t.equal(itemsOf('craft_alchemist').length, 17);
-    t.ok(['Stillroot Salve', 'Dreamroot Salve', 'Beast Salve', 'Beast Scent Lure'].every(function (n) { return itemsOf('craft_alchemist').indexOf(n) !== -1; }), 'Harry\'s four additions');
+    t.ok(['Stillroot Salve', 'Dreamroot Salve', 'Beast Salve', 'Scent Lure'].every(function (n) { return itemsOf('craft_alchemist').indexOf(n) !== -1; }), 'Harry\'s four additions');
     t.equal(itemsOf('craft_uncommon').length, 8);
     t.equal(itemsOf('craft_uncommon').indexOf('Sending Stones'), -1, 'Sending Stones was removed');
     ['alchemy', 'craft_common'].forEach(function (id) { t.equal(fnOf(id).retired, true, id + ' is retired'); });
