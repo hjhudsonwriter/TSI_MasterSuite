@@ -21,7 +21,8 @@ async function openPlayer(page, size) {
 const imgLoaded = (page, scope) => page.$eval(scope + ' [data-test=bc-img]', i => ({ ok: i.complete && i.naturalWidth > 0, w: i.naturalWidth, h: i.naturalHeight })).catch(() => null);
 
 async function checkBook(page, scope, size, shot) {
-  equal(await page.$$eval(scope + ' [data-test^=bc-tab-]', n => n.map(x => x.textContent)), NAMES, 'six tabs, one of each kind');
+  equal(await page.$$eval(scope + ' [data-test^=bc-tab-]', n => n.map(x => x.textContent)), NAMES.concat(['Beast-Catcher’s Guide']), 'six tabs, one of each kind, and the Beast-Catcher\'s Guide');
+  const guideData = await page.evaluate(() => JSON.parse(JSON.stringify(TSI_DATA.beastCatcher)));
   for (const [i, k] of KINDS.entries()) {
     await page.click(scope + ' [data-test=bc-tab-' + k + ']');
     equal((await page.textContent(scope + ' [data-test=bc-title]')).trim(), NAMES[i]);
@@ -29,6 +30,12 @@ async function checkBook(page, scope, size, shot) {
     const want = await page.evaluate(id => TSI_DATA.beastProfile.species[id].regional.map(v => v.name), k);
     equal(await page.$$eval(scope + ' [data-test=bc-variety] b', n => n.map(x => x.textContent)), want, NAMES[i] + ' varieties');
     assert((await page.textContent(scope + ' [data-test=bc-desc]')).length > 200, 'a description');
+    /* The foot of the page: the three tools of the beast's best-fit loadout, under the guide's sentence (6 November 2026). */
+    {
+      const want = guideData.loadouts[k].map(id => guideData.items.find(i => i.id === id).name);
+      equal(await page.$$eval(scope + ' [data-test=bc-tool]', n => n.map(x => x.textContent)), want, NAMES[i] + ' tools');
+      equal((await page.textContent(scope + ' .tsi-bc__tools-lead')).trim(), 'Beast-Catchers have been known to use the following tools to capture and subdue ' + guideData.plural[k] + ':');
+    }
     {
       await page.waitForFunction(s => { const i = document.querySelector(s + ' [data-test=bc-img]'); return i && i.complete; }, scope, { timeout: 8000 });
       const im = await imgLoaded(page, scope);
@@ -51,6 +58,25 @@ async function checkBook(page, scope, size, shot) {
     assert(g.fits && g.lastBottom && g.inside, k + ' text fits its space: ' + JSON.stringify(g));
     assert((SIDE[k] === 'left' ? g.r : g.l) >= 0.5, k + ' text stays on its half');
   }
+  /* The Beast-Catcher's Guide: everything in the document, laid out as cards, a table and a list; it scrolls inside the same page. */
+  await page.click(scope + ' [data-test=bc-tab-catchers_guide]');
+  equal((await page.textContent(scope + ' [data-test=bc-title]')).trim(), 'Beast-Catcher’s Guide');
+  equal(await page.$$eval(scope + ' [data-test=bc-kit]', n => n.length), 1, 'the Kit');
+  equal(await page.$$eval(scope + ' [data-test=bc-item] .tsi-bc__card-name', n => n.map(x => x.textContent)), guideData.items.map(i => i.name), 'the ten tools, in the guide\'s order');
+  assert(guideData.items.length === 10, 'ten tools');
+  equal(await page.$$eval(scope + ' [data-test=bc-loadout]', n => n.map(r => [r.dataset.kind].concat(Array.from(r.querySelectorAll('td')).map(c => c.textContent)))),
+    Object.keys(guideData.loadouts).map(k => [k].concat(guideData.loadouts[k].map(id => guideData.items.find(i => i.id === id).name))), 'the best-fit table, six beasts of three tools');
+  equal(await page.$$eval(scope + ' [data-test=bc-how] dt', n => n.map(x => x.textContent)), ['Subdue', 'Settle', 'Failure', 'Reuse', 'The carry home']);
+  const gtext = await page.textContent(scope + ' [data-test=bc-guide]');
+  ['A party cannot attempt to subdue and capture a beast without the Beast-Catcher’s Kit', 'DC 10 Strength to escape', 'DC 20 Strength to break free', 'does not lower the DC', 'proposed rules, not yet built into the tools', 'DC 9 or 11', 'fewer starting bond pills'].forEach(x => assert(gtext.indexOf(x) !== -1, 'the guide says: ' + x));
+  {
+    const sc = await page.$eval(scope + ' [data-test=bc-page]', e => { e.scrollTop = e.scrollHeight; return { top: e.scrollTop, max: e.scrollHeight - e.clientHeight, w: e.scrollWidth <= e.clientWidth }; });
+    assert(sc.max > 0 && sc.top >= sc.max - 2 && sc.w, 'the page scrolls to its end, with no sideways scroll: ' + JSON.stringify(sc));
+    const last = await page.$eval(scope + ' [data-test=bc-how] dd:last-of-type', e => { const r = e.getBoundingClientRect(), p = e.closest('[data-test=bc-page]').getBoundingClientRect(); return r.bottom <= p.bottom + 1 && r.top >= p.top; });
+    assert(last, 'the last line is in view at the end');
+    await page.$eval(scope + ' [data-test=bc-page]', e => { e.scrollTop = 0; });
+  }
+  await page.click(scope + ' [data-test=bc-tab-sabrecat]');
   const vp = await page.evaluate(() => ({ w: innerWidth, h: innerHeight }));
   const pb = await page.$eval(scope + ' [data-test=bc-page]', e => { const r = e.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; });
   assert(pb.top >= 0 && pb.bottom <= vp.h && pb.left >= 0 && pb.right <= vp.w, 'the whole page is in view: ' + JSON.stringify([pb, vp]));
@@ -58,6 +84,8 @@ async function checkBook(page, scope, size, shot) {
   await page.focus(scope + ' [data-test=bc-tab-sabrecat]');
   await page.keyboard.press('ArrowRight');
   equal((await page.textContent(scope + ' [data-test=bc-title]')).trim(), 'Wyvern', 'arrow keys move between the tabs');
+  await page.keyboard.press('End');
+  equal((await page.textContent(scope + ' [data-test=bc-title]')).trim(), 'Beast-Catcher’s Guide', 'End goes to the guide');
   await page.keyboard.press('Home');
   equal((await page.textContent(scope + ' [data-test=bc-title]')).trim(), 'Buckbear');
   const lay = await H.layoutCheck(page, [scope + ' [data-test=bc-page]', scope + ' [data-test=bc-tabs]']);
@@ -83,7 +111,7 @@ async function checkBook(page, scope, size, shot) {
     await page.click('[data-test=tile-beast_pen]');
     await page.waitForSelector('[data-test=beast-compendium-open]');
 
-    await check('the DM\'s Beast Pen panel has a Compendium of Beasts button; it opens a pop-up book with six tabs, the engraving, varieties and a description for each', async () => {
+    await check('the DM\'s Beast Pen panel has a Compendium of Beasts button; it opens a pop-up book with a tab for each beast (the engraving, varieties, a description and its tools) and the Beast-Catcher\'s Guide', async () => {
       await page.click('[data-test=beast-compendium-open]');
       await page.waitForSelector('.tsi-bc-modal [data-test=bc]');
       assert((await page.textContent('.tsi-bc-modal')).includes('Compendium of Beasts'), 'titled');
