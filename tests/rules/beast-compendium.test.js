@@ -48,4 +48,11 @@
     t.same(G.items.filter(function (i) { return i.kinds.length === 6; }).map(function (i) { return i.id; }), ['beast_salve'], 'only the Beast Salve suits all six, and it does not lower the DC');
     t.same(G.how.map(function (h) { return h.label; }), ['Subdue', 'Settle', 'Failure', 'Reuse', 'The carry home']);
   });
+
+  test('every tool in the guide is something the Workshop crafts, under the same name (the Kit by the Handyman, the rest by the Smith, Alchemist and Artisan)', function (t) {
+    var G = window.TSI_DATA.beastCatcher, T = window.TSI_DATA.bastionTools;
+    var tableOf = { 'Workshop · Handyman': 'Handyman’s Extras', 'Workshop · Smith': 'Smith’s Tools', 'Workshop · Alchemist': 'Alchemist’s Supplies', 'Workshop · Artisan': 'Artisan’s Extras' };
+    t.ok(T[tableOf[G.kit.crafted]].indexOf(G.kit.name) !== -1, G.kit.name + ' is crafted by the Handyman');
+    G.items.forEach(function (i) { t.ok((T[tableOf[i.crafted]] || []).indexOf(i.name) !== -1, i.name + ' is on the ' + i.crafted + ' list'); });
+  });
 }());

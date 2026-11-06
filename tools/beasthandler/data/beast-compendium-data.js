@@ -62,8 +62,7 @@ window.TSI_DATA.beastCompendium = {
    Compendium of Beasts, and its "Best-fit loadouts" table puts three tools at the foot of each beast's own page.
      kit        the Beast-Catcher's Kit: { name, crafted, what, kinds }
      items      the ten tools that lower the capture DC: { id, name, crafted (the Workshop staff member who crafts it), what, kinds (the
-                beast kinds it suits, by id), note (optional, in brackets) }. The names are the guide's own ("Scent Lure"; the Workshop's
-                list says "Beast Scent Lure": ask Harry which he wants).
+                beast kinds it suits, by id), note (optional, in brackets) }. The names are the same as the Workshop's lists in tools-data.js ("Scent Lure", Harry, 6 November 2026).
      loadouts   for each kind id, its three best-fit item ids, in the guide's order
      plural     how each kind is named in "to capture and subdue ..." on its page
      how        "How it plays": a lead line, then a label and a line each
