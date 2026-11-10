@@ -160,7 +160,12 @@
       var migrating = !!conversion;
       var state = saved ? R.fromSave(TSI.clone(conversion ? conversion.save : saved), data) : R.defaultState(data);
       var ui = R.cleanUi(load('ui', R.isUi, 'the facility grid opened in its usual way (everything else is as it was)'));
-      function save() { ctx.store.set('state', R.toSave(state)); }
+      function save() {
+        var out = R.toSave(state);
+        /* A summary of the Courier Exchange for the Explorer's Send to the Ironbow (Level 3): worked out again at every save. */
+        if (R.courierDesk) { try { out.courierDesk = R.courierDesk(state, data); } catch (e) { /* the Explorer then waits for the next save */ } }
+        ctx.store.set('state', out);
+      }
       /* The Beast Handler's record (its campaign id), made the first time this Bastion opens with it. */
       if (R.beastState && !R.beastCampaignId(state)) { R.beastState(state); save(); }
       /* The Beast Handler no longer sends requests: its old queue is never read, so it is cleared away. */
@@ -3129,23 +3134,36 @@
           return (db || 0) - (da || 0) || b.i - a.i;
         });
         var recent = closed.slice(0, 5).map(function (x) { return row(x.p, null, true); });
-        var later = (Array.isArray(R.courier(data).later) ? R.courier(data).later : []).filter(function (l) { return l && typeof l.name === 'string'; }).map(function (l) {
-          return el('li', { text: 'Level ' + l.level + ': ' + l.name + (l.text ? ' (' + l.text + ')' : '') + '.' });
+        /* Cargo the party sent home from a town (Level 3): on the road, and the newest delivered. */
+        var inbound = R.parcelsWith(state, 'inbound').map(function (p) { return row(p, [' · fee ' + R.clampInt(p.feeGP, 0) + ' gp']); });
+        var delivered = R.parcels(state).filter(function (p) { return p.status === 'delivered'; }).slice(-3).reverse().map(function (p) { return row(p, null, true); });
+        /* What the levels above this one add, from the level table (courier-data.js). */
+        var levelTable = R.courier(data).levels && typeof R.courier(data).levels === 'object' ? R.courier(data).levels : {};
+        var later = Object.keys(levelTable).map(Number).filter(function (lv) { return lv > spec.level && levelTable[lv] && typeof levelTable[lv].name === 'string'; }).sort(function (x, y) { return x - y; }).map(function (lv) {
+          var row = levelTable[lv];
+          var adds = [];
+          if (row.returns && !(levelTable[lv - 1] && levelTable[lv - 1].returns)) adds.push('the party can send cargo home from a town');
+          if (row.priority && !(levelTable[lv - 1] && levelTable[lv - 1].priority)) adds.push('Priority parcels: half the days, double the fee');
+          if (row.combined && !(levelTable[lv - 1] && levelTable[lv - 1].combined)) adds.push('one parcel for two towns');
+          adds.push(plural(row.onRoad, 'parcel') + ' on the road, up to ' + plural(row.maxItems, 'item') + ' each');
+          return el('li', { text: 'Level ' + lv + ': ' + row.name + ' (' + adds.join('; ') + ').' });
         });
         var group = function (title, test, items, none) {
           return el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: title }), items.length ? el('ul', { class: 'tsi-bas-res-list', 'data-test': test }, items) : muted(none)]);
         };
         return el('div', { class: 'tsi-bas-facpanel__cargo tsi-bas-facpanel__courier', 'data-test': 'courier' }, [
           label('Parcels' + (spec.name ? ' · ' + spec.name : '')),
-          el('div', { class: 'tsi-bas-muted', 'data-test': 'courier-status', text: R.courierStatusLine(state, data) + ' Each parcel\'s fee comes from the treasury when it\'s sent; nothing goes wrong on the road.' }),
+          el('div', { class: 'tsi-bas-muted', 'data-test': 'courier-status', text: R.courierStatusLine(state, data) + ' Each parcel\'s fee comes from the treasury when it\'s sent; nothing goes wrong on the road.' + (spec.returns ? ' From Level 3 the party can also send cargo home from a town\'s courier post in the Explorer (its fee comes from the treasury too).' : '') }),
           el('div', { class: 'tsi-bas-cargo__go' }, [sendBtn, why ? el('span', { class: 'tsi-bas-muted', 'data-test': 'parcel-why', text: why }) : null]),
           el('div', { class: 'tsi-bas-courier__lists' }, [
-            group('Travelling (' + R.travellingParcels(state).length + ' of ' + spec.onRoad + ' places)', 'parcels-travelling', travelling, 'None on the way out.'),
+            group('Travelling (' + R.travelGroups(state).length + ' of ' + spec.onRoad + ' places)', 'parcels-travelling', travelling, 'None on the way out.'),
             returning.length ? group('Returning to Ironbow', 'parcels-returning', returning, '') : null,
+            inbound.length ? group('Cargo on the road home', 'parcels-inbound', inbound, '') : null,
             group('Waiting for collection', 'parcels-waiting', waiting, 'None.'),
+            delivered.length ? group('Recently delivered', 'parcels-delivered', delivered, '') : null,
             recent.length ? group('Recently closed', 'parcels-closed', recent, '') : null
           ]),
-          later.length ? el('div', { class: 'tsi-bas-cargo__group tsi-bas-courier__later', 'data-test': 'courier-later' }, [el('b', { text: 'Coming later' }), el('ul', { class: 'tsi-bas-res-list' }, later)]) : null
+          later.length ? el('div', { class: 'tsi-bas-cargo__group tsi-bas-courier__later', 'data-test': 'courier-later' }, [el('b', { text: 'Higher levels' }), el('ul', { class: 'tsi-bas-res-list' }, later)]) : null
         ]);
       }
       /* The Send dialog. It follows the Bastion as it is now (livePicker,
@@ -3155,99 +3173,140 @@
          reason under the summary. Every good the courier carries has a row;
          one the Warehouse has none of can't be chosen. */
       function parcelPicker() {
-        var pointSel = el('select', { class: 'tsi-input', 'aria-label': 'Town', 'data-test': 'parcel-point' });
-        var shownTowns = '';
+        var goods = R.courierGoods(data);
         var counts = {};
         var notes = {};
-        var goods = R.courierGoods(data);
-        var rows = goods.map(function (g) {
-          var input = numberInput('parcel-qty-' + g.goodId, { min: '0', value: '0', 'aria-label': g.name + ' (how many)' });
-          counts[g.goodId] = input;
-          notes[g.goodId] = el('span', { class: 'tsi-bas-muted', 'data-test': 'parcel-note-' + g.goodId });
-          return el('div', { class: 'tsi-bas-cargo__row', 'data-test': 'parcel-row-' + g.goodId }, [el('span', { class: 'tsi-bas-cargo__name', text: g.name }), input, notes[g.goodId]]);
-        });
+        var mainBtn = null;
         var summary = el('div', { 'data-test': 'parcel-summary' });
         var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'parcel-problem', hidden: true });
-        var mainBtn = null;
+        /* One town's half of the dialog: the town and the goods for it. The
+           second leg (a combined parcel, Level 5) is a second copy, shown only
+           while "Add a second town" is ticked. Its test names end in -2. */
+        function makeLeg(n) {
+          var sfx = n === 1 ? '' : '-' + n;
+          var pointSel = el('select', { class: 'tsi-input', 'aria-label': n === 1 ? 'Town' : 'Second town', 'data-test': 'parcel-point' + sfx });
+          var leg = { n: n, pointSel: pointSel, counts: {}, notes: {}, freeInputs: {}, freeKey: '', shownTowns: '' };
+          leg.rows = goods.map(function (g) {
+            var input = numberInput('parcel-qty-' + g.goodId + sfx, { min: '0', value: '0', 'aria-label': g.name + ' (how many)' + (n === 2 ? ' for the second town' : '') });
+            leg.counts[g.goodId] = input;
+            leg.notes[g.goodId] = el('span', { class: 'tsi-bas-muted', 'data-test': 'parcel-note-' + g.goodId + sfx });
+            input.addEventListener('input', update);
+            return el('div', { class: 'tsi-bas-cargo__row', 'data-test': 'parcel-row-' + g.goodId + sfx }, [el('span', { class: 'tsi-bas-cargo__name', text: g.name }), input, leg.notes[g.goodId]]);
+          });
+          leg.freeBox = el('div', { class: 'tsi-bas-cargo__rows', 'data-test': 'parcel-free' + sfx });
+          pointSel.addEventListener('change', update);
+          return leg;
+        }
         /* Rows typed into the Warehouse by hand (20 October 2026): listed
            under the named goods, made again whenever the Warehouse's rows
            change, keeping what was already chosen for a row. */
-        var freeBox = el('div', { class: 'tsi-bas-cargo__rows', 'data-test': 'parcel-free' });
-        var freeInputs = {};
-        var freeKey = '';
-        function freeRows() {
+        function freeRows(leg) {
           var list = R.courierFreeRows(state, data);
           var key = list.map(function (g) { return g.goodId + '|' + g.name + '|' + g.have; }).join('~');
-          if (key === freeKey) return list;
-          freeKey = key;
+          if (key === leg.freeKey) return list;
+          leg.freeKey = key;
           var kept = {};
-          Object.keys(freeInputs).forEach(function (id) { kept[id] = freeInputs[id].value; });
-          freeInputs = {};
-          TSI.clear(freeBox);
-          if (list.length) freeBox.appendChild(el('div', { class: 'tsi-bas-muted', text: 'Typed into the Warehouse:' }));
+          Object.keys(leg.freeInputs).forEach(function (id) { kept[id] = leg.freeInputs[id].value; });
+          leg.freeInputs = {};
+          TSI.clear(leg.freeBox);
+          if (list.length) leg.freeBox.appendChild(el('div', { class: 'tsi-bas-muted', text: 'Typed into the Warehouse:' }));
           list.forEach(function (g) {
-            var input = numberInput('parcel-free-qty', { min: '0', value: kept[g.goodId] || '0', 'aria-label': g.name + ' (how many)', 'data-id': g.goodId });
+            var input = numberInput(leg.n === 1 ? 'parcel-free-qty' : 'parcel-free-qty-2', { min: '0', value: kept[g.goodId] || '0', 'aria-label': g.name + ' (how many)', 'data-id': g.goodId });
             input.max = String(g.have);
             input.addEventListener('input', update);
-            freeInputs[g.goodId] = input;
-            freeBox.appendChild(el('div', { class: 'tsi-bas-cargo__row', 'data-test': 'parcel-free-row' }, [
+            leg.freeInputs[g.goodId] = input;
+            leg.freeBox.appendChild(el('div', { class: 'tsi-bas-cargo__row', 'data-test': leg.n === 1 ? 'parcel-free-row' : 'parcel-free-row-2' }, [
               el('span', { class: 'tsi-bas-cargo__name', text: g.name }), input,
               el('span', { class: 'tsi-bas-muted', text: 'in the Warehouse: ' + g.have })
             ]));
           });
           return list;
         }
-        function read() {
-          var free = Object.keys(freeInputs).map(function (id) { return { goodId: id, qty: R.clampInt(freeInputs[id].value, 0, 1000) }; });
+        function readLeg(leg) {
+          var free = Object.keys(leg.freeInputs).map(function (id) { return { goodId: id, qty: R.clampInt(leg.freeInputs[id].value, 0, 1000) }; });
           return {
-            pointId: pointSel.value,
-            picks: goods.map(function (g) { return { goodId: g.goodId, qty: R.clampInt(counts[g.goodId].value, 0, 1000) }; }).concat(free).filter(function (x) { return x.qty > 0; })
+            point: leg.pointSel.value,
+            picks: goods.map(function (g) { return { goodId: g.goodId, qty: R.clampInt(leg.counts[g.goodId].value, 0, 1000) }; }).concat(free).filter(function (x) { return x.qty > 0; })
           };
         }
-        /* The towns this level reaches, each with its days and fee; the
-           choice is kept when the list is made again. */
-        function towns() {
+        /* The towns this level reaches, each with its days and fee (shown
+           with Priority's days and fee when it is ticked); the choice is kept
+           when the list is made again. */
+        function towns(leg, priority) {
           var list = R.courierPoints(state, data);
-          var key = list.map(function (p) { return p.id + ':' + p.days + ':' + p.feeGP; }).join('|');
-          if (key === shownTowns) return;
-          shownTowns = key;
-          var was = pointSel.value;
-          TSI.clear(pointSel);
+          var key = priority + '|' + list.map(function (p) { return p.id + ':' + p.days + ':' + p.feeGP; }).join('|');
+          if (key === leg.shownTowns) return;
+          leg.shownTowns = key;
+          var was = leg.pointSel.value;
+          TSI.clear(leg.pointSel);
           list.forEach(function (p) {
-            pointSel.appendChild(el('option', { value: p.id, text: p.label + ' · ' + plural(p.days, 'day') + ' · ' + p.feeGP + ' gp' }));
+            leg.pointSel.appendChild(el('option', { value: p.id, text: p.label + ' · ' + plural(R.pointDays(data, p, priority), 'day') + ' · ' + R.pointFee(data, p, priority) + ' gp' }));
           });
-          if (list.some(function (p) { return p.id === was; })) pointSel.value = was;
+          if (list.some(function (p) { return p.id === was; })) leg.pointSel.value = was;
+          else if (leg.n === 2 && list.length > 1) leg.pointSel.selectedIndex = 1;
         }
+        var leg1 = makeLeg(1);
+        var leg2 = makeLeg(2);
+        var priorityBox = el('input', { type: 'checkbox', 'data-test': 'parcel-priority' });
+        var comboBox = el('input', { type: 'checkbox', 'data-test': 'parcel-combined' });
+        var spec0 = R.courierSpec(state, data);
+        var pr = R.priorityRule(data);
+        var priorityRow = spec0.priority ? el('label', { class: 'tsi-bas-field tsi-bas-field--inline', 'data-test': 'parcel-priority-row' }, [priorityBox, el('span', { text: 'Priority: about half the days (rounded up), ' + (pr.multiplier === 2 ? 'double' : pr.multiplier + ' times') + ' the fee.' })]) : null;
+        var comboRow = spec0.combined ? el('label', { class: 'tsi-bas-field tsi-bas-field--inline', 'data-test': 'parcel-combined-row' }, [comboBox, el('span', { text: 'Add a second town: one parcel for two towns, one place, one fee (the dearer town\'s plus half the other\'s).' })]) : null;
+        var secondBox = el('div', { class: 'tsi-bas-parcel__second', 'data-test': 'parcel-second', hidden: true }, [
+          label('Second town'),
+          field('Town', leg2.pointSel),
+          goods.length ? el('div', { class: 'tsi-bas-cargo__rows' }, leg2.rows) : null,
+          leg2.freeBox
+        ]);
+        function opts() { return { priority: !!(spec0.priority && priorityBox.checked) }; }
+        function legs() { return comboBox.checked && spec0.combined ? [readLeg(leg1), readLeg(leg2)] : null; }
         function update() {
           var spec = R.courierSpec(state, data);
-          towns();
-          freeRows();
-          goods.forEach(function (g) {
-            var have = R.goodsQty(state, g.goodId);
-            var input = counts[g.goodId];
-            input.disabled = have < 1;
-            input.max = String(Math.max(0, Math.min(have, spec.maxItems)));
-            if (have < 1) input.value = '0';
-            notes[g.goodId].textContent = 'in the Warehouse: ' + R.goodsCountText(data, g.goodId, have) + (g.size !== 1 ? ' · each counts as ' + plural(g.size, 'item') : '');
+          var o = opts();
+          var two = !!legs();
+          secondBox.hidden = !two;
+          [leg1, leg2].forEach(function (leg) {
+            towns(leg, o.priority);
+            freeRows(leg);
+            goods.forEach(function (g) {
+              var have = R.goodsQty(state, g.goodId);
+              var input = leg.counts[g.goodId];
+              input.disabled = have < 1;
+              input.max = String(Math.max(0, Math.min(have, spec.maxItems)));
+              if (have < 1) input.value = '0';
+              leg.notes[g.goodId].textContent = 'in the Warehouse: ' + R.goodsCountText(data, g.goodId, have) + (g.size !== 1 ? ' · each counts as ' + plural(g.size, 'item') : '');
+            });
           });
-          var r = read();
-          var why = R.parcelProblem(state, data, r.pointId, r.picks) || (turnRunning ? 'Wait for the day to finish.' : '');
-          summary.textContent = R.parcelSummary(state, data, r.pointId, r.picks);
+          var l = legs();
+          var r = readLeg(leg1);
+          var why, said;
+          if (l) {
+            why = R.combinedProblem(state, data, l, o) || (turnRunning ? 'Wait for the day to finish.' : '');
+            said = R.combinedSummary(state, data, l, o);
+          } else {
+            why = R.parcelProblem(state, data, r.point, r.picks, o) || (turnRunning ? 'Wait for the day to finish.' : '');
+            said = R.parcelSummary(state, data, r.point, r.picks, o);
+          }
+          summary.textContent = said;
           problem.textContent = why;
           problem.hidden = !why;
           if (mainBtn) { mainBtn.disabled = !!why; mainBtn.title = why || ''; }
         }
-        pointSel.addEventListener('change', update);
-        goods.forEach(function (g) { counts[g.goodId].addEventListener('input', update); });
+        priorityBox.addEventListener('change', update);
+        comboBox.addEventListener('change', update);
         update();
         return {
           body: [
-            field('Town', pointSel),
-            goods.length ? el('div', { class: 'tsi-bas-cargo__rows' }, rows) : muted('The courier carries nothing yet (courier-data.js).'),
-            freeBox,
+            priorityRow, comboRow,
+            field('Town', leg1.pointSel),
+            goods.length ? el('div', { class: 'tsi-bas-cargo__rows' }, leg1.rows) : muted('The courier carries nothing yet (courier-data.js).'),
+            leg1.freeBox,
+            secondBox,
             el('div', { class: 'tsi-bas-cargo__quote' }, [summary, problem])
           ],
-          read: read, update: update,
+          read: function () { var r = readLeg(leg1); return { pointId: r.point, picks: r.picks, legs: legs(), opts: opts() }; },
+          update: update,
           hold: function (dialog) { mainBtn = dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); update(); }
         };
       }
@@ -3271,7 +3330,7 @@
         if (turnRunning) { await say('A day was passing, so the parcel wasn\'t sent. Try again once it has finished.'); return; }
         /* Checked again: a day may have passed while the pop-up was open. */
         var pick = picker.read();
-        var res = R.sendParcel(state, data, pick.pointId, pick.picks, rand, lastExplorer);
+        var res = pick.legs ? R.sendCombined(state, data, pick.legs, rand, lastExplorer, pick.opts) : R.sendParcel(state, data, pick.pointId, pick.picks, rand, lastExplorer, pick.opts);
         if (!res.ok) { await say(res.message); return; }
         done();
       });

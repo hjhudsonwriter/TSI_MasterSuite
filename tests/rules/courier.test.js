@@ -115,12 +115,18 @@
     t.same([Bg.isPoint('wyre'), Bg.pointClan('wyre'), Bg.pointAtPin('wyre')], [false, '', '']);
   });
 
-  test('room by level: 1 parcel of up to 5 items, then 2 of up to 10; Levels 3 to 5 use Level 2\'s room; the rest of the numbers', function (t) {
-    t.same(CD.levels, { 1: { name: 'Dispatch Local Parcel', onRoad: 1, maxItems: 5 }, 2: { name: 'Regional Expedition Delivery', onRoad: 2, maxItems: 10 } });
-    t.same([0, 1, 2, 3, 4, 5].map(function (lv) { var sp = BR.courierSpec(bastion(10, lv), bdata); return [sp.built, sp.level, sp.onRoad, sp.maxItems]; }),
-      [[false, 0, 0, 0], [true, 1, 1, 5], [true, 2, 2, 10], [true, 3, 2, 10], [true, 4, 2, 10], [true, 5, 2, 10]]);
+  test('room by level: 1 of 5, 2 of 10, then 3 of 15, 3 of 20 and 4 of 30; what each level adds; the rest of the numbers', function (t) {
+    t.same(CD.levels, {
+      1: { name: 'Dispatch Local Parcel', onRoad: 1, maxItems: 5 },
+      2: { name: 'Regional Expedition Delivery', onRoad: 2, maxItems: 10 },
+      3: { name: 'Collect Expedition Cargo', onRoad: 3, maxItems: 15, returns: true },
+      4: { name: 'Priority Courier', onRoad: 3, maxItems: 20, returns: true, priority: true },
+      5: { name: 'Express Cargo Exchange', onRoad: 4, maxItems: 30, returns: true, priority: true, combined: true }
+    });
+    t.same([0, 1, 2, 3, 4, 5].map(function (lv) { var sp = BR.courierSpec(bastion(10, lv), bdata); return [sp.built, sp.level, sp.onRoad, sp.maxItems, sp.returns, sp.priority, sp.combined]; }),
+      [[false, 0, 0, 0, false, false, false], [true, 1, 1, 5, false, false, false], [true, 2, 2, 10, false, false, false], [true, 3, 3, 15, true, false, false], [true, 4, 3, 20, true, true, false], [true, 5, 4, 30, true, true, true]]);
+    t.same([CD.priority, CD.combined], [{ daysDivisor: 2, feeMultiplier: 2 }, { feeShare: 0.5 }]);
     t.same([CD.minDays, CD.keptClosed, CD.provisional], [1, 30, true]);
-    t.same(CD.later.map(function (l) { return [l.level, l.name]; }), [[3, 'Collect Expedition Cargo'], [4, 'Priority Courier'], [5, 'Express Cargo Exchange']]);
     t.equal(BR.courierPoint(withCourier({ points: { slades_muster: { level: 1, days: 0, feeGP: 5 } } }), 'slades_muster').days, 1, 'never an instant delivery');
   });
 

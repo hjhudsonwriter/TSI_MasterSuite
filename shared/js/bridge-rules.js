@@ -39,6 +39,12 @@
    receipt. The Explorer reads the Bastion's parcels from its save (B.parcels,
    B.parcelView) but never changes them.
 
+   Level 3 of the Courier Exchange (Harry, 10 November 2026) adds a sixth kind: cargo the party sends home from a town, { id, type:
+   'cargo_return', day, at, from, point, goods, priority, text } (point: a key of shared/data/courier-points.js; goods: what left the Travel
+   bags, [{ goodId, qty }]; priority: true if the DM ticked Priority at Level 4). Its id is a new random id with ':return:0'. The goods leave the
+   Travel bags in the same Explorer save as the message; the Bastion always takes it, as an inbound parcel, keeping a receipt. The Explorer
+   checks the Bastion's save first (B.cargoSpec, in the Explorer's own rules), so a refusal is only a change in between.
+
    Pull request 7 (Harry, 14 October 2026) adds a fourth kind: a beast (a
    griffin or dire wolf; since 22 October 2026 also a wyvern, buckbear or
    fellcat) the DM grants in the Explorer, { id, type: 'creature', day,
@@ -183,7 +189,9 @@
   B.CREATURE_FIELDS = ['id', 'type', 'day', 'at', 'from', 'species', 'name', 'text'];   /* plus wary, only when true (10 November 2026) */
   /* The kinds of message this copy knows; a well-formed kind name not on the
      list is a newer copy's, and waits. */
-  B.TYPES = ['standing', 'charter', 'parcel_collected', 'creature', 'rite'];
+  B.TYPES = ['standing', 'charter', 'parcel_collected', 'creature', 'rite', 'cargo_return'];
+  /* Cargo sent home from a town (Courier Exchange Level 3): its id is '<new id>' + this. */
+  B.CARGO_SUFFIX = ':return:0';
   /* A Great Rite given to the party (pull request 8b): no Clan. */
   B.RITE_FIELDS = ['id', 'type', 'day', 'at', 'from', 'rite', 'riteId', 'text'];
   B.RITE_SUFFIX = ':rite:0';
@@ -331,6 +339,23 @@
     return m;
   };
 
+  /* A new cargo-home message (the Explorer makes these, J.sendCargo): goods tidied; priority only when true. */
+  B.cargoMessage = function (f) {
+    var m = {
+      id: str(f.id),
+      type: 'cargo_return',
+      day: isWhole(f.day) ? f.day : 1,
+      at: str(f.at) || new Date().toISOString(),
+      from: { code: str(f.from && f.from.code, 20), title: str(f.from && f.from.title, 80), step: str(f.from && f.from.step, 40) },
+      point: str(f.point, 40),
+      goods: cleanGoods(f.goods),
+      text: str(f.text, B.TEXT_MAX)
+    };
+    if (f.priority === true) m.priority = true;
+    return m;
+  };
+  B.CARGO_FIELDS = ['id', 'type', 'day', 'at', 'from', 'point', 'goods', 'text'];   /* plus priority, only when true */
+
   /* A new Great Rite message (the Explorer makes these, J.assignRite). */
   B.riteMessage = function (f) {
     return {
@@ -367,6 +392,11 @@
     }
     if (m.type === 'rite') {
       return { id: m.id, type: 'rite', day: day, at: str(m.at), from: from, rite: str(m.rite, 40), riteId: str(m.riteId, 40), text: str(m.text, B.TEXT_MAX) };
+    }
+    if (m.type === 'cargo_return') {
+      var cg = { id: m.id, type: 'cargo_return', day: day, at: str(m.at), from: from, point: str(m.point, 40), goods: cleanGoods(m.goods), text: str(m.text, B.TEXT_MAX) };
+      if (m.priority === true) cg.priority = true;
+      return cg;
     }
     if (m.type === 'creature') {
       var cm = { id: m.id, type: 'creature', day: day, at: str(m.at), from: from, species: str(m.species, 40), name: str(m.name, B.NAME_MAX), text: str(m.text, B.TEXT_MAX) };
@@ -416,6 +446,14 @@
       var pid = B.parcelIdOf(m.id);
       if (!pid || !B.UID_PATTERN.test(pid)) return 'Its id isn\'t a parcel pickup\'s.';
       if (typeof m.parcel === 'string' && m.parcel && m.parcel !== pid) return 'It names a different parcel from its id.';
+      return '';
+    }
+    /* Cargo sent home (Courier Exchange Level 3): its id, a town the courier knows and something in it. The Bastion decides the rest. */
+    if (m.type === 'cargo_return') {
+      if (typeof m.id !== 'string' || !B.ID_PATTERN.test(m.id)) return 'Its id is damaged.';
+      if (m.id.slice(-B.CARGO_SUFFIX.length) !== B.CARGO_SUFFIX) return 'Its id isn\'t a cargo trip\'s.';
+      if (!B.isPoint(m.point)) return 'It names a town the courier doesn\'t know (' + (typeof m.point === 'string' ? str(m.point, 40) : 'none') + ').';
+      if (!cleanGoods(m.goods).length) return 'It carries nothing.';
       return '';
     }
     /* A Great Rite given to the party (pull request 8b): its kind, its id
@@ -522,6 +560,21 @@
       var cwhy = str(r.why) || 'the Bastion couldn\'t use it.';
       if (!/[.!?]$/.test(cwhy)) cwhy += '.';
       return { kind: 'refused', line: 'Refused: ' + cwhy + ' Nothing changed.' };
+    }
+    /* Cargo sent home (Courier Exchange Level 3): the Bastion's parcel for it says where it is. */
+    if (isObj(m) && m.type === 'cargo_return' && r) {
+      var ctown = B.pointLabel(m.point);
+      var cwhen = isWhole(r.day) ? ' on ' + (r.day >= 1 ? 'Day ' + r.day : 'a day before Day 1') : '';
+      if (r.r === 'applied') {
+        var parcel = (isObj(bastionSave.tradeNetwork) && Array.isArray(bastionSave.tradeNetwork.parcels) ? bastionSave.tradeNetwork.parcels : []).filter(function (p) { return isObj(p) && p.msgId === m.id; })[0];
+        if (parcel && parcel.status === 'delivered') return { kind: 'applied', line: 'Delivered' + (isWhole(parcel.arrivedDay) ? ' on ' + dayText(parcel.arrivedDay) : '') + ': the cargo from ' + ctown + ' is in the Ironbow\'s Warehouse.' };
+        if (parcel && isWhole(parcel.readyDay)) return { kind: 'applied', line: 'Applied' + cwhen + ': the cargo is on the road from ' + ctown + ', reaching the Ironbow on ' + dayText(parcel.readyDay) + '.' };
+        return { kind: 'applied', line: r.held === true ? 'Applied' + cwhen + ': the Bastion already held this cargo, so nothing changed.' : 'Applied' + cwhen + ': the Bastion took the cargo from ' + ctown + '.' };
+      }
+      if (r.r === 'skipped') return { kind: 'skipped', line: 'Skipped: sent before this Bastion started.' };
+      var cwhy2 = str(r.why) || 'the Bastion couldn\'t use it.';
+      if (!/[.!?]$/.test(cwhy2)) cwhy2 += '.';
+      return { kind: 'refused', line: 'Refused: ' + cwhy2 + ' The items are not in the Travel bags any more: add them back with + Add if they should be.' };
     }
     /* A Great Rite given to the party (pull request 8b). */
     if (isObj(m) && m.type === 'rite' && r) {

@@ -1348,3 +1348,7 @@
 
 /* The "Show my cursor to players" tick box (shared/js/pointer-mirror.js) */
 .tsi-page--bastion .tsi-bas-cursorrow { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--tsi-text-muted); cursor: pointer; }
+
+/* The second town of a combined parcel (Courier Exchange Level 5, 10 November 2026). */
+.tsi-page--bastion .tsi-bas-parcel__second { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px solid var(--tsi-line-faint); }
+.tsi-page--bastion .tsi-bas-parcel__second[hidden] { display: none; }

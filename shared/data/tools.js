@@ -185,6 +185,8 @@ window.TSI_DATA.tools = [
         'tools/bastion/data/creatures-data.js',
         /* The Beast-Catcher's Kit and tools, and which tools suit which beast (the Settle check in Grant a creature, 10 November 2026). */
         'tools/beasthandler/data/beast-catcher-data.js',
+        /* What the Courier Exchange carries: the kinds the Travel bags can send home from a town's courier post (Level 3, 10 November 2026). */
+        'tools/bastion/data/courier-data.js',
         'tools/explorer/rules.js',
         'tools/explorer/pins-rules.js',
         'tools/explorer/explored-rules.js',

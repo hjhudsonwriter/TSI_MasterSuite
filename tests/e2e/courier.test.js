@@ -225,10 +225,11 @@ async function panelFits(ba) {
     equal(await ba.$eval('[data-test=send-parcel]', b => b.disabled), true);
     equal(await bare(ba, '[data-test=parcel-why]'), 'The Warehouse has nothing the courier carries (Expedition Provision Packs, Overland charts and the Temple\'s items).');
     equal(await ba.$$eval('[data-test=courier-later] li', l => l.map(x => x.textContent)), [
-      'Level 3: Collect Expedition Cargo (return trips, from the party to the Ironbow).',
-      'Level 4: Priority Courier (faster parcels).',
-      'Level 5: Express Cargo Exchange (more and combined parcels).'
-    ], 'Coming later');
+      'Level 2: Regional Expedition Delivery (2 parcels on the road, up to 10 items each).',
+      'Level 3: Collect Expedition Cargo (the party can send cargo home from a town; 3 parcels on the road, up to 15 items each).',
+      'Level 4: Priority Courier (Priority parcels: half the days, double the fee; 3 parcels on the road, up to 20 items each).',
+      'Level 5: Express Cargo Exchange (one parcel for two towns; 4 parcels on the road, up to 30 items each).'
+    ], 'Higher levels');
     await closeAll(ba);
   });
 
