@@ -183,9 +183,12 @@ async function panelCreatures(ba) {
 async function grant(ex, species, name, why) {
   await closeAll(ex);
   await ex.waitForTimeout(400);
+  /* The Settle check (10 November 2026): a Beast-Catcher's Kit in the Travel bags, and a total typed. */
+  await ex.evaluate(() => TSI.explorer.debug.change(s => { TSI.explorer.journey.addItem(s, 'beast_catchers_kit', 1); }));
   await ex.click('[data-test=creature-open]');
   await ex.waitForSelector('[data-test=creature-dialog]');
   await ex.selectOption('[data-test=creature-species]', species);
+  await ex.fill('[data-test=settle-total]', '30');
   await ex.fill('[data-test=creature-name]', name || '');
   await ex.fill('[data-test=creature-why]', why || '');
   await ex.click('[data-test=creature-dialog] .tsi-modal__foot .tsi-btn--primary');
@@ -324,7 +327,7 @@ async function clickPop(page, label) {
     const sent = s.journey.outbox.filter(m => m.type === 'creature');
     equal(sent.map(m => [m.type, m.day, m.species, m.name, m.text]), [['creature', 22, 'griffin', 'Swiftwing', 'Griffin for the Ironbow (Swiftwing): Won at the Ember Fair.']], 'one grant');
     assert(/^[A-Za-z0-9-]+:dm:0$/.test(sent[0].id), sent[0].id);
-    equal(await bare(ex, '[data-test=notice]'), 'Sent to the Bastion: a griffin (Swiftwing) for the Ironbow, to be housed at the Beast Pen.');
+    equal(await bare(ex, '[data-test=notice]'), 'Sent to the Bastion: a griffin (Swiftwing) for the Ironbow, to be housed at the Beast Pen. Settle check: 30 against DC 17: settled. Used up: Beast-Catcher’s Kit.');
     equal((await sentTop(ex)).title, 'Creature: Griffin (Swiftwing)');
   });
 
@@ -384,7 +387,7 @@ async function clickPop(page, label) {
 
   await check('a dire wolf with no name is granted and housed beside it: several beasts can be housed at once, one of each kind (ready on Day 25)', async () => {
     await grant(ex, 'dire_wolf', '', 'To guard the gate');
-    equal(await bare(ex, '[data-test=notice]'), 'Sent to the Bastion: a dire wolf for the Ironbow, to be housed at the Beast Pen.');
+    equal(await bare(ex, '[data-test=notice]'), 'Sent to the Bastion: a dire wolf for the Ironbow, to be housed at the Beast Pen. Settle check: 30 against DC 15: settled. Used up: Beast-Catcher’s Kit.');
     await ba.waitForFunction(() => TSI.bastion.debug.state().creatures.length === 2, null, { timeout: 8000 });
     await H.waitForNotice(ba, /From the Explorer: a dire wolf for the Ironbow, waiting for a home at the Beast Pen\./);
     await H.dismissNotices(ba);

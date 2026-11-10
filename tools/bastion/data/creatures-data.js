@@ -46,16 +46,19 @@ window.TSI_DATA.bastionCreatures = {
     wyvern: {
       name: 'Wyvern',
       plural: 'Wyverns',
+      acclimatiseDC: 17,
       home: 'beast_pen'
     },
     griffin: {
       name: 'Griffin',
       plural: 'Griffins',
+      acclimatiseDC: 17,
       home: 'beast_pen'
     },
     dire_wolf: {
       name: 'Dire Wolf',
       plural: 'Dire Wolves',
+      acclimatiseDC: 15,
       home: 'beast_pen'
     },
     /* Buckbear and Fellcat (Harry, 22 October 2026): new kinds the DM can grant. Their varieties, pictures and
@@ -63,17 +66,20 @@ window.TSI_DATA.bastionCreatures = {
     buckbear: {
       name: 'Buckbear',
       plural: 'Buckbears',
+      acclimatiseDC: 15,
       home: 'beast_pen'
     },
     fellcat: {
       name: 'Fellcat',
       plural: 'Fellcats',
+      acclimatiseDC: 15,
       home: 'beast_pen'
     },
     /* Sabrecat (Harry, 3 November 2026): a sixth kind. Its five varieties are in tools/beasthandler/data/. */
     sabrecat: {
       name: 'Sabrecat',
       plural: 'Sabrecats',
+      acclimatiseDC: 15,
       home: 'beast_pen'
     }
   },
@@ -107,7 +113,11 @@ window.TSI_DATA.bastionCreatures = {
      types their total. A total of dc or more passes (Bond 1); less locks that beast, and only that beast, for
      retryDays in-game days (a fail on Day 10 blocks Days 11 and 12; Day 13 is allowed). Any kind can have its own DC
      (species.<kind>.acclimatiseDC). */
-  acclimatise: { dc: 20, skill: 'Animal Handling', retryDays: 3 },
+  /* Beast capture rules (Harry, 10 November 2026): each kind's own acclimatiseDC is its Settle DC (15 for the fellcat, dire wolf, buckbear
+     and sabrecat, 17 for the griffin and wyvern: the Explorer's Settle check uses the same number). A beast that came to the Ironbow
+     WARY (the Settle total was under the DC) is acclimatised against waryDC instead: 20, as every kind was before. dc is only the
+     fallback for a kind with no acclimatiseDC. */
+  acclimatise: { dc: 20, waryDC: 20, skill: 'Animal Handling', retryDays: 3 },
 
   /* Bonding Days (Harry, 22 October 2026). A beast away from the Ironbow with its handler earns one Bonding Day for
      each day that passes. These are TOTALS: the level reached and the Bonding Days it needs altogether (Bond 2 at 10

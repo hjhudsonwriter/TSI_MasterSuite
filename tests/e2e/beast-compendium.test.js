@@ -68,7 +68,7 @@ async function checkBook(page, scope, size, shot) {
     Object.keys(guideData.loadouts).map(k => [k].concat(guideData.loadouts[k].map(id => guideData.items.find(i => i.id === id).name))), 'the best-fit table, six beasts of three tools');
   equal(await page.$$eval(scope + ' [data-test=bc-how] dt', n => n.map(x => x.textContent)), ['Subdue', 'Settle', 'Failure', 'Reuse', 'The carry home']);
   const gtext = await page.textContent(scope + ' [data-test=bc-guide]');
-  ['A party cannot attempt to subdue and capture a beast without the Beast-Catcher’s Kit', 'DC 10 Strength to escape', 'DC 20 Strength to break free', 'does not lower the DC', 'proposed rules, not yet built into the tools', 'DC 9 or 11', 'fewer starting bond pills'].forEach(x => assert(gtext.indexOf(x) !== -1, 'the guide says: ' + x));
+  ['A party cannot attempt to subdue and capture a beast without the Beast-Catcher’s Kit', 'DC 10 Strength to escape', 'DC 20 Strength to break free', 'does not lower the DC', 'Beast-Catcher’s Kit from the Travel bags (no kit, no grant)', 'DC 9 or 11', 'it needs DC 20 to acclimatise'].forEach(x => assert(gtext.indexOf(x) !== -1, 'the guide says: ' + x));
   {
     const sc = await page.$eval(scope + ' [data-test=bc-page]', e => { e.scrollTop = e.scrollHeight; return { top: e.scrollTop, max: e.scrollHeight - e.clientHeight, w: e.scrollWidth <= e.clientWidth }; });
     assert(sc.max > 0 && sc.top >= sc.max - 2 && sc.w, 'the page scrolls to its end, with no sideways scroll: ' + JSON.stringify(sc));

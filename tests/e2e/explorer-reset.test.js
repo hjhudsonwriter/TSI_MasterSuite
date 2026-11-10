@@ -39,7 +39,7 @@ const exs = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.explorer.d
         s.journey.threads.push({ id: 'zz-thread', name: 'ZZThread', day: 3 });
         s.journey.effects.push({ id: 'zz-effect', name: 'ZZEffect', day: 3, untilDay: null });
         s.journey.log.push('ZZ log line');
-        J.grantCreature(s, 'griffin', { name: 'Spark' });
+        J.addItem(s, 'beast_catchers_kit', 1); J.grantCreature(s, 'griffin', { name: 'Spark', settle: { total: 30, items: [] } });
       }));
       await ba.waitForFunction(() => TSI.bastion.debug.state().creatures.some(c => c.name === 'Spark' && c.status === 'waiting'), null, { timeout: 15000 });
       await ba.evaluate(() => TSI.bastion.debug.change(s => { s.treasuryGP = 777; s.warehouse = [{ name: 'ZZRope', qty: 4 }]; }));
@@ -85,7 +85,7 @@ const exs = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.explorer.d
     });
 
     await check('a new journey after the reset works as on a fresh start: a grant is held, not skipped', async () => {
-      await ex.evaluate(() => TSI.explorer.debug.change(s => { TSI.explorer.journey.grantCreature(s, 'griffin', { name: 'Ember' }); }));
+      await ex.evaluate(() => TSI.explorer.debug.change(s => { TSI.explorer.journey.addItem(s, 'beast_catchers_kit', 1); TSI.explorer.journey.grantCreature(s, 'griffin', { name: 'Ember', settle: { total: 30, items: [] } }); }));
       await ba.waitForFunction(() => TSI.bastion.debug.state().creatures.some(c => c.name === 'Ember' && c.status === 'waiting'), null, { timeout: 15000 });
       const s = await bas(ba);
       equal(Object.values(s.bridge.done).map(r => r.r), ['applied']);

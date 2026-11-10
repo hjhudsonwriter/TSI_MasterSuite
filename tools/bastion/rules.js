@@ -817,7 +817,7 @@
     return kept;
   };
   function hasDayVal(v) { return v !== null && v !== undefined && v !== '' && isFinite(Number(v)); }
-  R.CREATURE_KEYS = ['id', 'species', 'owner', 'name', 'status', 'home', 'grantedDay', 'housedDay', 'msgId'];
+  R.CREATURE_KEYS = ['id', 'species', 'owner', 'name', 'status', 'home', 'grantedDay', 'housedDay', 'msgId', 'wary'];
   R.cleanCreatures = function (src, today) {
     var out = [];
     var seen = {};
@@ -841,6 +841,7 @@
         housedDay: status === 'housed' ? dayNum(c.housedDay, granted) : null,
         msgId: txt(c.msgId, 80)
       };
+      if (c.wary === true) rec.wary = true;   /* it came Wary (10 November 2026) */
       /* Its development, kept whole; Elara's wyvern is credited Bond 1 once. */
       if (isObj(c.development)) rec.development = R.cleanDevelopment(c.development);
       else if (id === 'elara_wyvern' && status === 'housed') rec.development = R.newDevelopment({ id: id }, c.housedDay !== undefined && c.housedDay !== null ? c.housedDay : day);
@@ -2337,6 +2338,11 @@
      save (the Explorer checks a campaign file with no Bastion data). */
   function goodsList(data) { return data && isObj(data.goods) && arr(data.goods.goods) ? data.goods.goods : []; }
   R.goodsList = goodsList;
+  /* The good a Workshop craft item becomes (a good marked craft: true, with the item's own name), or ''. */
+  R.craftGoodId = function (data, itemName) {
+    var g = goodsList(data).filter(function (x) { return x && x.craft === true && x.name === itemName; })[0];
+    return g ? g.id : '';
+  };
   R.good = function (data, id) { return goodsList(data).filter(function (g) { return g.id === id; })[0] || null; };
   R.goodName = function (data, id) { var g = R.good(data, id); return g ? g.name : String(id || '').replace(/_/g, ' '); };
   /* "1 lot of Raw Timber", "10 portions of Restorative Herbs", "5 Expedition Provision Packs". */
@@ -2600,6 +2606,13 @@
       return [['Order Completed', label + ' → Added to Warehouse.']];
     }
     if (fac.id === 'workshop' && chosen && chosen.craftItem) {
+      /* The Beast-Catcher's Kit and its tools (10 November 2026) are counted goods, so the Courier can send them and the Explorer can
+         count them in the Travel bags; every other crafted item is a typed row, as before. */
+      var gid = R.craftGoodId(data, chosen.craftItem);
+      if (gid) {
+        R.addGoods(s, data, gid, 1, 'Workshop', rand);
+        return [['Order Completed', label + ' → Crafted: ' + chosen.craftItem + ' (counted in the Warehouse, so it can go by Courier).']];
+      }
       R.appendToWarehouse(s, chosen.craftItem, 1, '', 'Workshop', rand);
       return [['Order Completed', label + ' → Crafted: ' + chosen.craftItem + '.']];
     }

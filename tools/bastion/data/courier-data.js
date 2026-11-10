@@ -45,6 +45,18 @@ window.TSI_DATA.bastionCourier = {
     cleansing_portion: { size: 1 },
     voyage_blessing: { size: 1 },
     aquatic_protection_charm: { size: 1 },
+    /* The Beast-Catcher's Kit and its ten tools (Harry, 10 November 2026): 1 item each. */
+    beast_catchers_kit: { size: 1 },
+    beast_collar_lead: { size: 1 },
+    beast_chain_rig: { size: 1 },
+    stillroot_salve: { size: 1 },
+    dreamroot_salve: { size: 1 },
+    beast_salve: { size: 1 },
+    scent_lure: { size: 1 },
+    falconers_hood_jesses: { size: 1 },
+    jaw_strap_tail_sheath: { size: 1 },
+    handlers_gauntlets: { size: 1 },
+    beast_muzzle: { size: 1 },
     /* The four herbs and roots (Harry, 20 October 2026). Each portion counts
        as 1 item, so a parcel's room is unchanged. In the Travel bags they
        are just counted: the DM handles what they do at the table. */

@@ -414,20 +414,20 @@
     t.same(b.pendingOrders, []);
   });
 
-  test('a pass (the DC is 20 for every kind) makes Bond 1 at once, writes one public Chronicle line and the first meeting is rolled in the same step', function (t) {
+  test('a pass (a griffin\'s DC is 17) makes Bond 1 at once, writes one public Chronicle line and the first meeting is rolled in the same step', function (t) {
     var b = withPen(12);
     var id = housed(b, 1, 'griffin', 'Swiftwing');
     BR.assignHandler(b, bdata, id, 'Mira', '');
-    var r = BR.acclimatise(b, bdata, id, 20, { rand: dice([0.5, 0.1, 0.4, 0.7]) });
-    t.same([r.ok, r.pass, r.total, r.dc, r.skill], [true, true, 20, 20, 'Animal Handling']);
-    t.same(r.log, ['Creatures', 'Swiftwing and Mira passed acclimatisation (Animal Handling 20 against DC 20): Bond 1 on Day 12. Swiftwing can now go out on the road with Mira.']);
+    var r = BR.acclimatise(b, bdata, id, 17, { rand: dice([0.5, 0.1, 0.4, 0.7]) });
+    t.same([r.ok, r.pass, r.total, r.dc, r.skill], [true, true, 17, 17, 'Animal Handling']);
+    t.same(r.log, ['Creatures', 'Swiftwing and Mira passed acclimatisation (Animal Handling 17 against DC 17): Bond 1 on Day 12. Swiftwing can now go out on the road with Mira.']);
     var d = dev(b, id);
     t.same([d.bond.level, d.bond.ready], [1, null]);
     t.same(d.chronicle.map(function (e) { return [e.cat, e.text, e.private === true]; }), [
       ['handler', 'Mira assigned as handler.', false],
-      ['bond', 'Acclimatised with Mira on Day 12 (rolled 20 against DC 20). Bond 1 (Acclimatised).', false]
+      ['bond', 'Acclimatised with Mira on Day 12 (rolled 17 against DC 17). Bond 1 (Acclimatised).', false]
     ]);
-    t.same(d.acclimatise, { tries: 1, retryDay: null, last: { day: 12, total: 20, dc: 20, pass: true } });
+    t.same(d.acclimatise, { tries: 1, retryDay: null, last: { day: 12, total: 17, dc: 17, pass: true } });
     t.ok(r.introduced && r.introduced.ok && r.introduced.initiated, 'the first meeting was rolled in the same step: ' + JSON.stringify(r.introduced));
     t.equal(typeof d.initiation.regional, 'string');
     var fac = BR.facility(bdata, PEN);
@@ -443,12 +443,12 @@
     var w = housed(b, 2, 'wyvern', 'Ash');
     BR.assignHandler(b, bdata, g, 'Mira', '');
     BR.assignHandler(b, bdata, w, 'Kaelen', '');
-    var r = BR.acclimatise(b, bdata, g, 19, {});
+    var r = BR.acclimatise(b, bdata, g, 16, {});
     t.same([r.ok, r.pass, r.retryDay], [true, false, 13]);
-    t.same(r.log, ['Creatures', 'Swiftwing and Mira failed acclimatisation (Animal Handling 19 against DC 20). Swiftwing can try again on Day 13.']);
-    t.same([dev(b, g).bond.level, dev(b, g).acclimatise], [0, { tries: 1, retryDay: 13, last: { day: 10, total: 19, dc: 20, pass: false } }]);
+    t.same(r.log, ['Creatures', 'Swiftwing and Mira failed acclimatisation (Animal Handling 16 against DC 17). Swiftwing can try again on Day 13.']);
+    t.same([dev(b, g).bond.level, dev(b, g).acclimatise], [0, { tries: 1, retryDay: 13, last: { day: 10, total: 16, dc: 17, pass: false } }]);
     var note = dev(b, g).chronicle[dev(b, g).chronicle.length - 1];
-    t.same([note.cat, note.private, note.text], ['bond', true, 'Acclimatisation failed on Day 10: rolled 19 against DC 20. It can try again on Day 13.']);
+    t.same([note.cat, note.private, note.text], ['bond', true, 'Acclimatisation failed on Day 10: rolled 16 against DC 17. It can try again on Day 13.']);
     [10, 11, 12].forEach(function (day) {
       b.day = day;
       t.equal(BR.acclimatise(b, bdata, g, 30, {}).message, 'Swiftwing can try again on Day 13.', 'Day ' + day);
@@ -480,11 +480,14 @@
   });
 
   test('the DC is one number in the data and a kind can have its own', function (t) {
-    t.same([BR.acclimatiseDC(bdata, 'wyvern'), BR.acclimatiseDC(bdata, 'buckbear'), BR.acclimatiseData(bdata, 'fellcat').retryDays], [20, 20, 3]);
+    t.same([BR.acclimatiseDC(bdata, 'wyvern'), BR.acclimatiseDC(bdata, 'buckbear'), BR.acclimatiseData(bdata, 'fellcat').retryDays], [17, 15, 3]);
+    t.same(['fellcat', 'dire_wolf', 'buckbear', 'sabrecat', 'griffin', 'wyvern'].map(function (k) { return BR.acclimatiseDC(bdata, k); }), [15, 15, 15, 15, 17, 17], 'a kind\'s DC is its Settle DC (Harry, 10 November 2026)');
+    t.same(['fellcat', 'wyvern'].map(function (k) { return BR.acclimatiseDC(bdata, k, true); }), [20, 20], 'a Wary beast needs DC 20, whatever its kind');
     var custom = Object.assign({}, bdata, { creatures: copy(CR) });
     custom.creatures.species.wyvern.acclimatiseDC = 15;
     custom.creatures.acclimatise.dc = 18;
-    t.same([BR.acclimatiseDC(custom, 'wyvern'), BR.acclimatiseDC(custom, 'griffin')], [15, 18]);
+    delete custom.creatures.species.griffin.acclimatiseDC;
+    t.same([BR.acclimatiseDC(custom, 'wyvern'), BR.acclimatiseDC(custom, 'griffin')], [15, 18], 'a kind with no DC of its own falls back');
     var b = withPen(10);
     var id = housed(b, 1, 'wyvern', 'Ash');
     BR.assignHandler(b, bdata, id, 'Mira', '');
@@ -1252,7 +1255,7 @@
     t.equal(BR.acclimatiseBlocker(c, bdata, cid, {}), 'Ashfang can try again on Day 23.', 'Day 22 is still locked (a fail on Day 20 blocks Days 21 and 22)');
     c.day = 23;
     t.equal(BR.acclimatiseBlocker(c, bdata, cid, {}), '', 'Day 23 is allowed');
-    t.equal(BR.nextStepLine(c, bdata, BR.creatureById(c, cid)), 'Ready to acclimatise: Kaelen rolls Animal Handling against DC 20.');
+    t.equal(BR.nextStepLine(c, bdata, BR.creatureById(c, cid)), 'Ready to acclimatise: Kaelen rolls Animal Handling against DC 15.');
     var pass = BR.acclimatise(c, bdata, cid, 20, { rand: dice([0.5]) });
     t.same([pass.ok, pass.pass, dev(c, cid).acclimatise.tries], [true, true, tries + 1]);
   });
@@ -1385,7 +1388,7 @@
     var id = housed(b, 2, 'wyvern', 'Ash');
     t.equal(line(id), 'Assign a handler, then Acclimatise With Beast.', 'housed, no handler');
     BR.assignHandler(b, bdata, id, 'Mira', '');
-    t.equal(line(id), 'Ready to acclimatise: Mira rolls Animal Handling against DC 20.', 'Bond 0 with a handler');
+    t.equal(line(id), 'Ready to acclimatise: Mira rolls Animal Handling against DC 17.', 'Bond 0 with a handler');
     BR.acclimatise(b, bdata, id, 5, {});
     t.equal(line(id), 'Its last try failed. It can try again on Day 13.', 'after a fail on Day 10');
     b.day = 13;
@@ -1484,18 +1487,20 @@
   });
 
   test('the Acclimatise row\'s DC and note are made from the data: one kind\'s DC, the shared DC or the range, and the days to wait', function (t) {
-    t.equal(BR.acclimatiseDcText(bdata, 'griffin'), 'DC 20');
-    t.equal(BR.acclimatiseDcText(bdata), 'DC 20', 'the same for every kind: just the number');
+    t.equal(BR.acclimatiseDcText(bdata, 'griffin'), 'DC 17');
+    t.equal(BR.acclimatiseDcText(bdata, 'griffin', true), 'DC 20 (Wary)');
+    t.equal(BR.acclimatiseDcText(bdata), 'DC 15 to 17', 'each kind has its own: the range');
     var custom = copy(CR);
     custom.species.fellcat.acclimatiseDC = 23;
+    delete custom.species.wyvern.acclimatiseDC;
     custom.acclimatise = { dc: 18, skill: 'Animal Handling', retryDays: 5 };
     var cd = Object.assign({}, bdata, { creatures: custom });
     t.equal(BR.acclimatiseDcText(cd, 'fellcat'), 'DC 23');
     t.equal(BR.acclimatiseDcText(cd, 'wyvern'), 'DC 18');
-    t.equal(BR.acclimatiseDcText(cd), 'DC 18 to 23');
+    t.equal(BR.acclimatiseDcText(cd), 'DC 15 to 23');
     var note = BR.acclimatiseNote(cd);
-    t.ok(/Animal Handling at the table/.test(note) && /\(DC 18 to 23, each kind has its own\)/.test(note) && /locks that beast for 5 days\./.test(note), note);
-    t.ok(/\(DC 20\): the beast becomes Bond 1/.test(BR.acclimatiseNote(bdata)) && /locks that beast for 3 days\./.test(BR.acclimatiseNote(bdata)), BR.acclimatiseNote(bdata));
+    t.ok(/Animal Handling at the table/.test(note) && /\(DC 15 to 23, each kind has its own;/.test(note) && /locks that beast for 5 days\./.test(note), note);
+    t.ok(/\(DC 15 to 17, each kind has its own; a Wary beast, one that failed its Settle check in the Explorer, needs DC 20\): the beast becomes Bond 1/.test(BR.acclimatiseNote(bdata)) && /locks that beast for 3 days\./.test(BR.acclimatiseNote(bdata)), BR.acclimatiseNote(bdata));
     t.equal(/creatures-data|\.js\b/.test(BR.acclimatiseNote(bdata)), false, 'no file names in what the DM reads');
     var fn = BR.facility(bdata, PEN).functions[1];
     t.equal(/creatures-data|\b20\b|\b3 days\b/.test(fn.notes), false, 'the data\'s own note has no file name and no DC or days that could go out of step');

@@ -113,7 +113,108 @@ window.TSI_DATA.partyItems = {
   restorative_herbs: { name: 'Restorative Herbs', plural: 'portions of Restorative Herbs', use: 'dm', usesEach: 1, unit: 'portion', units: 'portions', text: 'Medical supply herbs. The DM applies any effect at the table; the bags only count them.' },
   antivenom_roots: { name: 'Antivenom Roots', plural: 'portions of Antivenom Roots', use: 'dm', usesEach: 1, unit: 'portion', units: 'portions', text: 'Roots for antitoxin and antidotes. The DM applies any effect at the table; the bags only count them.' },
   toxic_blossoms: { name: 'Toxic Blossoms', plural: 'portions of Toxic Blossoms', use: 'dm', usesEach: 1, unit: 'portion', units: 'portions', text: 'Poisonous blossoms. The DM applies any effect at the table; the bags only count them.' },
-  alchemical_flowers: { name: 'Alchemical Flowers', plural: 'portions of Alchemical Flowers', use: 'dm', usesEach: 1, unit: 'portion', units: 'portions', text: 'Flowers for alchemy. The DM applies any effect at the table; the bags only count them.' }
+  alchemical_flowers: { name: 'Alchemical Flowers', plural: 'portions of Alchemical Flowers', use: 'dm', usesEach: 1, unit: 'portion', units: 'portions', text: 'Flowers for alchemy. The DM applies any effect at the table; the bags only count them.' },
+  /* The Beast-Catcher's Kit and its ten tools (Harry, 10 November 2026). use 'dm': the DM applies them at the table; the Explorer's Grant a creature
+     asks for a Kit from the bags and counts the tools that suit the beast (the Kit and the single-use ones are used up). */
+  beast_catchers_kit: {
+    name: 'Beast-Catcher’s Kit',
+    plural: 'Beast-Catcher’s Kits',
+    use: 'dm',
+    usesEach: 1,
+    unit: 'kit',
+    units: 'kits',
+    text: 'A weighted net, ropes and a whip: needed to settle a captured beast (used up when it is granted).'
+  },
+  beast_collar_lead: {
+    name: 'Beast-Collar & Lead',
+    plural: 'Beast-Collars & Leads',
+    use: 'dm',
+    usesEach: 1,
+    unit: 'collar and lead',
+    units: 'collars and leads',
+    text: 'Lowers the Settle DC by 2 for a Fellcat, Dire Wolf or Griffin; reusable.'
+  },
+  beast_chain_rig: {
+    name: 'Beast-Chain Rig',
+    plural: 'Beast-Chain Rigs',
+    use: 'dm',
+    usesEach: 1,
+    unit: 'rig',
+    units: 'rigs',
+    text: 'Lowers the Settle DC by 2 for a Buckbear, Sabrecat or Wyvern; reusable.'
+  },
+  stillroot_salve: {
+    name: 'Stillroot Salve',
+    plural: 'doses of Stillroot Salve',
+    use: 'dm',
+    usesEach: 1,
+    unit: 'dose',
+    units: 'doses',
+    text: 'Lowers the Settle DC by 2 for a Fellcat, Griffin or Buckbear; used up.'
+  },
+  dreamroot_salve: {
+    name: 'Dreamroot Salve',
+    plural: 'doses of Dreamroot Salve',
+    use: 'dm',
+    usesEach: 1,
+    unit: 'dose',
+    units: 'doses',
+    text: 'Lowers the Settle DC by 2 for a Buckbear, Sabrecat or Wyvern; used up.'
+  },
+  beast_salve: {
+    name: 'Beast Salve',
+    plural: 'doses of Beast Salve',
+    use: 'dm',
+    usesEach: 1,
+    unit: 'dose',
+    units: 'doses',
+    text: 'Stabilises and heals the captive on the way home; used up.'
+  },
+  scent_lure: {
+    name: 'Scent Lure',
+    plural: 'doses of Scent Lure',
+    use: 'dm',
+    usesEach: 1,
+    unit: 'dose',
+    units: 'doses',
+    text: 'Lowers the Settle DC by 2 for a Fellcat, Dire Wolf or Griffin; used up.'
+  },
+  falconers_hood_jesses: {
+    name: 'Falconer’s Hood & Jesses',
+    plural: 'sets of Falconer’s Hood & Jesses',
+    use: 'dm',
+    usesEach: 1,
+    unit: 'set',
+    units: 'sets',
+    text: 'Lowers the Settle DC by 2 for a Griffin; reusable.'
+  },
+  jaw_strap_tail_sheath: {
+    name: 'Jaw-Strap & Tail Sheath',
+    plural: 'sets of Jaw-Strap & Tail Sheath',
+    use: 'dm',
+    usesEach: 1,
+    unit: 'set',
+    units: 'sets',
+    text: 'Lowers the Settle DC by 2 for a Wyvern; reusable.'
+  },
+  handlers_gauntlets: {
+    name: 'Handler’s Gauntlets',
+    plural: 'pairs of Handler’s Gauntlets',
+    use: 'dm',
+    usesEach: 1,
+    unit: 'pair',
+    units: 'pairs',
+    text: 'Lowers the Settle DC by 2 for a Buckbear or Sabrecat; reusable.'
+  },
+  beast_muzzle: {
+    name: 'Beast Muzzle',
+    plural: 'Beast Muzzles',
+    use: 'dm',
+    usesEach: 1,
+    unit: 'muzzle',
+    units: 'muzzles',
+    text: 'Lowers the Settle DC by 2 for a Fellcat, Dire Wolf or Sabrecat; reusable.'
+  }
 };
 
 /* The Shrines' Great Rites (pull request 8b, Harry's Shrine specification of

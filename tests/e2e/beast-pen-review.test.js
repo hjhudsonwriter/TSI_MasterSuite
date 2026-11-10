@@ -360,18 +360,18 @@ async function notice(page) {
     await openPen(ba);
     const opts = await ba.$$eval('[data-test=sel-' + ACC + '] option', n => n.map(o => o.textContent));
     assert(opts.length === 2 && /Swiftwing/.test(opts[0]) && /Lichen/.test(opts[1]), JSON.stringify(opts));
-    equal(await bare(ba, '[data-test=acclimatise-row] .tsi-bas-fn__cost'), 'Animal Handling · DC 20');
+    equal(await bare(ba, '[data-test=acclimatise-row] .tsi-bas-fn__cost'), 'Animal Handling · DC 17', 'the griffin\'s own');
     await ba.selectOption('[data-test=sel-' + ACC + ']', '1');
     await ba.waitForTimeout(200);
     equal(await bare(ba, '[data-test=acclimatise-row] .tsi-bas-fn__cost'), 'Animal Handling · DC 23', 'the fellcat\'s own');
     const note = await bare(ba, '[data-test=acclimatise-note]');
-    assert(/Animal Handling at the table/.test(note) && /DC 20 to 23, each kind has its own/.test(note) && /locks that beast for 3 days/.test(note), note);
+    assert(/Animal Handling at the table/.test(note) && /DC 15 to 23, each kind has its own/.test(note) && /locks that beast for 3 days/.test(note), note);
     assert(!/creatures-data|\.js|in the data/.test(note), note);
     await ba.click('[data-test=issue-' + ACC + ']');
     await ba.waitForSelector('[data-test=acclimatise-dialog]');
     assert(/DC 23/.test(await bare(ba, '[data-test=acclimatise-dialog]')), 'the dialog agrees with the row');
     await H.clickModal(ba, 'Cancel');
-    await ba.evaluate(() => { delete TSI_DATA.bastionCreatures.species.fellcat.acclimatiseDC; });
+    await ba.evaluate(() => { TSI_DATA.bastionCreatures.species.fellcat.acclimatiseDC = 15; });   /* back to the fellcat's own (Settle) DC */
     await ba.evaluate(() => TSI.bastion.debug.change(s => { s.creatures.forEach(c => { if (c.id === 'cr-1') c.development.bond.level = 1; }); }));
   });
 

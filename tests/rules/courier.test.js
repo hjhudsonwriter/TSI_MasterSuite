@@ -125,7 +125,7 @@
   });
 
   test('what a parcel carries: packs and charts, 1 item each, each a Bastion good and a Travel bags kind; never a trade good', function (t) {
-    t.same(Object.keys(CD.items), ['expedition_provision_pack', 'overland_chart', 'earthward_talisman', 'rootguard_salve', 'blessed_lantern', 'purification_incense', 'cleansing_portion', 'voyage_blessing', 'aquatic_protection_charm', 'restorative_herbs', 'antivenom_roots', 'toxic_blossoms', 'alchemical_flowers'], 'and the Shrines\' items since pull request 8b, and the four herbs and roots since 20 October 2026');
+    t.same(Object.keys(CD.items), ['expedition_provision_pack', 'overland_chart', 'earthward_talisman', 'rootguard_salve', 'blessed_lantern', 'purification_incense', 'cleansing_portion', 'voyage_blessing', 'aquatic_protection_charm', 'beast_catchers_kit', 'beast_collar_lead', 'beast_chain_rig', 'stillroot_salve', 'dreamroot_salve', 'beast_salve', 'scent_lure', 'falconers_hood_jesses', 'jaw_strap_tail_sheath', 'handlers_gauntlets', 'beast_muzzle', 'restorative_herbs', 'antivenom_roots', 'toxic_blossoms', 'alchemical_flowers'], 'and the Shrines\' items since pull request 8b, the four herbs and roots since 20 October 2026, and the Beast-Catcher\'s Kit and its ten tools since 10 November 2026');
     Object.keys(CD.items).forEach(function (id) { t.equal(CD.items[id].size, 1); });
     t.same(CD.manualAdd, [PACK, CHART]);
     Object.keys(CD.items).forEach(function (id) {
@@ -135,7 +135,7 @@
       t.equal(g.name, T.partyItems[id].name, id + ': the same name in both tools');
     });
     t.same(BR.courierGoods(bdata).slice(0, 2).map(function (g) { return [g.goodId, g.name, g.size]; }), [[PACK, 'Expedition Provision Pack', 1], [CHART, 'Overland chart', 1]]);
-    t.equal(BR.courierGoods(bdata).length, 13);
+    t.equal(BR.courierGoods(bdata).length, 24);
     BR.goodsList(bdata).filter(function (g) { return g.kind === 'cargo'; }).forEach(function (g) {
       t.ok(BR.courierGoodBlocker(bdata, g.id), g.id + ' never goes by courier');
     });

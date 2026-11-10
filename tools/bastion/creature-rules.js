@@ -121,23 +121,29 @@
   };
   R.penUnlimited = function (data) { return R.penPerKind(data) === R.PEN_NO_LIMIT; };
   /* { dc, skill, retryDays } for Acclimatise With Beast; a kind's own DC (species.<kind>.acclimatiseDC) wins. */
-  R.acclimatiseData = function (data, species) {
+  R.acclimatiseData = function (data, species, wary) {
     var a = isObj(cdata(data).acclimatise) ? cdata(data).acclimatise : {};
     var sp = species ? R.creatureSpecies(data, species) : null;
     var dc = sp && isNum(sp.acclimatiseDC) ? sp.acclimatiseDC : a.dc;
+    /* A beast that came to the Ironbow Wary (it failed the Explorer's Settle check) is acclimatised against waryDC, whatever its kind (10 November 2026). */
+    if (wary === true) dc = isNum(a.waryDC) ? a.waryDC : 20;
     return {
       dc: isNum(dc) ? clampInt(dc, 1, 60) : 20,
       skill: txt(a.skill, 40) || 'Animal Handling',
       retryDays: isNum(a.retryDays) ? clampInt(a.retryDays, 1, 100) : 3
     };
   };
-  R.acclimatiseDC = function (data, species) { return R.acclimatiseData(data, species).dc; };
+  R.acclimatiseDC = function (data, species, wary) { return R.acclimatiseData(data, species, wary).dc; };
+  /* The DC a Wary beast needs (every kind: 20 until Harry says otherwise). */
+  R.waryDC = function (data) { return R.acclimatiseData(data, '', true).dc; };
   /* "DC 20" for one kind; for no kind in particular, the one DC every kind shares, or the range ("DC 18 to 22"). */
-  R.acclimatiseDcText = function (data, species) {
-    if (species) return 'DC ' + R.acclimatiseDC(data, species);
+  R.acclimatiseDcText = function (data, species, wary) {
+    if (species) return 'DC ' + R.acclimatiseDC(data, species, wary) + (wary === true ? ' (Wary)' : '');
     var sp = cdata(data).species;
-    var dcs = [R.acclimatiseDC(data)];
+    /* Each kind's own DC (or the fallback for one with none); the fallback alone only when there are no kinds. */
+    var dcs = [];
     Object.keys(isObj(sp) ? sp : {}).forEach(function (k) { dcs.push(R.acclimatiseDC(data, k)); });
+    if (!dcs.length) dcs.push(R.acclimatiseDC(data));
     var lo = Math.min.apply(null, dcs), hi = Math.max.apply(null, dcs);
     return lo === hi ? 'DC ' + lo : 'DC ' + lo + ' to ' + hi;
   };
@@ -146,7 +152,7 @@
     var ad = R.acclimatiseData(data);
     var dc = R.acclimatiseDcText(data);
     return 'A beast housed here must be acclimatised with its handler before it can bond. The handler rolls ' + ad.skill + ' at the table; you type their total. ' +
-      'A total of the DC or more passes (' + dc + (/ to /.test(dc) ? ', each kind has its own' : '') + '): the beast becomes Bond 1 and leaves this list. A lower total locks that beast for ' + R.daysText(ad.retryDays) + '. It happens at once, with no days.';
+      'A total of the DC or more passes (' + dc + (/ to /.test(dc) ? ', each kind has its own' : '') + '; a Wary beast, one that failed its Settle check in the Explorer, needs DC ' + R.waryDC(data) + '): the beast becomes Bond 1 and leaves this list. A lower total locks that beast for ' + R.daysText(ad.retryDays) + '. It happens at once, with no days.';
   };
   /* The Bonding Days a level needs in all (Bond 2: 10, 3: 20, 4: 30, 5: 50); 0 for Bond 1 or less, null above 5. */
   R.bondTotal = function (data, level) {
@@ -423,6 +429,8 @@
       housedDay: null,
       msgId: txt(m.id, 80)
     };
+    /* It came Wary: the Explorer's Settle check failed (10 November 2026). Only a Wary beast carries the mark. */
+    if (m.wary === true) c.wary = true;
     R.creatures(s).push(c);
     return { added: true, creature: c };
   };
@@ -443,7 +451,7 @@
   /* The notice and "The Ironbow sends word…": "From the Explorer: a griffin
      (Swiftwing) for the Ironbow, waiting for a home at the Griffin Tower." */
   R.creatureGrantNotice = function (s, data, c) {
-    return 'From the Explorer: ' + grantWhat(data, c) + ' for the Ironbow, waiting for a home at the ' + facName(data, R.speciesHome(data, c.species)) + '.';
+    return 'From the Explorer: ' + grantWhat(data, c) + (c.wary === true ? ' (Wary: it needs DC ' + R.waryDC(data) + ' to acclimatise)' : '') + ' for the Ironbow, waiting for a home at the ' + facName(data, R.speciesHome(data, c.species)) + '.';
   };
   /* Management's "Changes from the Explorer" heading for a creature's
      receipt: "Creature granted: Griffin (Swiftwing)". */
@@ -578,7 +586,7 @@
       var a = d && isObj(d.acclimatise) ? d.acclimatise : null;
       var blocked = !d || !d.handlerId ? 'needs a handler' : a && isNum(a.retryDay) && s.day < a.retryDay ? 'tries again on ' + R.dayLabel(a.retryDay) : '';
       var name = R.creatureName(data, c);
-      return { label: (c.name ? name + ' (' + R.speciesName(data, c.species) + ')' : name) + (d && d.handlerId ? ', handler ' + R.handlerName(d.handlerId) : '') + (blocked ? ': ' + blocked : ''), creatureId: c.id, blocked: blocked };
+      return { label: (c.name ? name + ' (' + R.speciesName(data, c.species) + ')' : name) + (c.wary === true ? ' · Wary' : '') + (d && d.handlerId ? ', handler ' + R.handlerName(d.handlerId) : '') + (blocked ? ': ' + blocked : ''), creatureId: c.id, blocked: blocked };
     });
   };
   /* The handler's total, as typed at the table: a whole number from 1 to 60, or null. */
@@ -598,7 +606,7 @@
     var c = R.creatureById(s, id);
     var name = R.creatureName(data, c);
     var d = R.ensureDev(s, c);
-    var ad = R.acclimatiseData(data, c.species);
+    var ad = R.acclimatiseData(data, c.species, c.wary === true);
     var handler = R.handlerName(d.handlerId);
     var pass = n >= ad.dc;
     var prev = isObj(d.acclimatise) ? d.acclimatise : { tries: 0 };
@@ -787,14 +795,14 @@
   /* What comes next for a beast, in one line, for the DM. */
   R.nextStepLine = function (s, data, c) {
     var name = R.creatureName(data, c);
-    var ad = R.acclimatiseData(data, c.species);
+    var ad = R.acclimatiseData(data, c.species, c.wary === true);
     if (c.status !== 'housed') return 'Needs a home at the ' + facName(data, R.speciesHome(data, c.species)) + ' first.';
     var d = devOf(c);
     if (!d || !d.handlerId) return 'Assign a handler, then Acclimatise With Beast.';
     if (d.bond.level < 1) {
       var a = isObj(d.acclimatise) ? d.acclimatise : null;
       if (a && isNum(a.retryDay) && s.day < a.retryDay) return 'Its last try failed. It can try again on ' + R.dayLabel(a.retryDay) + '.';
-      return 'Ready to acclimatise: ' + R.handlerName(d.handlerId) + ' rolls ' + ad.skill + ' against DC ' + ad.dc + '.';
+      return 'Ready to acclimatise: ' + R.handlerName(d.handlerId) + ' rolls ' + ad.skill + ' against DC ' + ad.dc + (c.wary === true ? ' (it is Wary)' : '') + '.';
     }
     var pr = R.bondProgress(s, data, c);
     if (pr.ready) return 'Bond ' + pr.ready + ' (' + R.bondName(pr.ready) + ') is ready: confirm it after a scene at the table.';

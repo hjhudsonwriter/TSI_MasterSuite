@@ -63,6 +63,21 @@ window.TSI_DATA.bastionGoods = {
     { id: 'purification_incense', name: 'Purification Incense', plural: 'portions of Purification Incense', kind: 'supply', unit: 'portion', what: 'advantage on one saving throw against nonmagical poison or disease' },
     { id: 'cleansing_portion', name: 'Cleansing Portion', kind: 'supply', unit: 'portion', what: 'removes the ordinary Poisoned condition from one creature' },
     { id: 'voyage_blessing', name: 'Voyage Blessing', kind: 'supply', unit: 'blessing', what: '+2 to one navigation or maritime hazard check' },
-    { id: 'aquatic_protection_charm', name: 'Aquatic Protection Charm', kind: 'supply', unit: 'charm', what: 'advantage on one Athletics check (swimming, currents or a nonmagical water hazard)' }
+    { id: 'aquatic_protection_charm', name: 'Aquatic Protection Charm', kind: 'supply', unit: 'charm', what: 'advantage on one Athletics check (swimming, currents or a nonmagical water hazard)' },
+    /* The Beast-Catcher's Kit and its ten tools (Harry, 10 November 2026). The Workshop crafts them into the Warehouse as counted goods (the
+       craft order's item has the same name, and craft: true marks it); the Courier can send them; the Travel bags hold them
+       (shared/data/party-items.js, the same ids); and the Explorer's Grant a creature uses them (tools/beasthandler/data/beast-catcher-data.js
+       says which tool suits which beast). */
+    { id: 'beast_catchers_kit', name: 'Beast-Catcher’s Kit', plural: 'Beast-Catcher’s Kits', kind: 'supply', unit: 'kit', what: 'a weighted net, ropes and a whip: needed to settle a captured beast (used up when it is granted)', craft: true },
+    { id: 'beast_collar_lead', name: 'Beast-Collar & Lead', plural: 'Beast-Collars & Leads', kind: 'supply', unit: 'collar and lead', what: 'lowers the Settle DC by 2 for a Fellcat, Dire Wolf or Griffin; reusable', craft: true },
+    { id: 'beast_chain_rig', name: 'Beast-Chain Rig', plural: 'Beast-Chain Rigs', kind: 'supply', unit: 'rig', what: 'lowers the Settle DC by 2 for a Buckbear, Sabrecat or Wyvern; reusable', craft: true },
+    { id: 'stillroot_salve', name: 'Stillroot Salve', plural: 'doses of Stillroot Salve', kind: 'supply', unit: 'dose', what: 'lowers the Settle DC by 2 for a Fellcat, Griffin or Buckbear; used up', craft: true },
+    { id: 'dreamroot_salve', name: 'Dreamroot Salve', plural: 'doses of Dreamroot Salve', kind: 'supply', unit: 'dose', what: 'lowers the Settle DC by 2 for a Buckbear, Sabrecat or Wyvern; used up', craft: true },
+    { id: 'beast_salve', name: 'Beast Salve', plural: 'doses of Beast Salve', kind: 'supply', unit: 'dose', what: 'stabilises and heals the captive on the way home; used up', craft: true },
+    { id: 'scent_lure', name: 'Scent Lure', plural: 'doses of Scent Lure', kind: 'supply', unit: 'dose', what: 'lowers the Settle DC by 2 for a Fellcat, Dire Wolf or Griffin; used up', craft: true },
+    { id: 'falconers_hood_jesses', name: 'Falconer’s Hood & Jesses', plural: 'sets of Falconer’s Hood & Jesses', kind: 'supply', unit: 'set', what: 'lowers the Settle DC by 2 for a Griffin; reusable', craft: true },
+    { id: 'jaw_strap_tail_sheath', name: 'Jaw-Strap & Tail Sheath', plural: 'sets of Jaw-Strap & Tail Sheath', kind: 'supply', unit: 'set', what: 'lowers the Settle DC by 2 for a Wyvern; reusable', craft: true },
+    { id: 'handlers_gauntlets', name: 'Handler’s Gauntlets', plural: 'pairs of Handler’s Gauntlets', kind: 'supply', unit: 'pair', what: 'lowers the Settle DC by 2 for a Buckbear or Sabrecat; reusable', craft: true },
+    { id: 'beast_muzzle', name: 'Beast Muzzle', plural: 'Beast Muzzles', kind: 'supply', unit: 'muzzle', what: 'lowers the Settle DC by 2 for a Fellcat, Dire Wolf or Sabrecat; reusable', craft: true }
   ]
 };

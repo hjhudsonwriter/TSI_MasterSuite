@@ -155,9 +155,12 @@ async function panelCreatures(ba, fac) {
 async function grant(ex, species, name, why) {
   await closeAll(ex);
   await ex.waitForTimeout(400);
+  /* The Settle check (10 November 2026): a Beast-Catcher's Kit in the Travel bags, and a total typed. */
+  await ex.evaluate(() => TSI.explorer.debug.change(s => { TSI.explorer.journey.addItem(s, 'beast_catchers_kit', 1); }));
   await ex.click('[data-test=creature-open]');
   await ex.waitForSelector('[data-test=creature-dialog]');
   await ex.selectOption('[data-test=creature-species]', species);
+  await ex.fill('[data-test=settle-total]', '30');
   await ex.fill('[data-test=creature-name]', name || '');
   await ex.fill('[data-test=creature-why]', why || '');
   await ex.click('[data-test=creature-dialog] .tsi-modal__foot .tsi-btn--primary');
