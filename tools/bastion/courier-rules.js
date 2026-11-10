@@ -31,6 +31,17 @@
    shown. The Courier Exchange is separate from the Dock: no ships, no Dock
    room, no Port Charters, no sea routes.
 
+   Levels 3 to 5 (Harry's rulings, 10 November 2026):
+   - Level 3, Collect Expedition Cargo: a RETURN TRIP. At a town's courier post the DM sends items from the Travel bags to the Ironbow
+     (a message from the Explorer, 'cargo_return'; R.receiveCargo). The parcel is 'inbound' (direction 'in') for that town's days at that
+     town's fee, takes a travelling place, and on its arrival day its goods go into the Warehouse once and it is 'delivered'.
+   - Level 4, Priority Courier: a Priority tick on a parcel (out or back): half the days (rounded up, at least minDays) and double the fee.
+   - Level 5, Express Cargo Exchange: a COMBINED parcel: one trip, two towns. It is two linked parcels (the same combo id), each reaching its
+     own town on its own days and collected on its own; it takes ONE travelling place, one fee (the dearer town's plus half the other's) and
+     at most the level's items in all.
+   More travelling places and room at every level (courier-data.js levels). A parcel also has, only when they apply: direction 'in',
+   priority true, combo (its linked parcel's group id) and msgId (the Explorer message a return trip came from).
+
    Under Repair stops new parcels only; parcels already sent carry on, and
    a recall is still allowed. After Demolish, parcels already sent still
    arrive and can be collected, and recalled ones still come home; only
@@ -56,8 +67,8 @@
 
   var FAC = 'courier_exchange';
   R.COURIER_FAC = FAC;
-  var OPEN = ['in_transit', 'ready', 'returning'];
-  var STATUSES = ['in_transit', 'ready', 'collected', 'returning', 'returned'];
+  var OPEN = ['in_transit', 'ready', 'returning', 'inbound'];
+  var STATUSES = ['in_transit', 'ready', 'collected', 'returning', 'returned', 'inbound', 'delivered'];
   R.PARCEL_STATUSES = STATUSES;
 
   /* ---------- The courier's data, with safe defaults ---------- */
@@ -195,8 +206,32 @@
       level: level,
       name: row && typeof row.name === 'string' ? row.name : '',
       onRoad: row ? Math.floor(num(row.onRoad, 0, 50, 0)) : 0,
-      maxItems: row ? Math.floor(num(row.maxItems, 0, 1000, 0)) : 0
+      maxItems: row ? Math.floor(num(row.maxItems, 0, 1000, 0)) : 0,
+      /* What the level can do besides sending a parcel out (10 November 2026). */
+      returns: !!(row && row.returns === true),
+      priority: !!(row && row.priority === true),
+      combined: !!(row && row.combined === true)
     };
+  };
+  /* Priority (Level 4): the days are divided (rounded up, never fewer than minDays) and the fee multiplied. */
+  R.priorityRule = function (data) {
+    var p = isObj(courier(data).priority) ? courier(data).priority : {};
+    return { divisor: Math.max(1, num(p.daysDivisor, 1, 100, 2)), multiplier: Math.max(1, num(p.feeMultiplier, 1, 100, 2)) };
+  };
+  /* A town's days and fee for a trip, with Priority or not. */
+  R.pointDays = function (data, point, priority) {
+    var d = point.days;
+    if (priority === true) d = Math.ceil(d / R.priorityRule(data).divisor);
+    return Math.max(minDays(data), d);
+  };
+  R.pointFee = function (data, point, priority) {
+    return priority === true ? Math.ceil(point.feeGP * R.priorityRule(data).multiplier) : point.feeGP;
+  };
+  /* A combined parcel's one fee: the dearer leg's, plus a share (courier-data.js combined.feeShare, half) of the other's. */
+  R.combinedFee = function (data, feeA, feeB) {
+    var c = isObj(courier(data).combined) ? courier(data).combined : {};
+    var share = isNum(c.feeShare) ? Math.max(0, Math.min(1, c.feeShare)) : 0.5;
+    return Math.max(feeA, feeB) + Math.ceil(Math.min(feeA, feeB) * share);
   };
 
   /* A collection point, with its numbers: { id, label, clan, mapId, region,
@@ -247,7 +282,19 @@
   R.parcelsWith = function (s, status) { return R.parcels(s).filter(function (p) { return p.status === status; }); };
   /* Parcels taking a travelling place: on their way out, or recalled and on
      their way back. Waiting ones don't. */
-  R.travellingParcels = function (s) { return R.parcels(s).filter(function (p) { return p.status === 'in_transit' || p.status === 'returning'; }); };
+  R.travellingParcels = function (s) { return R.parcels(s).filter(function (p) { return p.status === 'in_transit' || p.status === 'returning' || p.status === 'inbound'; }); };
+  function endDayOf(p) { return p.status === 'returning' ? p.returnDay : p.readyDay; }
+  /* The travelling places in use: a combined parcel's two legs share one place, which is free once both legs are done. [{ id, endDay }]. */
+  R.travelGroups = function (s) {
+    var groups = {}, order = [];
+    R.travellingParcels(s).forEach(function (p) {
+      var key = typeof p.combo === 'string' && p.combo ? 'c:' + p.combo : 'p:' + p.id;
+      if (!groups[key]) { groups[key] = { id: key, endDay: null }; order.push(key); }
+      var d = endDayOf(p);
+      if (groups[key].endDay === null || d > groups[key].endDay) groups[key].endDay = d;
+    });
+    return order.map(function (k) { return groups[k]; });
+  };
   /* Parcels not yet closed (travelling or waiting). */
   R.openParcels = function (s) { return R.parcels(s).filter(function (p) { return OPEN.indexOf(p.status) !== -1; }); };
   /* "3 Expedition Provision Packs, 1 Overland chart". */
@@ -261,6 +308,8 @@
     var town = R.courierPointName(p.point);
     if (p.status === 'in_transit') return 'On the road to ' + town + ': arrives ' + R.dayLabel(p.readyDay);
     if (p.status === 'ready') return 'Waiting at ' + town + ' since ' + R.dayLabel(isNum(p.arrivedDay) ? p.arrivedDay : p.readyDay) + ', for the party to collect';
+    if (p.status === 'inbound') return 'Cargo on the road from ' + town + ' to the Ironbow: arrives ' + R.dayLabel(p.readyDay) + (p.priority ? ' (Priority)' : '');
+    if (p.status === 'delivered') return 'Cargo from ' + town + ' reached the Ironbow' + (isNum(p.arrivedDay) ? ' on ' + R.dayLabel(p.arrivedDay) : '') + ', its contents in the Warehouse';
     if (p.status === 'returning') return 'Recalled on the way to ' + town + ': back at the Ironbow on ' + R.dayLabel(p.returnDay);
     if (p.status === 'returned') return 'Recalled on the way to ' + town + ': back at the Ironbow on ' + R.dayLabel(p.returnDay) + ', its contents in the Warehouse';
     return 'Collected at ' + town + (isNum(p.collectedDay) ? ' on ' + R.dayLabel(p.collectedDay) : '');
@@ -276,10 +325,10 @@
     var repair = R.underRepair(s, FAC);
     if (repair) return 'The Courier Exchange is Under Repair until ' + R.dayLabel(repair) + '.';
     if (spec.onRoad < 1) return 'The Courier Exchange can\'t send parcels at Level ' + spec.level + ' (courier-data.js).';
-    var out = R.travellingParcels(s);
+    var out = R.travelGroups(s);
     if (out.length >= spec.onRoad) {
-      var next = out.reduce(function (m, p) {
-        var d = p.status === 'returning' ? p.returnDay : p.readyDay;
+      var next = out.reduce(function (m, g) {
+        var d = g.endDay;
         return m === null || d < m ? d : m;
       }, null);
       return (spec.onRoad === 1 ? 'A parcel is already travelling' : 'All ' + spec.onRoad + ' travelling places are taken') +
@@ -312,10 +361,12 @@
 
   /* Why this parcel would be refused ('' if it can be sent): everything the
      Send checks, in the order it checks them. */
-  R.parcelProblem = function (s, data, pointId, picks) {
+  R.parcelProblem = function (s, data, pointId, picks, opts) {
     var why = R.parcelBlocker(s, data);
     if (why) return why;
     var B = bridge();
+    var priority = !!(opts && opts.priority === true);
+    if (priority && !R.courierSpec(s, data).priority) return 'Priority needs the Courier Exchange at the level that opens the Priority Courier (it\'s Level ' + R.courierSpec(s, data).level + ').';
     var point = R.courierPoint(data, pointId);
     if (!point) return (B && B.isPoint(pointId) ? R.courierPointName(pointId) + ' has no courier days or fee yet (courier-data.js).' : 'Choose a town the courier knows.');
     var spec = R.courierSpec(s, data);
@@ -336,20 +387,23 @@
       if (clampInt(frow.qty, 0) < goods[k].qty) return 'Needs ' + goods[k].qty + ' × ' + freeName(frow) + ' in the Warehouse; it has ' + clampInt(frow.qty, 0) + '.';
     }
     var gold = clampInt(s.treasuryGP, 0);
-    if (gold < point.feeGP) return 'Sending a parcel to ' + point.label + ' costs ' + point.feeGP + ' gp; the treasury has ' + gold + ' gp.';
+    var fee = R.pointFee(data, point, priority);
+    if (gold < fee) return 'Sending a parcel to ' + point.label + ' costs ' + fee + ' gp' + (priority ? ' (Priority)' : '') + '; the treasury has ' + gold + ' gp.';
     return '';
   };
 
   /* A one-line summary of a draft parcel, for the Send pop-up: "3 items of
      5 · fee 5 gp · leaves today, reaches Slade’s Muster on Day 14 and waits
      there until the party collects it." */
-  R.parcelSummary = function (s, data, pointId, picks) {
+  R.parcelSummary = function (s, data, pointId, picks, opts) {
     var spec = R.courierSpec(s, data);
     var items = R.parcelItems(data, mergePicks(picks));
     var point = R.courierPoint(data, pointId);
+    var priority = !!(opts && opts.priority === true);
     var head = plural(items, 'item') + ' of ' + spec.maxItems;
     if (!point) return head + ' · choose a town.';
-    return head + ' · fee ' + point.feeGP + ' gp · leaves today, reaches ' + point.label + ' on ' + R.dayLabel(s.day + point.days) + ' and waits there until the party collects it.';
+    var days = R.pointDays(data, point, priority);
+    return head + ' · fee ' + R.pointFee(data, point, priority) + ' gp' + (priority ? ' (Priority)' : '') + ' · leaves today, reaches ' + point.label + ' on ' + R.dayLabel(s.day + days) + ' and waits there until the party collects it.';
   };
 
   /* A parcel's id: never one a parcel already has, and never one with a
@@ -380,33 +434,131 @@
      recorded. explorerSave (optional): the Explorer's save as last read, so
      a new id never matches a pickup already sent.
      Returns { ok, parcel, log } or { ok: false, message }. */
-  R.sendParcel = function (s, data, pointId, picks, rand, explorerSave) {
-    var why = R.parcelProblem(s, data, pointId, picks);
+  R.sendParcel = function (s, data, pointId, picks, rand, explorerSave, opts) {
+    var why = R.parcelProblem(s, data, pointId, picks, opts);
     if (why) return { ok: false, message: why };
     var point = R.courierPoint(data, pointId);
+    var priority = !!(opts && opts.priority === true);
+    var days = R.pointDays(data, point, priority);
+    var fee = R.pointFee(data, point, priority);
     var goods = mergePicks(picks);
     var taken = takeParcelGoods(s, data, goods);
     if (!taken) return { ok: false, message: 'The Warehouse doesn\'t have those supplies.' };
-    s.treasuryGP = clampInt(s.treasuryGP, 0) - point.feeGP;
+    s.treasuryGP = clampInt(s.treasuryGP, 0) - fee;
     var p = {
       id: uniqueId(s, rand, explorerSave),
       point: point.id,
       goods: taken.map(function (x) { return R.isFreeGood(x.goodId) ? { goodId: x.goodId, qty: x.qty, name: x.name } : { goodId: x.goodId, qty: x.qty }; }),
       items: R.parcelItems(data, taken),
       departDay: s.day,
-      readyDay: s.day + point.days,
+      readyDay: s.day + days,
       status: 'in_transit',
       arrivedDay: null,
       collectedDay: null,
       collectId: null,
       recalledDay: null,
       returnDay: null,
-      feeGP: point.feeGP
+      feeGP: fee
     };
+    if (priority) p.priority = true;
     R.parcels(s).push(p);
     return {
       ok: true, parcel: p,
-      log: ['Courier', 'A parcel left for ' + point.label + ': ' + R.parcelGoodsText(data, p.goods) + ', from the Warehouse (fee ' + point.feeGP + ' gp from the treasury). It reaches ' + point.label + ' on ' + R.dayLabel(p.readyDay) + ' and waits there until the party collects it.']
+      log: ['Courier', 'A ' + (priority ? 'Priority ' : '') + 'parcel left for ' + point.label + ': ' + R.parcelGoodsText(data, p.goods) + ', from the Warehouse (fee ' + fee + ' gp from the treasury). It reaches ' + point.label + ' on ' + R.dayLabel(p.readyDay) + ' and waits there until the party collects it.']
+    };
+  };
+
+  /* ---------- A combined parcel (Level 5, the Express Cargo Exchange) ----------
+     legs: [{ point, picks }, { point, picks }]: two different towns, each with its own goods. It is two linked parcels (the same combo id)
+     taking one travelling place, with one fee, and at most the level's items in all. Each leg arrives on its own days and is collected on
+     its own. Returns the first problem as a sentence, or ''. */
+  R.combinedProblem = function (s, data, legs, opts) {
+    var spec = R.courierSpec(s, data);
+    var why = R.parcelBlocker(s, data);
+    if (why) return why;
+    if (!spec.combined) return 'A combined parcel needs the Courier Exchange at the level that opens the Express Cargo Exchange (it\'s Level ' + spec.level + ').';
+    var priority = !!(opts && opts.priority === true);
+    if (priority && !spec.priority) return 'Priority needs a higher Courier Exchange level.';
+    if (!arr(legs) || legs.length !== 2) return 'A combined parcel goes to two towns.';
+    if (!legs[0] || !legs[1] || legs[0].point === legs[1].point) return 'Choose two different towns.';
+    var fees = [], total = 0, merged = [];
+    for (var i = 0; i < 2; i++) {
+      var point = R.courierPoint(data, legs[i].point);
+      if (!point) return 'Choose a town the courier knows.';
+      if (point.level > spec.level) return point.label + ' needs the Courier Exchange at Level ' + point.level + ' (it\'s Level ' + spec.level + ').';
+      var goods = mergePicks(legs[i].picks);
+      for (var k = 0; k < goods.length; k++) {
+        var bad = R.isFreeGood(goods[k].goodId) ? R.freeRowBlocker(s, data, goods[k].goodId) : R.courierGoodBlocker(data, goods[k].goodId);
+        if (bad) return bad;
+      }
+      var items = R.parcelItems(data, goods);
+      if (items < 1) return 'Choose at least 1 item to send to ' + point.label + '.';
+      total += items;
+      fees.push(R.pointFee(data, point, priority));
+      goods.forEach(function (g) {
+        var have = merged.filter(function (m) { return m.goodId === g.goodId; })[0];
+        if (have) have.qty += g.qty; else merged.push({ goodId: g.goodId, qty: g.qty });
+      });
+    }
+    if (total > spec.maxItems) return 'That\'s ' + plural(total, 'item') + ' in all: a combined parcel from a Level ' + spec.level + ' Courier Exchange holds up to ' + plural(spec.maxItems, 'item') + '.';
+    var short = R.inputsShort(s, data, merged.filter(function (x) { return !R.isFreeGood(x.goodId); }).map(function (x) { return { good: x.goodId, qty: x.qty }; }));
+    if (short) return short.message;
+    for (var j = 0; j < merged.length; j++) {
+      if (!R.isFreeGood(merged[j].goodId)) continue;
+      var frow = freeRow(s, merged[j].goodId);
+      if (clampInt(frow && frow.qty, 0) < merged[j].qty) return 'Needs ' + merged[j].qty + ' × ' + (frow ? freeName(frow) : 'that item') + ' in the Warehouse; it has ' + clampInt(frow && frow.qty, 0) + '.';
+    }
+    var fee = R.combinedFee(data, fees[0], fees[1]);
+    var gold = clampInt(s.treasuryGP, 0);
+    if (gold < fee) return 'A combined parcel to ' + R.courierPointName(legs[0].point) + ' and ' + R.courierPointName(legs[1].point) + ' costs ' + fee + ' gp' + (priority ? ' (Priority)' : '') + '; the treasury has ' + gold + ' gp.';
+    return '';
+  };
+  R.combinedSummary = function (s, data, legs, opts) {
+    var spec = R.courierSpec(s, data);
+    var priority = !!(opts && opts.priority === true);
+    var a = R.courierPoint(data, legs && legs[0] && legs[0].point), b = R.courierPoint(data, legs && legs[1] && legs[1].point);
+    var items = (legs || []).reduce(function (n, l) { return n + R.parcelItems(data, mergePicks(l && l.picks)); }, 0);
+    var head = plural(items, 'item') + ' of ' + spec.maxItems + ' in all';
+    if (!a || !b) return head + ' · choose two towns.';
+    var fee = R.combinedFee(data, R.pointFee(data, a, priority), R.pointFee(data, b, priority));
+    return head + ' · one fee ' + fee + ' gp' + (priority ? ' (Priority)' : '') + ' · leaves today, reaches ' + a.label + ' on ' + R.dayLabel(s.day + R.pointDays(data, a, priority)) + ' and ' + b.label + ' on ' + R.dayLabel(s.day + R.pointDays(data, b, priority)) + '.';
+  };
+  /* Send it: both legs, one fee, one place. Returns { ok, parcels: [leg, leg], log } or { ok: false, message }. */
+  R.sendCombined = function (s, data, legs, rand, explorerSave, opts) {
+    var why = R.combinedProblem(s, data, legs, opts);
+    if (why) return { ok: false, message: why };
+    var priority = !!(opts && opts.priority === true);
+    var merged = [];
+    legs.forEach(function (l) { mergePicks(l.picks).forEach(function (g) {
+      var have = merged.filter(function (m) { return m.goodId === g.goodId; })[0];
+      if (have) have.qty += g.qty; else merged.push({ goodId: g.goodId, qty: g.qty });
+    }); });
+    var taken = takeParcelGoods(s, data, merged);
+    if (!taken) return { ok: false, message: 'The Warehouse doesn\'t have those supplies.' };
+    var names = {};
+    taken.forEach(function (x) { if (x && x.name) names[x.goodId] = x.name; });
+    var points = legs.map(function (l) { return R.courierPoint(data, l.point); });
+    var fees = points.map(function (p) { return R.pointFee(data, p, priority); });
+    var fee = R.combinedFee(data, fees[0], fees[1]);
+    s.treasuryGP = clampInt(s.treasuryGP, 0) - fee;
+    var made = [];
+    legs.forEach(function (l, i) {
+      var goods = mergePicks(l.picks).map(function (g) { return R.isFreeGood(g.goodId) ? { goodId: g.goodId, qty: g.qty, name: names[g.goodId] || 'Item' } : { goodId: g.goodId, qty: g.qty }; });
+      var days = R.pointDays(data, points[i], priority);
+      var p = {
+        id: uniqueId(s, rand, explorerSave), point: points[i].id, goods: goods, items: R.parcelItems(data, goods),
+        departDay: s.day, readyDay: s.day + days, status: 'in_transit', arrivedDay: null, collectedDay: null, collectId: null,
+        recalledDay: null, returnDay: null, feeGP: i === 0 ? fee : 0
+      };
+      if (priority) p.priority = true;
+      R.parcels(s).push(p);
+      made.push(p);
+    });
+    made.forEach(function (p) { p.combo = made[0].id; });
+    return {
+      ok: true, parcels: made,
+      log: ['Courier', 'A combined ' + (priority ? 'Priority ' : '') + 'parcel left for ' + points[0].label + ' (' + R.parcelGoodsText(data, made[0].goods) + ') and ' + points[1].label + ' (' + R.parcelGoodsText(data, made[1].goods) +
+        '), on one fee of ' + fee + ' gp from the treasury. It reaches ' + points[0].label + ' on ' + R.dayLabel(made[0].readyDay) + ' and ' + points[1].label + ' on ' + R.dayLabel(made[1].readyDay) + ', and each waits there until the party collects it.']
     };
   };
 
@@ -426,6 +578,8 @@
     if (p.status === 'returned') return 'That parcel has already been recalled and is back at the Ironbow.';
     if (p.status === 'ready') return 'That parcel has already reached ' + town + ': it waits there for the party.';
     if (p.status === 'collected') return 'That parcel has already been collected at ' + town + '.';
+    if (p.status === 'inbound') return 'That cargo is already on its way from ' + town + ' to the Ironbow: it can\'t be recalled.';
+    if (p.status === 'delivered') return 'That cargo has already reached the Ironbow.';
     if (p.status !== 'in_transit') return 'That parcel isn\'t on the road.';
     if (p.readyDay <= s.day) return 'That parcel reaches ' + town + ' today: it can\'t be recalled now.';
     return '';
@@ -464,6 +618,15 @@
         out.changed = true;
         out.log.push(['Courier', 'A parcel from the Ironbow has reached ' + town + ': ' + R.parcelGoodsText(data, p.goods) + '. It waits there until the party collects it.']);
         out.word.push('A parcel is waiting at ' + town + ' for the party to collect.');
+      } else if (p.status === 'inbound' && p.readyDay <= s.day) {
+        /* Cargo the party sent home from a town (Level 3): its goods go into the Warehouse, once. */
+        deliverCargo(s, data, p.goods, town);
+        p.status = 'delivered';
+        p.arrivedDay = s.day;
+        out.changed = true;
+        var cline = 'Cargo from ' + town + ' has reached the Ironbow: ' + R.parcelGoodsText(data, p.goods) + ' (now in the Warehouse).';
+        out.log.push(['Courier', cline]);
+        out.word.push(cline);
       } else if (p.status === 'returning' && p.returnDay <= s.day) {
         returnParcelGoods(s, data, p.goods);
         p.status = 'returned';
@@ -475,6 +638,56 @@
     });
     if (trimClosed(s, data)) out.changed = true;
     return out;
+  };
+  /* Cargo arriving from the party: named goods go into their rows; a typed item (or a good this copy does not know) into a typed row. */
+  function deliverCargo(s, data, goods, town) {
+    (goods || []).forEach(function (x) {
+      if (R.isFreeGood(x.goodId)) { R.appendToWarehouse(s, txt(x.name, 60) || 'Item', x.qty, '', 'From ' + town); return; }
+      if (R.good(data, x.goodId)) R.addGoods(s, data, x.goodId, x.qty, 'From ' + town);
+      else R.appendToWarehouse(s, String(x.goodId).replace(/_/g, ' '), x.qty, '', 'From ' + town);
+    });
+  }
+  /* ---------- Cargo sent home by the party (Level 3; R.applyInbox calls this) ----------
+     m: a 'cargo_return' message that passed B.check: { id, day, point, goods, priority }. The items already left the Travel bags in the
+     Explorer's save, so the Bastion ALWAYS takes it (it never loses the party's goods): the parcel is recorded 'inbound', the fee comes from the
+     treasury (never below 0) and it takes a travelling place. The Explorer asked the Bastion's save before sending, so a missing Courier
+     Exchange or a full road is only possible after a change in between; if so it is noted, never refused. Held once by the message's id.
+     Returns { r: 'applied'|'refused', held, why, parcel, line, notice, word }. */
+  R.receiveCargo = function (s, data, m, from) {
+    var B = bridge();
+    var uid = B && typeof m.id === 'string' ? m.id.split(':')[0] : '';
+    var by = from ? ' (' + from + ')' : '';
+    var existing = R.parcels(s).filter(function (p) { return p.msgId === m.id; })[0];
+    if (existing) return { r: 'applied', held: true, why: '', parcel: existing.id, point: existing.point, line: 'Cargo from ' + R.courierPointName(existing.point) + by + ': the Bastion already held it, so nothing changed.', notice: '', word: '' };
+    var point = R.courierPoint(data, m.point);
+    if (!point) return { r: 'refused', held: false, why: 'It names a town the courier has no days or fee for. Nothing changed; the items are in the Travel bags.', parcel: '', point: txt(m.point, 40) };
+    var goods = cleanGoods(m.goods);
+    if (!goods.length) return { r: 'refused', held: false, why: 'It carries nothing.', parcel: '', point: point.id };
+    var priority = m.priority === true;
+    var days = R.pointDays(data, point, priority);
+    var fee = R.pointFee(data, point, priority);
+    var spec = R.courierSpec(s, data);
+    var notes = [];
+    if (!spec.built) notes.push('The Courier Exchange isn\'t standing now, but the cargo is taken anyway.');
+    var gold = clampInt(s.treasuryGP, 0);
+    if (gold < fee) notes.push('The treasury had only ' + gold + ' gp for the ' + fee + ' gp fee, so it is now empty.');
+    s.treasuryGP = Math.max(0, gold - fee);
+    var id = uid && B.UID_PATTERN.test(uid) && !R.parcelById(s, uid) ? uid : uniqueId(s, null, null);
+    var depart = dayNum(m.day, s.day);
+    var p = {
+      id: id, point: point.id, goods: goods, items: R.parcelItems(data, goods), departDay: depart, readyDay: depart + days, status: 'inbound',
+      arrivedDay: null, collectedDay: null, collectId: null, recalledDay: null, returnDay: null, feeGP: fee, direction: 'in'
+    };
+    if (priority) p.priority = true;
+    p.msgId = String(m.id);
+    R.parcels(s).push(p);
+    var what = R.parcelGoodsText(data, goods);
+    return {
+      r: 'applied', held: false, why: '', parcel: p.id, point: point.id,
+      line: (priority ? 'Priority cargo' : 'Cargo') + ' sent home from ' + point.label + by + ': ' + what + '. Fee ' + fee + ' gp; it reaches the Ironbow on ' + R.dayLabel(p.readyDay) + ', and its contents go into the Warehouse then.' + (notes.length ? ' ' + notes.join(' ') : ''),
+      notice: 'Cargo is on its way from ' + point.label + ': ' + what + ' (arrives ' + R.dayLabel(p.readyDay) + ').',
+      word: 'Cargo is on its way from ' + point.label + ' to the Ironbow: ' + what + '.'
+    };
   };
   /* Keep the newest keptClosed closed parcels; never an open one. */
   function trimList(list, kept) {
@@ -605,11 +818,11 @@
       }
       var depart = dayOr(p.departDay, today);
       var ready = Math.max(depart + 1, dayOr(p.readyDay, depart + 1));
-      var arrived = status === 'ready' ? dayOr(p.arrivedDay, ready) : status === 'collected' && isNum(p.arrivedDay) ? dayNum(p.arrivedDay, ready) : null;
+      var arrived = status === 'ready' || status === 'delivered' ? dayOr(p.arrivedDay, ready) : status === 'collected' && isNum(p.arrivedDay) ? dayNum(p.arrivedDay, ready) : null;
       var recalled = status === 'returning' || status === 'returned' ? Math.max(depart, dayOr(p.recalledDay, depart)) : null;
       var home = recalled !== null ? Math.max(recalled + 1, dayOr(p.returnDay, recalled + Math.max(1, recalled - depart))) : null;
       var items = isWhole(p.items) && p.items >= 0 ? Math.min(p.items, 100000) : goods.reduce(function (n2, x) { return n2 + x.qty; }, 0);
-      out.push({
+      var rec = {
         id: id,
         point: hasPoint ? txt(p.point, 40) : '',
         goods: goods,
@@ -623,7 +836,13 @@
         recalledDay: recalled,
         returnDay: home,
         feeGP: clampInt(p.feeGP, 0, 100000)
-      });
+      };
+      /* Only when they apply (10 November 2026): cargo sent home (direction 'in'), Priority, a combined parcel's group, the message it came from. */
+      if (p.direction === 'in' || status === 'inbound' || status === 'delivered') rec.direction = 'in';
+      if (p.priority === true) rec.priority = true;
+      if (typeof p.combo === 'string' && p.combo) rec.combo = txt(p.combo, 40);
+      if (typeof p.msgId === 'string' && p.msgId) rec.msgId = txt(p.msgId, 80);
+      out.push(rec);
     });
     return trimList(out, Math.max(1, clampInt(kept === undefined ? 30 : kept, 1, 500)));
   };
@@ -652,6 +871,20 @@
   };
   /* The panel's first line: "Level 1: 1 parcel travelling at a time, up to
      5 items each. Reaches: Slade’s Muster." */
+  /* What the Explorer needs to send cargo home (Level 3), saved with the Bastion (tool.js save()): the Explorer can't read the Bastion's rules,
+     so this is a plain summary of them as of the last save. { built, level, repairUntil, returns, priority, onRoad, groups: [endDay...],
+     maxItems, treasuryGP, day, priorityRule: { divisor, multiplier }, points: { id: { days, feeGP } } } (a town the level reaches). */
+  R.courierDesk = function (s, data) {
+    var spec = R.courierSpec(s, data);
+    var pr = R.priorityRule(data);
+    var points = {};
+    R.courierPoints(s, data).forEach(function (p) { points[p.id] = { days: p.days, feeGP: p.feeGP }; });
+    return {
+      built: spec.built, level: spec.level, repairUntil: R.underRepair(s, FAC), returns: spec.returns, priority: spec.priority,
+      onRoad: spec.onRoad, groups: R.travelGroups(s).map(function (g) { return g.endDay; }), maxItems: spec.maxItems,
+      treasuryGP: clampInt(s.treasuryGP, 0), day: dayNum(s.day, 1), minDays: minDays(data), priorityRule: { divisor: pr.divisor, multiplier: pr.multiplier }, points: points
+    };
+  };
   R.courierStatusLine = function (s, data) {
     var spec = R.courierSpec(s, data);
     if (!spec.built) return 'The Courier Exchange isn\'t built.';

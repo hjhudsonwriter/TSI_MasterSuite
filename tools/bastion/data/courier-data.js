@@ -104,19 +104,22 @@ window.TSI_DATA.bastionCourier = {
      onRoad: how many parcels can be travelling at once (on their way to a
      town, or recalled and on their way back). A parcel waiting at a town
      doesn't count;
-     maxItems: the most items one parcel holds.
-     Levels 3 to 5 use the highest level listed here until their own work
-     comes (later). */
+     maxItems: the most items one parcel holds (a combined parcel's two towns share it);
+     returns: from Level 3 the party can send cargo home from a town's courier post (in the Explorer);
+     priority: from Level 4 a parcel can be sent Priority (see priority, below);
+     combined: from Level 5 one parcel can go to two towns (see combined, below). */
   levels: {
     1: { name: 'Dispatch Local Parcel', onRoad: 1, maxItems: 5 },
-    2: { name: 'Regional Expedition Delivery', onRoad: 2, maxItems: 10 }
+    2: { name: 'Regional Expedition Delivery', onRoad: 2, maxItems: 10 },
+    3: { name: 'Collect Expedition Cargo', onRoad: 3, maxItems: 15, returns: true },
+    4: { name: 'Priority Courier', onRoad: 3, maxItems: 20, returns: true, priority: true },
+    5: { name: 'Express Cargo Exchange', onRoad: 4, maxItems: 30, returns: true, priority: true, combined: true }
   },
-  /* Coming later (not built yet), as the panel lists them. */
-  later: [
-    { level: 3, name: 'Collect Expedition Cargo', text: 'return trips, from the party to the Ironbow' },
-    { level: 4, name: 'Priority Courier', text: 'faster parcels' },
-    { level: 5, name: 'Express Cargo Exchange', text: 'more and combined parcels' }
-  ],
+
+  /* Priority (Level 4): the days are divided by daysDivisor (rounded up, never below minDays) and the fee multiplied. */
+  priority: { daysDivisor: 2, feeMultiplier: 2 },
+  /* A combined parcel (Level 5): one fee = the dearer town's fee plus feeShare of the other's. */
+  combined: { feeShare: 0.5 },
 
   /* The fewest days a parcel can take. */
   minDays: 1,

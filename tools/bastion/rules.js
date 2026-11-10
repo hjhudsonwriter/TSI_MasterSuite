@@ -545,6 +545,11 @@
         }
         /* A parcel pickup's receipt (pull request 6) says which parcel and
            town, and whether it was already recorded as collected. */
+        if (r.type === 'cargo_return') {
+          out.done[id].type = 'cargo_return';
+          out.done[id].point = txt(r.point, 40);
+          out.done[id].held = r.held === true;
+        }
         if (r.type === 'parcel_collected') {
           out.done[id].type = 'parcel_collected';
           out.done[id].parcel = txt(r.parcel, 40);
@@ -924,6 +929,7 @@
     function charterExtra(m) {
       if (m.type === 'charter') return { type: 'charter', port: txt(m.port, 40), held: false };
       if (m.type === 'parcel_collected') return parcelExtra(m, null);
+      if (m.type === 'cargo_return') return { type: 'cargo_return', point: txt(m.point, 40), held: false };
       if (m.type === 'creature') return creatureExtra(m, null);
       if (m.type === 'rite') return riteExtra(m, null);
       if (B.waitsForNewer && B.waitsForNewer(m)) return { type: 'newer' };
@@ -946,6 +952,7 @@
       var charters = 0;
       var newer = 0;
       var pickups = 0;
+      var cargos = 0;
       var grants = 0;
       var rites = 0;
       B.outbox(explorerSave).forEach(function (m) {
@@ -953,6 +960,7 @@
         receipt(m, 'skipped', Object.assign(charterExtra(m), { why: 'Sent before this Bastion started.' }));
         if (m.type === 'charter') charters += 1;
         else if (m.type === 'parcel_collected') pickups += 1;
+        else if (m.type === 'cargo_return') cargos += 1;
         else if (m.type === 'creature') grants += 1;
         else if (m.type === 'rite') rites += 1;
         else if (B.waitsForNewer && B.waitsForNewer(m)) newer += 1;
@@ -960,7 +968,7 @@
       });
       s.bridge.fresh = false;
       out.changed = true;
-      var standing = out.skipped - charters - newer - pickups - grants - rites;
+      var standing = out.skipped - charters - newer - pickups - cargos - grants - rites;
       /* The same skips as notices: what was skipped, why, and what to do. */
       function skipSaid(n, what, tail) {
         var said = n + ' ' + what + (n === 1 ? ' was' : ' were') + ' skipped, so nothing counts twice.' + (tail ? ' ' + tail : '');
@@ -971,6 +979,7 @@
       if (standing) skipSaid(standing, (standing === 1 ? 'change to Honour/Respect' : 'changes to Honour/Respect') + ', sent before this Bastion started,', standing === 1 ? 'Use Change a score in the DM doc if it should count.' : 'Use Change a score in the DM doc if they should count.');
       if (charters) skipSaid(charters, (charters === 1 ? 'Port Charter' : 'Port Charters') + ', sent before this Bastion started,', charters === 1 ? 'Grant it again in the Explorer if it should count.' : 'Grant them again in the Explorer if they should count.');
       if (pickups) skipSaid(pickups, (pickups === 1 ? 'parcel pickup' : 'parcel pickups') + ', collected before this Bastion started,', 'The items stay in the Travel bags.');
+      if (cargos) skipSaid(cargos, (cargos === 1 ? 'cargo trip' : 'cargo trips') + ', sent before this Bastion started,', 'The goods left the Travel bags, so add them back with + Add if they should be.');
       if (grants) skipSaid(grants, (grants === 1 ? 'creature grant' : 'creature grants') + ', sent before this Bastion started,', grants === 1 ? 'Grant it again in the Explorer if it should count.' : 'Grant them again in the Explorer if they should count.');
       if (rites) skipSaid(rites, (rites === 1 ? 'Great Rite handover' : 'Great Rite handovers') + ', sent before this Bastion started,');
       /* A Bastion starting from nothing has no parcels, so a pickup sent
@@ -1016,6 +1025,24 @@
         if (!pr.held) {
           R.addWord(s, 'From the Explorer: ' + pr.word);
           out.parcels.push(pr.notice);
+        }
+        return;
+      }
+      /* Cargo sent home from a town (Courier Exchange Level 3): taken as an inbound parcel; the goods already left the Travel bags. A copy
+         without the courier rules leaves it waiting, with no receipt. */
+      if (!why && m.type === 'cargo_return') {
+        if (!R.receiveCargo) return;
+        var cr = R.receiveCargo(s, data, m, fromText(m));
+        receipt(m, cr.r, Object.assign({ type: 'cargo_return', point: txt(cr.point || m.point, 40), held: !!cr.held }, { why: cr.r === 'refused' ? cr.why : '' }));
+        if (cr.r === 'refused') {
+          out.refused += 1;
+          out.refusals.push('Cargo sent home from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + cr.why);
+          R.addWord(s, 'From the Explorer: cargo sent home (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + cr.why);
+          return;
+        }
+        if (!cr.held) {
+          R.addWord(s, 'From the Explorer: ' + cr.word);
+          out.parcels.push(cr.notice);
         }
         return;
       }
@@ -1095,7 +1122,7 @@
     var B = TSI.bridge;
     r = isObj(r) ? r : {};
     var result = r.r === 'applied' || r.r === 'skipped' ? r.r : 'refused';
-    var kind = r.type === 'charter' || r.type === 'creature' || r.type === 'rite' || r.type === 'newer' ? r.type : '';
+    var kind = r.type === 'charter' || r.type === 'creature' || r.type === 'rite' || r.type === 'newer' || r.type === 'cargo_return' ? r.type : '';
     var made = null;
     /* An older copy of the suite can strip a receipt's kind: the Port Charter
        it made, or the parcel id in its own id, still say what it was. */
@@ -1121,6 +1148,10 @@
     } else if (kind === 'creature') {
       head = R.creatureReceiptHead ? R.creatureReceiptHead(data, r) : prefix + 'creature granted';
       tail = 'Grant it again in the Explorer if it should count.';
+    } else if (kind === 'cargo_return') {
+      var ctn = R.courierPointName ? R.courierPointName(r.point) : '';
+      head = result === 'applied' ? 'Cargo sent home from ' + ctn + (r.held ? ' (already recorded)' : '') : prefix + 'cargo sent home from ' + ctn;
+      tail = 'Add the goods back to the Travel bags in the Explorer if they should be.';
     } else if (kind === 'parcel') {
       var town = R.courierPointName ? R.courierPointName(r.point || (sent ? sent.point : '')) : '';
       head = result === 'applied' ? 'Parcel collected: ' + town + (r.held ? ' (already recorded)' : '') : prefix + 'parcel collected at ' + town;

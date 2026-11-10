@@ -232,6 +232,7 @@
         if (!isObj(p)) return;
         if (p.status === 'in_transit') add(p.readyDay, 'parcel', 'A parcel from the Ironbow is due at ' + pointName(p.point) + '.');
         else if (p.status === 'returning') add(p.returnDay, 'parcel', 'A recalled parcel is due back at the Ironbow.');
+        else if (p.status === 'inbound') add(p.readyDay, 'parcel', 'Cargo sent home from ' + pointName(p.point) + ' is due at the Ironbow.');
       });
       return out.sort(function (a, b) { return a.day - b.day; });
     },
