@@ -14,9 +14,6 @@ Harry's list of things we have decided to do, but not yet. Newest at the top. Wh
 
 ## Bigger jobs, decided but not started
 
-### Courier Exchange Levels 3 to 5
-The Courier Exchange has only Levels 1 and 2 working (Level 1: one parcel on the road, 5 items; Level 2: two parcels, 10 items, and more towns). The data already lists the rest as "coming later": **Level 3, Collect Expedition Cargo** (return trips, from the party to the Ironbow), **Level 4, Priority Courier** (faster parcels) and **Level 5, Express Cargo Exchange** (more and combined parcels). **Rough build: 2 to 3 days**, with your rulings on days, fees, room and how a return trip works.
-
 ### Beast Handler online link
 Keeps players' phones up to date by themselves through a free, scrambled "post box" at Google that you own, instead of you making a snapshot code and sending it each time. It is built and switched off, and has never been tried against the real Google service. **Your part: about an hour** following `docs/ONLINE-LINK-SETUP.md` (a Google account of your own, a free Firebase project, the rules pasted in, the address into `tools/beasthandler/relay-config.js`). **My part: about half a day** fixing whatever the real service shows. Optional: the QR code and the snapshot codes keep working without it.
 
@@ -30,4 +27,5 @@ Research is switched off for now (10 November 2026, `enabled` in `tools/bastion/
 
 ## Done
 
+- **Courier Exchange Levels 3 to 5** (10 November 2026): Level 3 cargo home from a town's courier post ("Send to the Ironbow…"), Level 4 Priority (half the days, double the fee), Level 5 combined parcel (one parcel, two towns, one place, one fee) and more room (3/15, 3/20, 4/30). Details in `docs/PROGRESS.md` (the 10 November entry).
 - **Beast capture rules** (10 November 2026): the Settle check in Grant a creature, Wary beasts and the Beast Pen's DCs, and the Kit and ten tools as counted goods that the Workshop crafts, the Courier sends and the Travel bags hold. Harry's rulings are in `docs/PROGRESS.md` (the 10 November entry).
