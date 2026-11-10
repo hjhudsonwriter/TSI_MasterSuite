@@ -2,8 +2,8 @@
    double-clicked index.html with the internet off, with the Explorer and the Bastion open side by side:
    - the Pen's panel: Harry's picture across the full width at the very top, with the level, the orders and the beasts
      beneath it; only House Beast Here and Acclimatise With Beast as orders; no Upgrade row;
-   - Acclimatise With Beast: the DM types the handler's Animal Handling total, DC 20 for every kind; 19 fails and locks that
-     beast for 3 in-game days (a fail on Day 1 blocks Days 2 and 3, Day 4 is allowed); 20 passes: Bond 1, the beast leaves
+   - Acclimatise With Beast: the DM types the handler's Animal Handling total, each kind's own DC (Swiftwing the griffin: 17); 16 fails and locks that
+     beast for 3 in-game days (a fail on Day 1 blocks Days 2 and 3, Day 4 is allowed); 17 passes: Bond 1, the beast leaves
      the dropdown, and its first meeting is rolled for the Beast Handler;
    - Take <name> on the road / Return <name> to the Beast Pen; "Away from the Ironbow" and "At the Beast Pen"; days only
      count while it is away; the pills fill as days pass; at 10 days Bond 2 is ready and waits for the DM, with the days
@@ -208,8 +208,8 @@ const STORM = 'cr-storm';
     assert(!/train|harness|first flight|rider|ascent/i.test(await bare(ba, '[data-test=panel-fac-beast_pen]')), 'none of the old training');
   });
 
-  await check('the Acclimatise With Beast row: Animal Handling, DC 20, At once; the dropdown lists the housed beasts at Bond 0, and one with no handler says so', async () => {
-    equal(await bare(ba, '[data-test=acclimatise-row] .tsi-bas-fn__cost'), 'Animal Handling · DC 20');
+  await check('the Acclimatise With Beast row: Animal Handling, the DC of the beast chosen (a griffin: 17), At once; the dropdown lists the housed beasts at Bond 0, and one with no handler says so', async () => {
+    equal(await bare(ba, '[data-test=acclimatise-row] .tsi-bas-fn__cost'), 'Animal Handling · DC 17');
     equal(await bare(ba, '[data-test=days-' + ACC + ']'), 'At once: the handler rolls at the table');
     const opts = await ba.$$eval('[data-test=sel-' + ACC + '] option', n => n.map(o => o.textContent));
     equal(opts, ['Swiftwing (Griffin), handler Mira', 'Stormwing (Wyvern): needs a handler']);
@@ -238,13 +238,13 @@ const STORM = 'cr-storm';
     await ba.waitForSelector('[data-test=acclimatise-dialog]');
     const d = await bare(ba, '[data-test=acclimatise-dialog]');
     assert(/Acclimatise With Beast: Swiftwing/.test(d), d);
-    assert(/Mira rolls Animal Handling at the table\. A total of 20 or more passes/.test(d), d);
+    assert(/Mira rolls Animal Handling at the table\. A total of 17 or more passes/.test(d), d);
     assert(/locks Swiftwing for 3 days/.test(d), d);
     const main = '[data-test=acclimatise-dialog] .tsi-modal__foot .tsi-btn--primary';
     equal(await ba.isDisabled(main), true, 'nothing typed yet');
     await ba.fill('[data-test=acclimatise-total]', '0');
     equal([await ba.isDisabled(main), await bare(ba, '[data-test=acclimatise-problem]')], [true, 'Type a whole number from 1 to 60.']);
-    await ba.fill('[data-test=acclimatise-total]', '19');
+    await ba.fill('[data-test=acclimatise-total]', '16');
     equal(await ba.isDisabled(main), false);
     await H.clickModal(ba, 'Cancel');
     await ba.waitForTimeout(300);
@@ -252,13 +252,13 @@ const STORM = 'cr-storm';
     equal(beast(after, SWIFT).development, beast(before, SWIFT).development, 'Cancel changes nothing');
   });
 
-  await check('a total of 19 fails: Swiftwing stays at Bond 0 and can\'t try again until Day 4 (the roll was on Day 1); the DM-only Chronicle has the failure', async () => {
-    const said = await rollAcclimatise(ba, 19);
+  await check('a total of 16 fails: Swiftwing stays at Bond 0 and can\'t try again until Day 4 (the roll was on Day 1); the DM-only Chronicle has the failure', async () => {
+    const said = await rollAcclimatise(ba, 16);
     assert(/^Failed\./.test(said) || /Failed/.test(said), said);
     const s = await bas(ba);
     const c = beast(s, SWIFT);
-    equal([c.development.bond.level, c.development.acclimatise.retryDay, c.development.acclimatise.last.pass, c.development.acclimatise.last.total], [0, 4, false, 19]);
-    assert(c.development.chronicle.some(e => e.private === true && /Acclimatisation failed on Day 1: rolled 19 against DC 20/.test(e.text)), 'a DM-only line');
+    equal([c.development.bond.level, c.development.acclimatise.retryDay, c.development.acclimatise.last.pass, c.development.acclimatise.last.total], [0, 4, false, 16]);
+    assert(c.development.chronicle.some(e => e.private === true && /Acclimatisation failed on Day 1: rolled 16 against DC 17/.test(e.text)), 'a DM-only line');
     await openPen(ba);
     const st = await orderState(ba, ACC);
     equal([st.off, st.why], [true, 'Swiftwing can try again on Day 4.']);
@@ -275,8 +275,8 @@ const STORM = 'cr-storm';
     equal((await bas(ba)).day, 4);
   });
 
-  await check('a total of 20 passes: Bond 1, Swiftwing leaves the dropdown, and its first meeting is rolled for the Beast Handler', async () => {
-    const said = await rollAcclimatise(ba, 20);
+  await check('a total of 17 passes: Bond 1, Swiftwing leaves the dropdown, and its first meeting is rolled for the Beast Handler', async () => {
+    const said = await rollAcclimatise(ba, 17);
     assert(/Passed/.test(said), said);
     const s = await bas(ba);
     const c = beast(s, SWIFT);

@@ -58,6 +58,9 @@
     s.travel.day = day || 5;
     return s;
   }
+  /* The Settle check (10 November 2026): a grant needs a Beast-Catcher's Kit in the Travel bags and a typed total. */
+  function kits(s, n) { J.addItem(s, J.settleKitId(), n); return s; }
+  var SETTLED = { total: 30, items: [] };
   function exWith(list, day) { return { travel: { day: day || 10 }, journey: { outbox: list } }; }
   /* A creature message as the Explorer sends it. */
   function grantMsg(over) {
@@ -111,7 +114,8 @@
     t.same(CR.unique, { elara_wyvern: { species: 'wyvern', owner: 'elara', ownerName: 'Elara', name: '', defaultName: 'Elara\'s wyvern' } });
     t.ok(ED.heroes.some(function (h) { return h.id === 'elara' && h.title === 'Elara'; }), 'her owner is the Explorer\'s hero Elara');
     t.same([CR.pen, CR.houseDays, CR.nameMax, CR.provisional], [{ perKind: 0 }, 3, 40, true]);
-    t.same([CR.acclimatise, CR.bondTotals], [{ dc: 20, skill: 'Animal Handling', retryDays: 3 }, { 2: 10, 3: 20, 4: 30, 5: 50 }], 'the DC, the lock and the Bonding Day totals');
+    t.same([CR.acclimatise, CR.bondTotals], [{ dc: 20, waryDC: 20, skill: 'Animal Handling', retryDays: 3 }, { 2: 10, 3: 20, 4: 30, 5: 50 }], 'the Wary DC (20), the lock and the Bonding Day totals');
+    t.same(Object.keys(CR.species).map(function (k) { return [k, CR.species[k].acclimatiseDC]; }), [['wyvern', 17], ['griffin', 17], ['dire_wolf', 15], ['buckbear', 15], ['fellcat', 15], ['sabrecat', 15]], 'each kind\'s own acclimatise DC is its Settle DC (Harry, 10 November 2026)');
     t.same(['room', 'roomBase', 'development', 'comingLater'].filter(function (k) { return k in CR; }), [], 'room for each level, training, harnesses and riding are gone');
   });
 
@@ -139,6 +143,9 @@
     var m = Bg.creatureMessage({ id: 'grantx-0a0b0c0d:dm:0', day: 5, at: 'x', from: { code: 'DM', title: 'DM award', step: 'dm' }, species: 'griffin', name: 'Swiftwing', text: 'Griffin for the Ironbow (Swiftwing).', clan: 'slade' });
     t.same(Object.keys(m), Bg.CREATURE_FIELDS);
     t.same(Bg.CREATURE_FIELDS, ['id', 'type', 'day', 'at', 'from', 'species', 'name', 'text']);
+    var w = Bg.creatureMessage(Object.assign({}, m, { wary: true }));
+    t.same([w.wary, Object.keys(w).pop(), Bg.clean(w).wary, Bg.check(w)], [true, 'wary', true, ''], 'a Wary beast says so (only then)');
+    t.equal('wary' in Bg.creatureMessage(Object.assign({}, m, { wary: 'yes' })), false, 'only a true counts');
     t.equal(m.type, 'creature');
     t.same(Bg.clean(m), m);
     t.same(Bg.clean(Object.assign({ hr: 2, clan: 'x' }, m)), m, 'clean() drops what a creature hasn\'t');
@@ -172,17 +179,18 @@
     t.same(J.grantCreature(s, 'griffin', { name: new Array(42).join('x') }), { ok: false, message: 'A name is at most 40 letters.' });
     t.equal(JSON.stringify(ER.toSave(s)), before, 'nothing changed');
     var bags = JSON.stringify(s.journey.inventory || []);
+    kits(s, 2);   /* the Kits are used up by the two grants, so the bags end as they began */
     var real = Math.random;
     var calls = 0;
     Math.random = function () { calls++; return real(); };
     var r1, r2;
     try {
-      r1 = J.grantCreature(s, 'griffin', { name: '  Swift   wing ', text: 'For saving the eyrie' });
-      r2 = J.grantCreature(s, 'dire_wolf', {});
+      r1 = J.grantCreature(s, 'griffin', { name: '  Swift   wing ', text: 'For saving the eyrie', settle: SETTLED });
+      r2 = J.grantCreature(s, 'dire_wolf', { settle: SETTLED });
     } finally { Math.random = real; }
     t.equal(calls, 0, 'the dice are never asked');
-    t.same([r1.ok, r1.line], [true, 'Sent to the Bastion: a griffin (Swift wing) for the Ironbow, to be housed at the Beast Pen.']);
-    t.equal(r2.line, 'Sent to the Bastion: a dire wolf for the Ironbow, to be housed at the Beast Pen.');
+    t.same([r1.ok, r1.line.indexOf('Sent to the Bastion: a griffin (Swift wing) for the Ironbow, to be housed at the Beast Pen.')], [true, 0]);
+    t.equal(r2.line.indexOf('Sent to the Bastion: a dire wolf for the Ironbow, to be housed at the Beast Pen.'), 0);
     var out = s.journey.outbox;
     t.equal(out.length, 2);
     t.equal(JSON.stringify(s.journey.inventory || []), bags, 'nothing goes into the Travel bags');
@@ -190,7 +198,7 @@
     t.ok(/^[a-z0-9]+-[0-9a-f]{8}:dm:0$/.test(r1.id), r1.id);
     t.same(Object.keys(out[0]), Bg.CREATURE_FIELDS);
     t.same([out[0].id, out[0].type, out[0].day, out[0].from, out[0].species, out[0].name, out[0].text], [r1.id, 'creature', 5, { code: 'DM', title: 'DM award', step: 'dm' }, 'griffin', 'Swift wing', 'Griffin for the Ironbow (Swift wing): For saving the eyrie.']);
-    t.same([out[1].species, out[1].name, out[1].text], ['dire_wolf', '', 'Dire Wolf for the Ironbow.']);
+    t.same([out[1].species, out[1].name, out[1].text, 'wary' in out[1]], ['dire_wolf', '', 'Dire Wolf for the Ironbow.', false]);
     t.equal(Bg.check(out[0]), '');
     t.equal(Bg.check(out[1]), '');
     var back = ER.fromSave(copy(ER.toSave(s)), ED, E);
@@ -199,7 +207,8 @@
 
   test('Reset Travel in the Explorer moves a waiting grant\'s day (to before Day 1 too); it is still accepted and held once', function (t) {
     var s = explorer(12);
-    J.grantCreature(s, 'griffin', { name: '' });
+    kits(s, 1);
+    J.grantCreature(s, 'griffin', { name: '', settle: SETTLED });
     s.travel.day = 14;
     ER.resetTravel(s);
     var m = s.journey.outbox[0];
@@ -333,9 +342,10 @@
 
   test('the Explorer grants any of the five kinds like any other creature: one message, a Day Log line, held once, waiting for the Beast Pen', function (t) {
     var s = explorer(5);
-    var r = J.grantCreature(s, 'wyvern', { name: 'Stormtalon' });
+    kits(s, 3);
+    var r = J.grantCreature(s, 'wyvern', { name: 'Stormtalon', settle: SETTLED });
     t.equal(r.ok, true, r.message);
-    t.equal(r.line, 'Sent to the Bastion: a wyvern (Stormtalon) for the Ironbow, to be housed at the Beast Pen.');
+    t.equal(r.line.indexOf('Sent to the Bastion: a wyvern (Stormtalon) for the Ironbow, to be housed at the Beast Pen.'), 0);
     var m = s.journey.outbox[s.journey.outbox.length - 1];
     var b = bastion(10, ['beast_pen']);
     var res = BR.applyInbox(b, bdata, { travel: { day: 10 }, journey: { outbox: [m] } }, 1000);
@@ -344,9 +354,9 @@
     BR.applyInbox(b, bdata, { travel: { day: 10 }, journey: { outbox: [m] } }, 2000);
     t.equal(BR.creatures(b).length, 1, 'held once');
     ['buckbear', 'fellcat'].forEach(function (kind) {
-      var r2 = J.grantCreature(s, kind, { name: 'Bramble' });
+      var r2 = J.grantCreature(s, kind, { name: 'Bramble', settle: SETTLED });
       t.equal(r2.ok, true, kind + ': ' + r2.message);
-      t.equal(r2.line, 'Sent to the Bastion: ' + (/^[aeiou]/.test(kind) ? 'an ' : 'a ') + kind + ' (Bramble) for the Ironbow, to be housed at the Beast Pen.');
+      t.equal(r2.line.indexOf('Sent to the Bastion: ' + (/^[aeiou]/.test(kind) ? 'an ' : 'a ') + kind + ' (Bramble) for the Ironbow, to be housed at the Beast Pen.'), 0);
       var m2 = s.journey.outbox[s.journey.outbox.length - 1];
       t.equal(Bg.check(m2), '', kind + ' passes the link\'s check');
       BR.applyInbox(b, bdata, { travel: { day: 10 }, journey: { outbox: [m2] } }, 3000);

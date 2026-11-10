@@ -760,3 +760,17 @@
 
 /* The three First Temples: the god's coin, a little larger than a town's pin (Harry, 5 November 2026). */
 .tsi-tool--explorer .tsi-exp-pin img[src*="/temples/"] { width: 44px; height: 44px; }
+
+/* The Settle check in Grant a creature (Harry's beast capture rules, 10 November 2026). */
+.tsi-page--explorer .tsi-exp-settle { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--tsi-line-control, #6b4a24); border-radius: 8px; background: rgba(0, 0, 0, .18); }
+.tsi-page--explorer .tsi-exp-settle__title { margin: 0 0 6px; font: 600 14px var(--tsi-font-display, "Cinzel", serif); letter-spacing: .08em; text-transform: uppercase; color: var(--tsi-gold-text, #e2c27a); }
+.tsi-page--explorer .tsi-exp-settle p { margin: 4px 0; }
+.tsi-page--explorer .tsi-exp-settle__kit.is-bad { color: #ff9c8a; }
+.tsi-page--explorer .tsi-exp-settle__tools { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 12px; margin: 4px 0 8px; }
+.tsi-page--explorer .tsi-exp-settle__tool { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; cursor: pointer; line-height: 1.25; }
+.tsi-page--explorer .tsi-exp-settle__tool > .tsi-exp-muted { flex-basis: 100%; padding-left: 24px; font-size: .85em; }
+.tsi-page--explorer .tsi-exp-settle__tool.is-none { opacity: .55; cursor: default; }
+.tsi-page--explorer .tsi-exp-settle__row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.tsi-page--explorer .tsi-exp-settle__total { width: 8em; font-size: 16px; }
+.tsi-page--explorer .tsi-exp-settle__dc { font-weight: 600; }
+.tsi-page--explorer .tsi-exp-settle__result.is-wary { color: #f0c070; }

@@ -685,6 +685,63 @@
     return { ok: true, line: line, id: id };
   };
 
+  /* ---------- The Settle check (Harry's beast capture rules, 10 November 2026) ----------
+     Before a creature is granted the party must have a Beast-Catcher's Kit in the Travel bags: no kit, no grant. The DM picks the
+     tools they carried that suit the beast (only its three best-fit tools count: tools/beasthandler/data/beast-catcher-data.js), and
+     types the Animal Handling total. The Settle DC is the kind's own (15, or 17 for the griffin and wyvern: its acclimatiseDC in
+     tools/bastion/data/creatures-data.js) minus 2 for each best-fit tool counted. A total under the DC means the beast arrives Wary
+     (the Beast Pen then acclimatises it against DC 20). The Kit and the single-use tools are used up when the creature is granted;
+     the reusable tools stay in the bags. Nothing here rolls dice: the DM types what the player rolled. */
+  function catcherData() { var c = window.TSI_DATA && window.TSI_DATA.beastCatcher; return isObj(c) && isObj(c.kit) && Array.isArray(c.items) ? c : null; }
+  function creatureData() { var c = window.TSI_DATA && window.TSI_DATA.bastionCreatures; return isObj(c) ? c : {}; }
+  /* The Settle DC of a kind before any tools: its acclimatiseDC (the same number the Beast Pen uses for a beast that is not Wary). */
+  J.settleBaseDC = function (species) {
+    var c = creatureData();
+    var sp = isObj(c.species) && isObj(c.species[species]) ? c.species[species] : null;
+    var dc = sp && isNum(sp.acclimatiseDC) ? sp.acclimatiseDC : (isObj(c.acclimatise) && isNum(c.acclimatise.dc) ? c.acclimatise.dc : 20);
+    return Math.max(1, Math.min(60, Math.round(dc)));
+  };
+  /* The DC a Wary beast is acclimatised against (and so what a failed Settle costs). */
+  J.waryDC = function () {
+    var c = creatureData();
+    return isObj(c.acclimatise) && isNum(c.acclimatise.waryDC) ? Math.round(c.acclimatise.waryDC) : 20;
+  };
+  J.settleKitId = function () { var c = catcherData(); return c ? c.kit.id : ''; };
+  /* What the Settle panel shows for a kind, with the tools picked (ids): { ok, kit: { id, name, have }, items: [{ id, name, single, have, picked, counts }],
+     base, perItem, counted, dc, wary: null }. The tools offered are the kind's three best-fit ones; a tool counts only if it is picked and
+     there is one in the bags. null when the capture data is missing. */
+  J.settleInfo = function (state, species, picked) {
+    var c = catcherData();
+    if (!c) return null;
+    var pick = Array.isArray(picked) ? picked : [];
+    var ids = Array.isArray(c.loadouts && c.loadouts[species]) ? c.loadouts[species] : [];
+    var perItem = isNum(c.perItem) ? Math.round(c.perItem) : 2;
+    var counted = 0;
+    var list = ids.map(function (id) {
+      var it = c.items.filter(function (x) { return x.id === id; })[0] || { id: id, name: id };
+      var have = J.itemQty(state, id);
+      var on = pick.indexOf(id) !== -1;
+      var counts = on && have > 0;
+      if (counts) counted += 1;
+      return { id: id, name: it.name, single: it.single === true, have: have, picked: on, counts: counts };
+    });
+    var base = J.settleBaseDC(species);
+    return {
+      kit: { id: c.kit.id, name: c.kit.name, have: J.itemQty(state, c.kit.id) },
+      items: list, base: base, perItem: perItem, counted: counted, dc: Math.max(1, base - perItem * counted)
+    };
+  };
+  /* The total as typed: a whole number from 1 to 60, or null. */
+  J.settleTotal = function (v) {
+    var n = typeof v === 'number' ? v : (typeof v === 'string' && /^\s*\d{1,3}\s*$/.test(v) ? Number(v) : NaN);
+    return isNum(n) && Math.floor(n) === n && n >= 1 && n <= 60 ? n : null;
+  };
+  /* The outcome: { total, dc, wary } for a total (null if the total is not a number). Under the DC: Wary. */
+  J.settleOutcome = function (dc, total) {
+    var n = J.settleTotal(total);
+    return n === null ? null : { total: n, dc: dc, wary: n < dc };
+  };
+
   /* The DM grants a griffin or a dire wolf to the Ironbow (pull request 7,
      Harry, 14 October 2026): a new message in the outbox, for the Bastion to
      hold once, waiting for a home at the Griffin Tower or the Dire Wolf Den.
@@ -708,6 +765,22 @@
     var name = str(o.name).replace(/\s+/g, ' ').trim();
     if (name.length > B.NAME_MAX) return { ok: false, message: 'A name is at most ' + B.NAME_MAX + ' letters.' };
     var why = str(o.text).replace(/\s+/g, ' ').trim();
+    /* The Settle check (10 November 2026): a Kit from the Travel bags, the tools picked, and the total typed. Everything is checked
+       before anything changes. */
+    var settle = null;
+    if (catcherData()) {
+      var pickIds = isObj(o.settle) && Array.isArray(o.settle.items) ? o.settle.items : [];
+      var info = J.settleInfo(state, species, pickIds);
+      if (info.kit.have < 1) return { ok: false, message: 'The party has no ' + info.kit.name + ' in the Travel bags, so the beast can\'t be granted. Add or collect one first.' };
+      var offered = info.items.map(function (x) { return x.id; });
+      var stray = pickIds.filter(function (id) { return offered.indexOf(id) === -1; });
+      if (stray.length) return { ok: false, message: 'Only the ' + B.speciesName(species).toLowerCase() + '\'s three best-fit tools can be used for its Settle check.' };
+      var missing = info.items.filter(function (x) { return x.picked && x.have < 1; });
+      if (missing.length) return { ok: false, message: 'There is no ' + missing[0].name + ' in the Travel bags.' };
+      var out = J.settleOutcome(info.dc, isObj(o.settle) ? o.settle.total : null);
+      if (!out) return { ok: false, message: 'Type the Animal Handling total for the Settle check: a whole number from 1 to 60.' };
+      settle = { info: info, out: out };
+    }
     var id = newUid() + ':dm:0';
     if (!B.ID_PATTERN.test(id)) return { ok: false, message: 'The grant couldn\'t be given an id, so nothing was sent.' };
     var kind = B.speciesName(species);
@@ -715,15 +788,26 @@
     var what = 'a ' + noun + (name ? ' (' + name + ')' : '');
     var j = journey(state);
     if (!Array.isArray(j.outbox)) j.outbox = [];
+    var wary = !!(settle && settle.out.wary);
     j.outbox.push(B.creatureMessage({
       id: id, day: day(state), at: new Date().toISOString(),
       from: { code: 'DM', title: 'DM award', step: 'dm' },
-      species: species, name: name,
-      text: (kind + ' for the Ironbow' + (name ? ' (' + name + ')' : '') + (why ? ': ' + why : '') + '.').slice(0, B.TEXT_MAX)
+      species: species, name: name, wary: wary,
+      text: (kind + ' for the Ironbow' + (name ? ' (' + name + ')' : '') + (why ? ': ' + why : '') + (wary ? ' It came Wary.' : '') + '.').slice(0, B.TEXT_MAX)
     }));
     var line = 'Sent to the Bastion: ' + what + ' for the Ironbow, to be housed at the ' + B.speciesHomeName(species) + '.';
+    var used = [];
+    if (settle) {
+      /* The Kit and the single-use tools that counted are used up; the reusable ones stay in the bags. */
+      var c = catcherData();
+      J.takeItem(state, c.kit.id, 1);
+      used.push(c.kit.name);
+      settle.info.items.forEach(function (x) { if (x.counts && x.single && J.takeItem(state, x.id, 1)) used.push(x.name); });
+      line += ' Settle check: ' + settle.out.total + ' against DC ' + settle.out.dc + (settle.info.counted ? ' (' + settle.info.base + ', less ' + settle.info.perItem * settle.info.counted + ' for ' + settle.info.counted + (settle.info.counted === 1 ? ' tool' : ' tools') + ')' : '') +
+        ': ' + (wary ? 'it comes Wary, and will need DC ' + J.waryDC() + ' to acclimatise.' : 'settled.') + ' Used up: ' + used.join(', ') + '.';
+    }
     logLine(state, line);
-    return { ok: true, line: line, id: id };
+    return { ok: true, line: line, id: id, wary: wary, dc: settle ? settle.out.dc : null, total: settle ? settle.out.total : null, used: used };
   };
 
   /* The DM collects a parcel from the Bastion's Courier Exchange at a town's

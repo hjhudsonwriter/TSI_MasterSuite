@@ -180,7 +180,7 @@
   /* A parcel collected in the Explorer (pull request 6). */
   B.PARCEL_FIELDS = ['id', 'type', 'day', 'at', 'from', 'clan', 'point', 'parcel', 'goods', 'text'];
   /* A creature the DM granted (pull request 7): no Clan. */
-  B.CREATURE_FIELDS = ['id', 'type', 'day', 'at', 'from', 'species', 'name', 'text'];
+  B.CREATURE_FIELDS = ['id', 'type', 'day', 'at', 'from', 'species', 'name', 'text'];   /* plus wary, only when true (10 November 2026) */
   /* The kinds of message this copy knows; a well-formed kind name not on the
      list is a newer copy's, and waits. */
   B.TYPES = ['standing', 'charter', 'parcel_collected', 'creature', 'rite'];
@@ -315,7 +315,7 @@
   /* A new creature message (the Explorer makes these, J.grantCreature): no
      Clan; the name as typed, cut to B.NAME_MAX. */
   B.creatureMessage = function (f) {
-    return {
+    var m = {
       id: str(f.id),
       type: 'creature',
       day: isWhole(f.day) ? f.day : 1,
@@ -325,6 +325,10 @@
       name: str(f.name, B.NAME_MAX),
       text: str(f.text, B.TEXT_MAX)
     };
+    /* The Settle check in Grant a creature (10 November 2026): wary is there, true, only when the total was under the DC, so the beast comes
+       Wary. A message without it is a beast that is not Wary (and is the same shape as before). */
+    if (f.wary === true) m.wary = true;
+    return m;
   };
 
   /* A new Great Rite message (the Explorer makes these, J.assignRite). */
@@ -365,7 +369,9 @@
       return { id: m.id, type: 'rite', day: day, at: str(m.at), from: from, rite: str(m.rite, 40), riteId: str(m.riteId, 40), text: str(m.text, B.TEXT_MAX) };
     }
     if (m.type === 'creature') {
-      return { id: m.id, type: 'creature', day: day, at: str(m.at), from: from, species: str(m.species, 40), name: str(m.name, B.NAME_MAX), text: str(m.text, B.TEXT_MAX) };
+      var cm = { id: m.id, type: 'creature', day: day, at: str(m.at), from: from, species: str(m.species, 40), name: str(m.name, B.NAME_MAX), text: str(m.text, B.TEXT_MAX) };
+      if (m.wary === true) cm.wary = true;
+      return cm;
     }
     /* A newer copy's kind: every plain field kept as it is (text cut to
        length), so saving here doesn't strip it. */

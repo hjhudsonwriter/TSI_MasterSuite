@@ -244,7 +244,7 @@
     BR.takeOut(b, bdata, c.id, {});
     var ch = snap(b, 'Mira').creatures[c.id].chronicle.map(function (x) { return [x.cat, x.text]; });
     t.same(ch.map(function (x) { return x[0]; }), ['handler', 'bond', 'travel']);
-    t.ok(/Acclimatised with Mira on Day 14 \(rolled 25 against DC 20\)/.test(ch[1][1]));
+    t.ok(/Acclimatised with Mira on Day 14 \(rolled 25 against DC 17\)/.test(ch[1][1]));
     t.equal(JSON.stringify(snap(b, 'Mira')).indexOf('failed'), -1, 'the DM-only failed try stays in the Bastion');
   });
 

@@ -514,7 +514,7 @@
         if (!c) return;
         var early = R.acclimatiseBlocker(state, data, id, await penCtxNow());
         if (early) { await say(early); return; }
-        var ad = R.acclimatiseData(data, c.species);
+        var ad = R.acclimatiseData(data, c.species, c.wary === true);
         var d = R.devView(state, c);
         var name = R.creatureName(data, c);
         var box = el('input', { type: 'number', class: 'tsi-input', min: '1', max: '60', step: '1', inputmode: 'numeric', placeholder: 'Their total', 'data-test': 'acclimatise-total', 'aria-label': 'The handler\'s ' + ad.skill + ' total' });
@@ -530,7 +530,7 @@
           title: 'Acclimatise With Beast: ' + name,
           className: 'tsi-bas-modal',
           body: [
-            muted(R.handlerName(d.handlerId) + ' rolls ' + ad.skill + ' at the table. A total of ' + ad.dc + ' or more passes: ' + name + ' becomes Bond 1 and can go out on the road. A lower total locks ' + name + ' for ' + R.daysText(ad.retryDays) + '.'),
+            muted((c.wary === true ? name + ' is Wary (it failed its Settle check). ' : '') + R.handlerName(d.handlerId) + ' rolls ' + ad.skill + ' at the table. A total of ' + ad.dc + ' or more passes: ' + name + ' becomes Bond 1 and can go out on the road. A lower total locks ' + name + ' for ' + R.daysText(ad.retryDays) + '.'),
             field('The handler\'s total (DC ' + ad.dc + ')', box),
             problem
           ],
@@ -606,6 +606,7 @@
             el('b', { text: 'Handler ' }), el('span', { 'data-test': prefix + '-handler-' + c.id, text: d.handlerId ? R.handlerName(d.handlerId) : 'None yet' }), ' ',
             btn(d.handlerId ? 'Change handler…' : 'Assign handler…', function () { onAssignHandler(c.id); }, 'tsi-btn--ghost', prefix + '-assign-' + c.id, { disabled: away ? true : null, title: away ? 'Return ' + name + ' to the Beast Pen first.' : null })
           ]),
+          c.wary === true ? line('Temperament', 'Wary: it failed its Settle check when it was captured' + (acclimatised ? '.' : ', so it needs DC ' + R.waryDC(data) + ' to acclimatise.'), prefix + '-wary-' + c.id) : null,
           line('Bond', d.bond.level + ': ' + R.bondName(d.bond.level), prefix + '-bond-' + c.id),
           acclimatised ? bondPillsEl(c) : null,
           acclimatised ? line('Bonding Days', String(pr.days) + (away && pr.since !== null ? ' (out on the road since ' + R.dayLabel(pr.since) + ')' : ''), prefix + '-days-' + c.id) : null,
@@ -1861,7 +1862,7 @@
         function refresh() {
           var o = options[select ? R.clampInt(select.value, 0) : 0] || null;
           var chosen = o ? R.creatureById(state, o.creatureId) : null;
-          costLine.textContent = ad.skill + ' · ' + R.acclimatiseDcText(data, chosen ? chosen.species : '');
+          costLine.textContent = ad.skill + ' · ' + R.acclimatiseDcText(data, chosen ? chosen.species : '', chosen ? chosen.wary === true : false);
           var reason = !o ? 'No beast is waiting to be acclimatised: a beast must be housed here first.' : R.acclimatiseBlocker(state, data, o.creatureId, penCtx());
           issue.disabled = !!(locked || reason);
           issue.title = reason || null;

@@ -106,6 +106,7 @@ window.TSI_DATA.tools = [
         'shared/js/hmac.js',
         'tools/beasthandler/data/profile-tables.js',
         'tools/beasthandler/data/beast-compendium-data.js',
+        'tools/beasthandler/data/beast-catcher-data.js',
         'tools/beasthandler/compendium.js',
         'tools/beasthandler/data/initiation-data.js',
         'tools/beasthandler/projection.js',
@@ -142,6 +143,7 @@ window.TSI_DATA.tools = [
           'tools/bastion/data/player-panels-data.js',
           'tools/beasthandler/data/profile-tables.js',
           'tools/beasthandler/data/beast-compendium-data.js',
+          'tools/beasthandler/data/beast-catcher-data.js',
           'tools/beasthandler/compendium.js',
           'tools/bastion/player-view-art.js',
           'tools/bastion/map-loop.js',
@@ -181,6 +183,8 @@ window.TSI_DATA.tools = [
         /* The Bastion's creatures (pull request 7): the kinds the DM can
            grant in the Explorer, and their names. */
         'tools/bastion/data/creatures-data.js',
+        /* The Beast-Catcher's Kit and tools, and which tools suit which beast (the Settle check in Grant a creature, 10 November 2026). */
+        'tools/beasthandler/data/beast-catcher-data.js',
         'tools/explorer/rules.js',
         'tools/explorer/pins-rules.js',
         'tools/explorer/explored-rules.js',

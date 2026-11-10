@@ -2955,25 +2955,97 @@
           ])
         ];
         if (TSI.store.mode === 'memory') body.push(el('p', { class: 'tsi-exp-tip', text: 'This browser isn\'t saving, so the Bastion can\'t see a grant.' }));
+        /* The Settle check (Harry's beast capture rules, 10 November 2026): a Beast-Catcher's Kit from the Travel bags, the tools that suit the
+           beast, and the Animal Handling total. Under the DC, the beast comes Wary. (The rules are J.settleInfo and J.grantCreature.) */
+        var settleOn = !!J.settleKitId();
+        var picked = {};
+        var kitLine = el('p', { class: 'tsi-exp-settle__kit', 'data-test': 'settle-kit', role: 'status' });
+        var toolsHead = el('p', { class: 'tsi-exp-muted tsi-exp-settle__toolshead', 'data-test': 'settle-tools-head' });
+        var toolsBox = el('div', { class: 'tsi-exp-settle__tools', 'data-test': 'settle-tools' });
+        var dcLine = el('p', { class: 'tsi-exp-settle__dc', 'data-test': 'settle-dc', role: 'status' });
+        var totalBox = el('input', { type: 'number', min: '1', max: '60', step: '1', inputmode: 'numeric', class: 'tsi-input tsi-exp-settle__total', id: 'tsi-exp-settle-total', placeholder: 'Their total', 'aria-label': 'The Animal Handling total for the Settle check', 'data-test': 'settle-total' });
+        var resultLine = el('p', { class: 'tsi-exp-settle__result', 'data-test': 'settle-result', role: 'status' });
+        var grantBtn = null;
+        function pickedIds() { return Object.keys(picked).filter(function (k) { return picked[k]; }); }
+        function settleNow() { return J.settleInfo(state, kindSel.value, pickedIds()); }
+        /* What the confirmation says about the Settle check: the result, and what is used up. */
+        function settleSummary() {
+          if (!settleOn) return '';
+          var info = settleNow();
+          var out = info && J.settleOutcome(info.dc, totalBox.value);
+          if (!info || !out) return '';
+          var used = [info.kit.name].concat(info.items.filter(function (x) { return x.counts && x.single; }).map(function (x) { return x.name; }));
+          return ' Settle check: ' + out.total + ' against DC ' + info.dc + (out.wary ? ', so it comes Wary (DC ' + J.waryDC() + ' to acclimatise).' : ': settled.') + ' Used up: ' + used.join(', ') + '.';
+        }
+        function buildTools() {
+          var info = J.settleInfo(state, kindSel.value, []);
+          picked = {};
+          TSI.clear(toolsBox);
+          var noun = (B.speciesName(kindSel.value) || '').toLowerCase();
+          toolsHead.textContent = 'Tools carried that suit the ' + noun + ' (each one lowers the Settle DC by ' + info.perItem + '):';
+          info.items.forEach(function (x) {
+            var box = el('input', { type: 'checkbox', id: 'tsi-exp-settle-' + x.id, 'data-test': 'settle-tool-' + x.id, disabled: x.have < 1 ? 'disabled' : null });
+            box.addEventListener('change', function () { picked[x.id] = box.checked; refreshSettle(); });
+            toolsBox.appendChild(el('label', { class: 'tsi-exp-settle__tool' + (x.have < 1 ? ' is-none' : ''), for: 'tsi-exp-settle-' + x.id }, [
+              box, ' ', el('span', { text: x.name }), ' ',
+              el('span', { class: 'tsi-exp-muted', text: x.have < 1 ? '(none in the bags)' : '(' + x.have + ' in the bags' + (x.single ? ', used up' : '') + ')' })
+            ]));
+          });
+        }
+        function refreshSettle() {
+          var info = settleNow();
+          if (!info) return;
+          var noKit = info.kit.have < 1;
+          kitLine.textContent = noKit
+            ? info.kit.name + ': none in the Travel bags. The creature can\'t be granted until the party has one (add or collect it first).'
+            : info.kit.name + ': ' + info.kit.have + ' in the Travel bags (one is used up when the creature is granted).';
+          kitLine.classList.toggle('is-bad', noKit);
+          dcLine.textContent = 'Settle DC ' + info.dc + (info.counted ? ' (' + info.base + ', less ' + info.perItem * info.counted + ' for ' + info.counted + (info.counted === 1 ? ' tool' : ' tools') + ')' : ' (no tools counted)') + '.';
+          var out = J.settleOutcome(info.dc, totalBox.value);
+          resultLine.textContent = totalBox.value === '' ? 'Type the Animal Handling total to see the result.'
+            : !out ? 'Type a whole number from 1 to 60.'
+            : out.wary ? 'A total of ' + out.total + ' is under the DC: the beast comes Wary, and needs DC ' + J.waryDC() + ' to acclimatise at the Beast Pen.'
+            : 'A total of ' + out.total + ' meets the DC: the beast is settled, and acclimatises at its own DC (' + J.settleBaseDC(kindSel.value) + ').';
+          resultLine.classList.toggle('is-wary', !!(out && out.wary));
+          if (grantBtn) { grantBtn.disabled = noKit || !out; grantBtn.title = noKit ? 'No Beast-Catcher\'s Kit in the Travel bags.' : !out ? 'Type the Settle total first.' : ''; }
+        }
+        if (settleOn) {
+          body.splice(1, 0, el('section', { class: 'tsi-exp-settle', 'data-test': 'creature-settle', 'aria-label': 'Settle check' }, [
+            el('h4', { class: 'tsi-exp-settle__title', text: 'Settle check' }),
+            kitLine, toolsHead, toolsBox,
+            el('div', { class: 'tsi-exp-settle__row' }, [el('label', { class: 'tsi-exp-muted', for: 'tsi-exp-settle-total', text: 'Animal Handling total:' }), totalBox]),
+            dcLine, resultLine
+          ]));
+          kindSel.addEventListener('change', function () { buildTools(); refreshSettle(); });
+          totalBox.addEventListener('input', refreshSettle);
+          buildTools();
+          refreshSettle();
+        }
         return TSI.modal.open({
           title: 'Grant a creature',
           body: body,
           escValue: false,
           actions: [{ label: 'Cancel', value: false }, { label: 'Grant', value: true, primary: true }],
-          onOpen: function (api) { if (api && api.dialog) api.dialog.setAttribute('data-test', 'creature-dialog'); }
+          onOpen: function (api) {
+            if (api && api.dialog) {
+              api.dialog.setAttribute('data-test', 'creature-dialog');
+              grantBtn = api.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary');
+              if (settleOn) refreshSettle();
+            }
+          }
         }).then(function (ok) {
           if (!ok || !life.alive) return false;
           /* Harry (15 October 2026): Grant asks first. Once the Bastion has
              it, only Release (while it waits for a home) takes it back. */
           var named = nameBox.value.replace(/\s+/g, ' ').trim();
           var kindName = kindSel.options[kindSel.selectedIndex] ? kindSel.options[kindSel.selectedIndex].text : kindSel.value;
-          return ask('Grant ' + (/^[aeiou]/i.test(kindName) ? 'an ' : 'a ') + kindName.toLowerCase() + (named ? ' (' + named + ')' : '') + ' to the Ironbow? Once the Bastion has it, it can only be released while it waits for a home.', 'Grant').then(function (sure) {
+          return ask('Grant ' + (/^[aeiou]/i.test(kindName) ? 'an ' : 'a ') + kindName.toLowerCase() + (named ? ' (' + named + ')' : '') + ' to the Ironbow?' + settleSummary() + ' Once the Bastion has it, it can only be released while it waits for a home.', 'Grant').then(function (sure) {
             if (!sure || !life.alive) return false;
             return grantNow();
           });
         });
         function grantNow() {
-          var res = J.grantCreature(state, kindSel.value, { name: nameBox.value, text: whyBox.value, memory: TSI.store.mode === 'memory' });
+          var res = J.grantCreature(state, kindSel.value, { name: nameBox.value, text: whyBox.value, memory: TSI.store.mode === 'memory', settle: settleOn ? { total: totalBox.value, items: pickedIds() } : null });
           if (!res.ok) { note(res.message); return false; }
           saveNow();
           renderSent();
