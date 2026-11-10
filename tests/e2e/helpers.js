@@ -67,7 +67,12 @@ async function newContext(browser, size, extra) {
      Edit; the cue-button tests pass questMode: 'default' to see what Harry sees. */
   const questMode = options.questMode;
   delete options.questMode;
+  /* Research trees are switched off in the shipped data (Harry, 10 November 2026). The click-throughs exercise the Herbal Gardens' tree, so
+     they switch it on, unless a test passes researchOff: true to see what Harry sees. */
+  const researchOff = options.researchOff;
+  delete options.researchOff;
   const context = await browser.newContext(options);
+  if (!researchOff) await context.addInitScript(() => { window.TSI_TEST_RESEARCH_ON = true; });
   if (questMode !== 'default') {
     await context.addInitScript(() => { try { if (!sessionStorage.getItem('tsi.dmdoc.questmode')) sessionStorage.setItem('tsi.dmdoc.questmode', 'edit'); } catch (e) { /* no storage */ } });
   }
