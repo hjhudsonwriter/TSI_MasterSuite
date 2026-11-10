@@ -1709,7 +1709,7 @@
     });
     var fx = data && data.bastion && data.bastion.levelEffects;
     var lines = isObj(fx) && isObj(fx[facId]) ? fx[facId][level] : null;
-    if (Array.isArray(lines)) lines.forEach(function (t) { if (typeof t === 'string' && t) out.push(t); });
+    if (Array.isArray(lines)) lines.forEach(function (t) { if (typeof t === 'string' && t && !(!R.researchOn(data) && /research token/i.test(t))) out.push(t); });
     return out;
   };
   /* The Upgrade row's words: { next, nextText, later } for a facility at fromLevel.
@@ -1776,10 +1776,17 @@
      days spent aren't given back (as with Cancel: B9). Effects come only
      from the fixed list below, read from the data, never from the save. */
   function researchData(data) { return isObj(data.research) ? data.research : { trees: {}, stageDays: [7, 14, 21], needs: {} }; }
-  R.researchTree = function (data, facId) {
+  /* Research trees are switched off for now (Harry, 10 November 2026): research-data.js says "enabled: false" until every development
+     facility has its own tree. Nothing is deleted: the tree, a save's researched choices and a research order already running are all
+     kept, and come back when the switch is turned on. While it is off there is no Research row or panel, no research tokens, no effects
+     from research, and a recipe that "needs" a research is available without it. */
+  R.researchOn = function (data) { return researchData(data).enabled !== false; };
+  /* The tree as written, switch or no switch (for keeping saves and finishing an order already running). */
+  R.researchTreeRaw = function (data, facId) {
     var t = researchData(data).trees;
     return isObj(t) && isObj(t[facId]) ? t[facId] : null;
   };
+  R.researchTree = function (data, facId) { return R.researchOn(data) ? R.researchTreeRaw(data, facId) : null; };
   function findBranch(tree, branchId) { return tree ? (tree.branches || []).filter(function (b) { return b.id === branchId; })[0] || null : null; }
   /* Where a choice sits: { branch, stageIdx, choice } or null. */
   function findChoice(tree, branchId, choiceId) {
@@ -1796,7 +1803,7 @@
     var out = {};
     if (!isObj(src)) return out;
     Object.keys(src).forEach(function (facId) {
-      var tree = R.researchTree(data, facId);
+      var tree = R.researchTreeRaw(data, facId);   /* the raw tree: a save's research is kept while the switch is off */
       if (!tree || !isObj(src[facId])) return;
       var fac = {};
       Object.keys(src[facId]).forEach(function (bid) {
@@ -1903,7 +1910,7 @@
   };
   R.completeResearch = function (s, data, order) {
     var m = order.meta || {};
-    var at = findChoice(R.researchTree(data, order.facId), m.branch, m.choice);
+    var at = findChoice(R.researchTreeRaw(data, order.facId), m.branch, m.choice);   /* an order already running still finishes */
     var label = order.label || 'Research';
     if (!at) return ['Research', label + ' → That research no longer exists; nothing changes.'];
     if (!isObj(s.research)) s.research = {};
@@ -2515,7 +2522,7 @@
     if (!fn || !fn.production) return null;
     if (!(chosen && Array.isArray(chosen.outputs))) return 'Choose what to make.';
     /* A recipe that needs research (Harry, 13 October 2026). */
-    if (chosen.needsResearch && !R.researched(s, fac.id, chosen.needsResearch)) return 'Needs the research ' + R.researchChoiceName(data, fac.id, chosen.needsResearch) + '.';
+    if (R.researchOn(data) && chosen.needsResearch && !R.researched(s, fac.id, chosen.needsResearch)) return 'Needs the research ' + R.researchChoiceName(data, fac.id, chosen.needsResearch) + '.';
     var short = R.inputsShort(s, data, chosen.inputs || []);
     return short ? short.message : null;
   };

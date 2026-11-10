@@ -1340,6 +1340,40 @@
     t.equal(R.researchChoiceState(s, data, 'herbal_gardens', 'botanical', 'exotic_flora_conservatory'), 'unreachable', 'Stage III waits for a Stage II choice (both still "coming"): a question for Harry');
   });
 
+  /* Research trees are switched off in the shipped data (Harry, 10 November 2026); these tests turn the switch off on a copy of the data
+     (the rest of the file runs with it on, through window.TSI_TEST_RESEARCH_ON, so the tree itself stays tested). */
+  test('research trees OFF (Harry, 10 November 2026): no Research row, tokens, effects or "one more token"; the tree and a save\'s researched choices are kept; recipes that need a research can be ordered', function (t) {
+    var off = Object.assign({}, data, { research: Object.assign({}, T.bastionResearch, { enabled: false }) });
+    t.equal(R.researchOn(off), false);
+    t.equal(R.researchOn(data), true, 'and on, as these tests have it');
+    t.equal(R.researchTree(off, 'herbal_gardens'), null, 'no tree to show');
+    t.ok(R.researchTreeRaw(off, 'herbal_gardens') && R.researchTreeRaw(off, 'herbal_gardens').branches.length === 4, 'but the tree is kept, all four branches');
+    var s = gardens(5);
+    t.same(R.researchTokens(s, off, 'herbal_gardens'), { total: 0, used: 0, free: 0 }, 'no research tokens');
+    t.ok(R.researchTokens(s, data, 'herbal_gardens').total > 0, 'there are with it on');
+    t.ok(R.levelUnlocks(data, 'herbal_gardens', 2).some(function (l) { return /research token/i.test(l); }));
+    t.ok(!R.levelUnlocks(off, 'herbal_gardens', 2).some(function (l) { return /research token/i.test(l); }), 'the Upgrade words do not promise a token');
+    /* A save that already researched something keeps it, through a load and a save. */
+    var saved = { herbal_gardens: { agricultural: ['fertile_soil'], botanical: ['botanical_extraction'] } };
+    t.same(R.cleanResearch(saved, off), saved, 'kept while the switch is off');
+    var loaded = R.fromSave(JSON.parse(JSON.stringify(Object.assign(R.toSave(gardens(5)), { research: saved }))), off);
+    t.same(loaded.research, saved, 'through a load');
+    t.same(R.researchEffects(Object.assign(gardens(5), { research: saved }), off, 'herbal_gardens'), [], 'but it has no effect while off');
+    t.ok(R.researchEffects(Object.assign(gardens(5), { research: saved }), data, 'herbal_gardens').length > 0, 'and does again when on');
+    /* The two recipes that need a research can be ordered without it. */
+    var g = gardens(5);
+    stock(g, [['alchemical_flowers', 20]]);
+    t.equal(R.recipeBlocker(g, off, R.facility(off, 'herbal_gardens'), R.fn(R.facility(off, 'herbal_gardens'), 'commercial_medicinal_crops'), R.fn(R.facility(off, 'herbal_gardens'), 'commercial_medicinal_crops').options[1]), null, 'Refined Botanical Reagents is open');
+    t.ok(R.issueOrder(g, off, 'herbal_gardens', 'commercial_medicinal_crops', 1, dice([0.3])).ok, 'and can be ordered');
+    t.equal(R.recipeBlocker(gardens(5), data, R.facility(data, 'herbal_gardens'), R.fn(R.facility(data, 'herbal_gardens'), 'commercial_medicinal_crops'), R.fn(R.facility(data, 'herbal_gardens'), 'commercial_medicinal_crops').options[1]), 'Needs the research Botanical Extraction.', 'with it on it still waits');
+    /* A research order already running finishes and is kept. */
+    var r = gardens(5);
+    var running = { id: 'rs1', facId: 'herbal_gardens', fnId: 'research', chosen: null, optionLabel: null, notes: '', label: 'Herbal Gardens: Research Fertile Soil', costGP: 0, issuedDay: 1, dueDay: 8, meta: { kind: 'research', branch: 'agricultural', stage: 0, choice: 'fertile_soil', name: 'Fertile Soil' } };
+    var lines = R.completeResearch(r, off, running);
+    t.equal(lines[0], 'Research Complete');
+    t.same(r.research, { herbal_gardens: { agricultural: ['fertile_soil'] } }, 'the choice is recorded, ready for when trees return');
+  });
+
   test('the map labels: one per built facility with a position, with its level; a plot facility is labelled; positions are on the painting', function (t) {
     var s = fresh();
     t.same(R.mapLabels(s, data).map(function (l) { return [l.fac, l.level]; }), [['workshop', 1], ['dock', 1]], 'the two starting facilities (the Barracks, Armoury and Watchtower went with the war game)');

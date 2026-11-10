@@ -35,6 +35,13 @@
    faster-order choices also speed up the new orders, by their wording. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionResearch = {
+  /* THE SWITCH (Harry, 10 November 2026): research trees are OFF for now, because only the Herbal Gardens has one and Harry does not want
+     one on its own. Nothing below is deleted: change this to true to bring the Herbal Gardens' tree back (rules: R.researchOn in
+     tools/bastion/rules.js). While it is false: no Research row or panel, no research tokens, no effects from research, no "one more
+     research token" in the Upgrade words, and the two recipes that "need" a research (Refined Botanical Reagents, Rare Botanical
+     Extraction) can be ordered without it. A save's researched choices and a research order already running are kept and still
+     finish. (window.TSI_TEST_RESEARCH_ON is for the tests only: they switch it on to exercise the tree.) */
+  enabled: window.TSI_TEST_RESEARCH_ON === true,
   stageDays: [7, 14, 21],
   needs: {
     goods: 'the goods catalogue to give this choice a real effect, which it does not have yet',

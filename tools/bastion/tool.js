@@ -1893,7 +1893,7 @@
           select = el('select', { class: 'tsi-input tsi-bas-fn__select', 'aria-label': fn.label, 'data-test': 'sel-' + key }, options.map(function (o, idx) {
             var lab = o && typeof o === 'object' && 'label' in o ? o.label : String(o);
             var cost = o && o.costGP !== undefined && o.costGP !== null ? ' (' + o.costGP + 'gp)' : '';
-            var needs = o && o.needsResearch && !R.researched(state, fac.id, o.needsResearch) ? ' (needs ' + R.researchChoiceName(data, fac.id, o.needsResearch) + ')' : '';
+            var needs = R.researchOn(data) && o && o.needsResearch && !R.researched(state, fac.id, o.needsResearch) ? ' (needs ' + R.researchChoiceName(data, fac.id, o.needsResearch) + ')' : '';
             return el('option', { value: String(idx), text: lab + cost + needs });
           }));
           if (selections[key] !== undefined && Number(selections[key]) < options.length) select.value = String(selections[key]);
