@@ -1,4 +1,4 @@
-/* The Ironbow Bastion Manager: the 223 compendium entries (62 filled in, the rest name only).
+/* The Ironbow Bastion Manager: the 223 compendium entries (62 filled in, the rest name only), plus the 11 Beast-Catcher items of 10 November 2026 (filled in from Harry's guide, no cost or weight).
    A word-for-word copy of the old tool's data/compendium_items.json (265 entries), stored as a
    script so it loads from a double-clicked file. Edit it here.
    The Strip Back Overhaul (22 October 2026) took out the 21 entries that belonged to the war
@@ -1572,6 +1572,94 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Wraps%20of%20Unarmed%20Power%2C%20%2B1"
+    },
+    "Beast-Catcher’s Kit": {
+      "type": "Beast-Catcher’s gear (used up)",
+      "attunement": "",
+      "summary": "A weighted capture net, binding ropes and a handler’s whip in one roll. The net restrains a Large or smaller beast (DC 10 Strength to escape), and the ropes and whip handle the tie-down and control. No party can attempt a capture without one.",
+      "source": "Beast-Catcher’s Guide (Harry, 6 November 2026)",
+      "roll20": "",
+      "homebrew": true
+    },
+    "Beast-Collar & Lead": {
+      "type": "Beast-Catcher’s gear (reusable)",
+      "attunement": "",
+      "summary": "A fitted collar and lead for a calm beast. It makes handling the creature, and leading it home, much easier.",
+      "source": "Beast-Catcher’s Guide (Harry, 6 November 2026)",
+      "roll20": "",
+      "homebrew": true
+    },
+    "Beast-Chain Rig": {
+      "type": "Beast-Catcher’s gear (reusable)",
+      "attunement": "",
+      "summary": "A forge-chain harness for the strongest beasts. If the beast wakes early, it needs a DC 20 Strength check to break free.",
+      "source": "Beast-Catcher’s Guide (Harry, 6 November 2026)",
+      "roll20": "",
+      "homebrew": true
+    },
+    "Stillroot Salve": {
+      "type": "Beast-Catcher’s salve (used up)",
+      "attunement": "",
+      "summary": "A Tellurian calming salve. It lowers a beast’s aggression without sedating it.",
+      "source": "Beast-Catcher’s Guide (Harry, 6 November 2026)",
+      "roll20": "",
+      "homebrew": true
+    },
+    "Dreamroot Salve": {
+      "type": "Beast-Catcher’s salve (used up)",
+      "attunement": "",
+      "summary": "A sedative salve that works only on a beast at or below half its hit points. A failed dose only poisons the beast, and an overdose can kill a smaller one.",
+      "source": "Beast-Catcher’s Guide (Harry, 6 November 2026)",
+      "roll20": "",
+      "homebrew": true
+    },
+    "Beast Salve": {
+      "type": "Beast-Catcher’s salve (used up)",
+      "attunement": "",
+      "summary": "Stabilises and heals the captive on the way home, so that a hard fight does not cost the party the beast.",
+      "source": "Beast-Catcher’s Guide (Harry, 6 November 2026)",
+      "roll20": "",
+      "homebrew": true
+    },
+    "Scent Lure": {
+      "type": "Beast-Catcher’s lure (used up)",
+      "attunement": "",
+      "summary": "A strong-smelling bait that draws the beast onto ground the party chooses, giving advantage on the approach or the ambush.",
+      "source": "Beast-Catcher’s Guide (Harry, 6 November 2026)",
+      "roll20": "",
+      "homebrew": true
+    },
+    "Falconer’s Hood & Jesses": {
+      "type": "Beast-Catcher’s gear (reusable)",
+      "attunement": "",
+      "summary": "A hood and leather straps that calm a raptor-type beast and keep its head and talons under control.",
+      "source": "Beast-Catcher’s Guide (Harry, 6 November 2026)",
+      "roll20": "",
+      "homebrew": true
+    },
+    "Jaw-Strap & Tail Sheath": {
+      "type": "Beast-Catcher’s gear (reusable)",
+      "attunement": "",
+      "summary": "Binds the jaws and caps the stinger. The only safe way to handle a wyvern.",
+      "source": "Beast-Catcher’s Guide (Harry, 6 November 2026)",
+      "roll20": "",
+      "homebrew": true
+    },
+    "Handler’s Gauntlets": {
+      "type": "Beast-Catcher’s gear (reusable)",
+      "attunement": "",
+      "summary": "Heavy forearm guards for grappling a beast and fitting its gear. They give advantage on the grapple and the tie-down.",
+      "source": "Beast-Catcher’s Guide (Harry, 6 November 2026)",
+      "roll20": "",
+      "homebrew": true
+    },
+    "Beast Muzzle": {
+      "type": "Beast-Catcher’s gear (reusable)",
+      "attunement": "",
+      "summary": "Stops the bite while the party works.",
+      "source": "Beast-Catcher’s Guide (Harry, 6 November 2026)",
+      "roll20": "",
+      "homebrew": true
     }
   }
 };

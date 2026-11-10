@@ -49,9 +49,14 @@
        and beasts went in S06; the Shrines' six Craft charms and nine prayers went with the Temple in S11). */
     var index = R.compendiumIndex(data.facilities, data.tools).items;
     /* Harry's review of the Workshop (6 November 2026) removed many items from the lists and added eleven of his own. The entries of the removed
-       items stay in compendium-data.js, unused (kept in case he adds any back); the new items have no entry yet and are stubbed. */
+       items stay in compendium-data.js, unused (kept in case he adds any back); the new items got their entries on 10 November 2026 (type and description, no cost or weight, no Roll20 page). */
     var NEW_ITEMS = ['Beast-Catcher’s Kit', 'Beast-Collar & Lead', 'Beast-Chain Rig', 'Stillroot Salve', 'Dreamroot Salve', 'Beast Salve', 'Scent Lure', 'Falconer’s Hood & Jesses', 'Jaw-Strap & Tail Sheath', 'Handler’s Gauntlets', 'Beast Muzzle'].sort();
-    t.same(index.filter(function (k) { return !(k in T.bastionCompendium.items); }).sort(), NEW_ITEMS, 'every item listed has an entry, except Harry\'s eleven new ones');
+    t.same(index.filter(function (k) { return !(k in T.bastionCompendium.items); }), [], 'every item listed has an entry');
+    NEW_ITEMS.forEach(function (k) {
+      var e = T.bastionCompendium.items[k];
+      t.ok(e && /^Beast-Catcher’s (gear|salve|lure) \((used up|reusable)\)$/.test(e.type) && e.summary.length > 20 && e.homebrew === true, k + ': a type label, a description, and no Roll20 page');
+      t.ok(!/gp|lb/.test(e.summary), k + ': no cost or weight');
+    });
     t.same(['Tellurian Root Charm', 'Aurush Sun Charm', 'Pelagos Tide Charm', 'Telluria\'s Guidance', 'Pelagos\'s Deep Rest'].filter(function (k) { return index.indexOf(k) !== -1 || k in T.bastionCompendium.items; }), [], 'none of the Shrines\' charms or prayers');
     t.equal(T.bastionWar, undefined, 'the war data file is gone');
   });

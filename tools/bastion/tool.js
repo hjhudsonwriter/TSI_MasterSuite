@@ -3835,7 +3835,8 @@
         function showItem(item) {
           var links = compIndex.links[item] || [];
           var info = items[item] || null;
-          var rollLink = info && info.roll20 ? info.roll20 : R.roll20Url(item);
+          /* Suite-made items (homebrew: true) have no Roll20 page, so no link. */
+          var rollLink = info && info.homebrew ? '' : info && info.roll20 ? info.roll20 : R.roll20Url(item);
           /* A card picture shows when one has the item's exact name (B15). */
           var cardWrap = B.compendiumCards.indexOf(item) === -1 ? null : el('div', { class: 'tsi-bas-comp__card', 'data-test': 'comp-card' },
             el('img', { src: asset('compendium_cards/' + encodeURIComponent(item) + '.png'), alt: item + ' card' }));

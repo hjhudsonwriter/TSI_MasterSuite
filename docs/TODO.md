@@ -9,7 +9,6 @@ Harry's list of things we have decided to do, but not yet. Newest at the top. Wh
 | **Pin sound** | A small sound effect for the pin (Explorer). One line in `tools/explorer/data/sfx-data.js` once the file is in `tools/explorer/assets/sfx/`. | Harry's sound file | About 20 minutes |
 | **Town-marker sound** | The optional `marker.mp3` played when a town marker is used (skipped so far because no file was supplied). | Harry's sound file | About 20 minutes |
 | **Turn chime** | A short chime when the turn moves on in the Combat Tracker (not built in guide 3 because it was not ticked). | Harry's sound file | About 30 minutes to an hour |
-| **Descriptions for the 11 new Workshop items** | Compendium text for Beast-Catcher's Kit, Beast-Collar & Lead, Beast-Chain Rig, Stillroot Salve, Dreamroot Salve, Beast Salve, Scent Lure, Falconer's Hood & Jesses, Jaw-Strap & Tail Sheath, Handler's Gauntlets and Beast Muzzle. They show in the Bastion's Compendium with no description today. | Harry's wording (the Beast-Catcher's Guide already has a line for each; I can draft from it if wanted) | About 30 minutes |
 | **Temple descriptions** | A few lines of text under each First Temple's painting (Pelagos, Telluria, Aurush) in the Explorer's place pop-up and on the TV. | Harry's wording | About 20 minutes |
 
 ## Bigger jobs, decided but not started
@@ -27,5 +26,6 @@ Research is switched off for now (10 November 2026, `enabled` in `tools/bastion/
 
 ## Done
 
+- **Descriptions for the 11 new Workshop items** (10 November 2026): each has a type label and a description in the Bastion's Compendium, from the Beast-Catcher's Guide (no cost or weight, no Roll20 link).
 - **Courier Exchange Levels 3 to 5** (10 November 2026): Level 3 cargo home from a town's courier post ("Send to the Ironbow…"), Level 4 Priority (half the days, double the fee), Level 5 combined parcel (one parcel, two towns, one place, one fee) and more room (3/15, 3/20, 4/30). Details in `docs/PROGRESS.md` (the 10 November entry).
 - **Beast capture rules** (10 November 2026): the Settle check in Grant a creature, Wary beasts and the Beast Pen's DCs, and the Kit and ten tools as counted goods that the Workshop crafts, the Courier sends and the Travel bags hold. Harry's rulings are in `docs/PROGRESS.md` (the 10 November entry).
