@@ -871,6 +871,138 @@
     return { ok: true, line: line, id: id };
   };
 
+  /* ---------- Sending cargo home (Courier Exchange Level 3 and up; Harry, 10 November 2026) ----------
+     At a town's courier post the DM can send items from the Travel bags to the Ironbow's Warehouse. The Bastion's rules aren't here, so
+     the Bastion saves a plain summary of its Courier Exchange (courierDesk, tools/bastion/courier-rules.js R.courierDesk) and this reads it.
+     Only whole items go (a chart is 3 uses: 3 uses make 1 item), and only kinds the courier carries (data/courier-data.js) or items typed
+     into the Warehouse. Everything is checked first and nothing changes if anything is wrong. Then, in one change for the one save that
+     follows: the items leave the bags and the message goes into the outbox. Priority (Level 4): half the days (rounded up, at least
+     minDays) and double the fee.
+     J.cargoOptions(state): [{ kind, name, items, usesEach }]: what the bags can send now. */
+  function courierItems() {
+    var d = window.TSI_DATA && window.TSI_DATA.bastionCourier;
+    return isObj(d) && isObj(d.items) ? d.items : {};
+  }
+  J.cargoOptions = function (state) {
+    var out = [];
+    var carried = courierItems();
+    (journey(state).inventory || []).forEach(function (it) {
+      if (!isObj(it) || typeof it.kind !== 'string') return;
+      if (!isFree(it.kind) && !carried[it.kind]) return;
+      if (out.some(function (o) { return o.kind === it.kind; })) return;
+      var info = J.itemInfo(it.kind);
+      if (!info) return;
+      var each = int(info.usesEach, 1) || 1;
+      var whole = Math.floor(J.itemQty(state, it.kind) / each);
+      if (whole < 1) return;
+      out.push({ kind: it.kind, name: info.name, plural: info.plural, items: whole, usesEach: each });
+    });
+    return out;
+  };
+  /* The Bastion's days and fee for a town as the Explorer sees them: { days, feeGP } or null. */
+  J.cargoQuote = function (bastionSave, pointId, priority) {
+    var desk = isObj(bastionSave) && isObj(bastionSave.courierDesk) ? bastionSave.courierDesk : null;
+    var pt = desk && isObj(desk.points) ? desk.points[pointId] : null;
+    if (!pt || !isNum(pt.days) || !isNum(pt.feeGP)) return null;
+    var rule = isObj(desk.priorityRule) ? desk.priorityRule : { divisor: 2, multiplier: 2 };
+    var days = pt.days;
+    if (priority === true) days = Math.ceil(days / Math.max(1, rule.divisor || 2));
+    days = Math.max(int(desk.minDays, 1) || 1, days);
+    var fee = priority === true ? Math.ceil(pt.feeGP * Math.max(1, rule.multiplier || 2)) : pt.feeGP;
+    return { days: days, feeGP: fee };
+  };
+  /* Why nothing can be sent from this town now ('' if something can), before any item is chosen. */
+  J.cargoOpen = function (state, bastionSave, pointId, opts) {
+    var B = bridge();
+    var o = isObj(opts) ? opts : {};
+    if (!B || !B.cargoMessage) return 'This copy of the Explorer can\'t send cargo home.';
+    if (o.memory === true) return 'This browser isn\'t saving, so the Bastion can\'t see it. Nothing was sent.';
+    if (!isObj(bastionSave)) return 'Waiting for the Bastion: it hasn\'t saved anything yet.';
+    if (bastionSave.anchored !== true) return 'Waiting for the Bastion: open it once so it reads the Explorer\'s day.';
+    var desk = isObj(bastionSave.courierDesk) ? bastionSave.courierDesk : null;
+    if (!desk) return 'The Bastion hasn\'t saved its Courier Exchange yet: open the Bastion once, then try again.';
+    if (!desk.built) return 'The Courier Exchange isn\'t built.';
+    var today = day(state);
+    if (isNum(desk.repairUntil) && desk.repairUntil >= today && desk.repairUntil > 0) return 'The Courier Exchange is Under Repair until Day ' + desk.repairUntil + '.';
+    if (desk.returns !== true) return 'Sending cargo home needs the Courier Exchange at Level 3 (it\'s Level ' + int(desk.level, 0) + ').';
+    var priority = o.priority === true;
+    if (priority && desk.priority !== true) return 'Priority needs the Courier Exchange at Level 4 (it\'s Level ' + int(desk.level, 0) + ').';
+    if (!B.isPoint(pointId)) return 'Choose a town the courier knows.';
+    var quote = J.cargoQuote(bastionSave, pointId, priority);
+    if (!quote) return B.pointLabel(pointId) + ' isn\'t one of the towns the courier reaches at Level ' + int(desk.level, 0) + '.';
+    var busy = (Array.isArray(desk.groups) ? desk.groups : []).filter(function (d) { return isNum(d) && d > today; }).length;
+    if (busy >= int(desk.onRoad, 0)) return (int(desk.onRoad, 0) === 1 ? 'A parcel is already travelling.' : 'All ' + int(desk.onRoad, 0) + ' travelling places are taken.');
+    return '';
+  };
+  J.cargoProblem = function (state, bastionSave, pointId, picks, opts) {
+    var o = isObj(opts) ? opts : {};
+    var open = J.cargoOpen(state, bastionSave, pointId, o);
+    if (open) return open;
+    var desk = bastionSave.courierDesk;
+    var quote = J.cargoQuote(bastionSave, pointId, o.priority === true);
+    var priority = o.priority === true;
+    var list = Array.isArray(picks) ? picks : [];
+    var options = J.cargoOptions(state);
+    var total = 0;
+    var seen = {};
+    for (var i = 0; i < list.length; i++) {
+      var pk = list[i];
+      if (!isObj(pk) || typeof pk.kind !== 'string' || !isNum(pk.qty) || Math.floor(pk.qty) !== pk.qty || pk.qty < 1) return 'Choose a whole number of items.';
+      if (seen[pk.kind]) return 'Each kind is listed once.';
+      seen[pk.kind] = true;
+      var opt = options.filter(function (x) { return x.kind === pk.kind; })[0];
+      if (!opt) return 'The Travel bags hold no whole ' + (J.itemInfo(pk.kind) ? J.itemInfo(pk.kind).name : 'item') + ' the courier can carry.';
+      if (pk.qty > opt.items) return 'The Travel bags hold only ' + opt.items + ' ' + (opt.items === 1 ? opt.name : opt.plural) + '.';
+      total += pk.qty;
+    }
+    if (total < 1) return 'Choose at least 1 item to send.';
+    if (total > int(desk.maxItems, 0)) return 'That\'s ' + total + ' items: a parcel from a Level ' + int(desk.level, 0) + ' Courier Exchange holds up to ' + int(desk.maxItems, 0) + '.';
+    if (int(desk.treasuryGP, 0) < quote.feeGP) return 'The fee is ' + quote.feeGP + ' gp' + (priority ? ' (Priority)' : '') + '; the Ironbow\'s treasury has ' + int(desk.treasuryGP, 0) + ' gp.';
+    return '';
+  };
+  J.cargoSummary = function (state, bastionSave, pointId, picks, opts) {
+    var B = bridge();
+    var priority = isObj(opts) && opts.priority === true;
+    var total = (picks || []).reduce(function (n, x) { return n + (int(x.qty, 0) || 0); }, 0);
+    var desk = isObj(bastionSave) && isObj(bastionSave.courierDesk) ? bastionSave.courierDesk : null;
+    var head = total + (total === 1 ? ' item' : ' items') + (desk ? ' of ' + int(desk.maxItems, 0) : '');
+    var quote = J.cargoQuote(bastionSave, pointId, priority);
+    if (!quote) return head + ' · choose a town.';
+    return head + ' · fee ' + quote.feeGP + ' gp' + (priority ? ' (Priority)' : '') + ' · reaches the Ironbow on ' + dayName(day(state) + quote.days) + ', its contents going into the Warehouse then.';
+  };
+  function dayName(d) { return d >= 1 ? 'Day ' + d : 'a day before Day 1'; }
+  /* Send it. Returns { ok, line, id, quote } or { ok: false, message }. */
+  J.sendCargo = function (state, bastionSave, pointId, picks, opts) {
+    var B = bridge();
+    var o = isObj(opts) ? opts : {};
+    var why = J.cargoProblem(state, bastionSave, pointId, picks, o);
+    if (why) return { ok: false, message: why };
+    var priority = o.priority === true;
+    var quote = J.cargoQuote(bastionSave, pointId, priority);
+    var goods = [];
+    picks.forEach(function (pk) {
+      var info = J.itemInfo(pk.kind);
+      var each = int(info.usesEach, 1) || 1;
+      if (!J.takeItem(state, pk.kind, pk.qty * each)) return;
+      var g = { goodId: pk.kind, qty: pk.qty };
+      if (isFree(pk.kind)) g.name = info.name;
+      goods.push(g);
+    });
+    var j = journey(state);
+    var id = newUid() + B.CARGO_SUFFIX;
+    if (!Array.isArray(j.outbox)) j.outbox = [];
+    var town = B.pointLabel(pointId);
+    var what = B.parcelGoodsText(goods);
+    j.outbox.push(B.cargoMessage({
+      id: id, point: pointId, day: day(state), at: new Date().toISOString(), priority: priority, goods: goods,
+      from: { code: 'DM', title: 'Courier post', step: 'pin' },
+      text: ((priority ? 'Priority cargo' : 'Cargo') + ' sent home from ' + town + ': ' + what + '.').slice(0, B.TEXT_MAX)
+    }));
+    var line = (priority ? 'Priority cargo' : 'Cargo') + ' sent home from ' + town + ': ' + what + '. It reaches the Ironbow on ' + dayName(day(state) + quote.days) + ' (fee ' + quote.feeGP + ' gp, paid from the Ironbow\'s treasury). Sent to the Bastion.';
+    logLine(state, line);
+    return { ok: true, line: line, id: id, quote: quote };
+  };
+
   /* Go to a step: its outcomes apply once, here and only here. */
   function enter(state, defs, stepId, rand) {
     var j = journey(state);

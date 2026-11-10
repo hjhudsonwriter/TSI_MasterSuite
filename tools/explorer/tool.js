@@ -3098,6 +3098,20 @@
         var line = el('p', { class: 'tsi-exp-post__line', 'data-test': 'post-line', text: 'Checking the Bastion…' });
         var done = el('p', { class: 'tsi-exp-post__done', 'data-test': 'post-done', role: 'status', hidden: true });
         var shown = null;
+        /* Send to the Ironbow… (Courier Exchange Level 3): cargo home from this town. Off, with the reason, until the Bastion says it can. */
+        var sendWhy = el('p', { class: 'tsi-exp-muted tsi-exp-post__why', 'data-test': 'send-why' });
+        var sendBtn = btn('Send to the Ironbow…', function () {
+          Promise.resolve(onSendCargo(point)).then(function () { if (life.alive) fill(); });
+        }, 'tsi-exp-mini', 'send-cargo');
+        sendBtn.disabled = true;
+        function showSend(bastion) {
+          var why = bastion === undefined ? 'Checking the Bastion…' : J.cargoOpen(state, bastion, point, { memory: TSI.store.mode === 'memory' });
+          if (!why && !J.cargoOptions(state).length) why = 'The Travel bags hold nothing the courier can carry home (whole items only).';
+          sendBtn.disabled = !!why;
+          sendBtn.title = why || '';
+          sendWhy.textContent = why;
+          sendWhy.hidden = !why;
+        }
         /* The line for a parcel, as seen from this town. */
         function words(r) {
           var p = r.parcel;
@@ -3108,6 +3122,7 @@
         function show(bastion) {
           var memory = TSI.store.mode === 'memory';
           var rows = bastion ? B.parcelsShown(bastion, exView(), point) : [];
+          showSend(bastion);
           var key = (bastion === undefined ? '?' : bastion === null ? 'none' : parcelsKey(rows)) + '|' + memory;
           if (key === shown) return;
           shown = key;
@@ -3146,6 +3161,7 @@
           el('h4', { class: 'tsi-exp-post__title', text: 'Courier post: ' + B.pointLabel(point) }),
           line,
           list,
+          el('div', { class: 'tsi-exp-post__send' }, [sendBtn, sendWhy]),
           done
         ]);
         openCourier = {
@@ -3155,6 +3171,84 @@
         };
         return box;
       }
+      /* Send to the Ironbow…: choose what goes from the Travel bags, with Priority (Level 4) if it is open; the Bastion's save is read
+         again when the DM confirms, journey.js checks everything, then the items leave the bags and the message goes to the Bastion in one save. */
+      var onSendCargo = TSI.oneAtATime(function (point) { return sendCargoDialog(point); });
+      function sendCargoDialog(point) {
+        var B = TSI.bridge;
+        var town = B.pointLabel(point);
+        var memory = function () { return { memory: TSI.store.mode === 'memory' }; };
+        return TSI.store.fresh('tsi.bastion.state', null).then(function (bastion) {
+          if (!life.alive) return false;
+          var why = J.cargoOpen(state, bastion, point, memory());
+          if (why) return note(why, 'Courier post').then(function () { return false; });
+          var options = J.cargoOptions(state);
+          if (!options.length) return note('The Travel bags hold nothing the courier can carry home (whole items only).', 'Courier post').then(function () { return false; });
+          var desk = bastion.courierDesk;
+          var inputs = {};
+          var summary = el('div', { class: 'tsi-exp-muted', 'data-test': 'send-summary' });
+          var problem = el('div', { class: 'tsi-exp-post__why', 'data-test': 'send-problem', hidden: true });
+          var priorityBox = el('input', { type: 'checkbox', 'data-test': 'send-priority' });
+          var priorityRow = desk.priority === true ? el('label', { class: 'tsi-exp-settle__tool', 'data-test': 'send-priority-row' }, [priorityBox, ' ', el('span', { text: 'Priority: about half the days (rounded up), double the fee.' })]) : null;
+          var okBtn = null;
+          var rows = options.map(function (o) {
+            var input = el('input', { type: 'number', class: 'tsi-input tsi-exp-qty', min: '0', max: String(Math.min(o.items, int0(desk.maxItems))), value: '0', 'data-test': 'send-qty-' + o.kind, 'aria-label': o.name + ' (how many)' });
+            inputs[o.kind] = input;
+            input.addEventListener('input', update);
+            return el('div', { class: 'tsi-exp-send__row', 'data-test': 'send-row-' + o.kind }, [
+              el('span', { class: 'tsi-exp-send__name', text: o.name }), input,
+              el('span', { class: 'tsi-exp-muted', text: 'in the bags: ' + o.items + (o.items === 1 ? ' item' : ' items') + (o.usesEach > 1 ? ' (' + o.usesEach + ' uses each)' : '') })
+            ]);
+          });
+          function int0(v) { return Math.max(0, Math.floor(Number(v) || 0)); }
+          function picks() {
+            return options.map(function (o) { return { kind: o.kind, qty: int0(inputs[o.kind].value) }; }).filter(function (x) { return x.qty > 0; });
+          }
+          function opts() { return { priority: desk.priority === true && priorityBox.checked, memory: TSI.store.mode === 'memory' }; }
+          function update() {
+            var p = picks();
+            var o = opts();
+            var bad = J.cargoProblem(state, bastion, point, p, o);
+            summary.textContent = J.cargoSummary(state, bastion, point, p, o);
+            problem.textContent = bad;
+            problem.hidden = !bad;
+            if (okBtn) { okBtn.disabled = !!bad; okBtn.title = bad || ''; }
+          }
+          priorityBox.addEventListener('change', update);
+          return TSI.modal.open({
+            title: 'Send to the Ironbow from ' + town,
+            body: [
+              el('p', { class: 'tsi-exp-muted', text: 'Only when the party is at ' + town + '. The items leave the Travel bags now; the fee comes from the Ironbow\'s treasury; the cargo goes into the Warehouse when it reaches the Ironbow. Level ' + int0(desk.level) + ': up to ' + int0(desk.maxItems) + ' items.' }),
+              priorityRow
+            ].concat(rows, [summary, problem]),
+            escValue: false,
+            actions: [{ label: 'Cancel', value: false }, { label: 'The party is here: send', value: true, primary: true }],
+            onOpen: function (api) {
+              if (api && api.dialog) {
+                api.dialog.setAttribute('data-test', 'send-dialog');
+                okBtn = api.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary');
+                update();
+              }
+            }
+          }).then(function (ok) {
+            if (ok !== true || !life.alive) return false;
+            var chosen = picks();
+            var chosenOpts = opts();
+            return TSI.store.fresh('tsi.bastion.state', null).then(function (latest) {
+              if (!life.alive) return false;
+              var res = J.sendCargo(state, latest, point, chosen, chosenOpts);
+              if (!res.ok) return note(res.message, 'Courier post').then(function () { return false; });
+              saveNow();
+              bastionSeen = latest;
+              updateTravelUI();
+              setNotice(res.line);
+              if (openCourier && openCourier.node.isConnected) { openCourier.show(latest); openCourier.done(res.line); }
+              return true;
+            });
+          });
+        });
+      }
+
       /* Collect…: check the parcel with the Bastion's save as it is now, ask
          the DM, read the save again (it may have changed while the question
          was open), then put everything in the Travel bags and send the pickup

@@ -774,3 +774,10 @@
 .tsi-page--explorer .tsi-exp-settle__total { width: 8em; font-size: 16px; }
 .tsi-page--explorer .tsi-exp-settle__dc { font-weight: 600; }
 .tsi-page--explorer .tsi-exp-settle__result.is-wary { color: #f0c070; }
+
+/* Send to the Ironbow… at a courier post (Courier Exchange Level 3, 10 November 2026). */
+.tsi-page--explorer .tsi-exp-post__send { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+.tsi-page--explorer .tsi-exp-post__why { margin: 0; font-size: 15px; }
+.tsi-page--explorer .tsi-exp-send__row { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
+.tsi-page--explorer .tsi-exp-send__name { flex: 1 1 auto; min-width: 0; }
+.tsi-page--explorer .tsi-exp-send__row .tsi-input { width: 5em; flex: 0 0 auto; }
