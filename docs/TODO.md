@@ -10,6 +10,7 @@ Harry's list of things we have decided to do, but not yet. Newest at the top. Wh
 | **Town-marker sound** | The optional `marker.mp3` played when a town marker is used (skipped so far because no file was supplied). | Harry's sound file | About 20 minutes |
 | **Turn chime** | A short chime when the turn moves on in the Combat Tracker (not built in guide 3 because it was not ticked). | Harry's sound file | About 30 minutes to an hour |
 | **Temple descriptions** (draft written, parked 11 November 2026: `docs/Temple-descriptions-DRAFT.md` on the branch `claude/temple-descriptions-draft`) | A few lines of text under each First Temple's painting (Pelagos, Telluria, Aurush) in the Explorer's place pop-up and on the TV. | Harry's wording | About 20 minutes |
+| **Bolt Isle town pins** (added 11 November 2026) | Clickable pins on The Bolt Isle map for the four places named in its painting: **Holder's Rest**, **Reaver's Ruin**, **The Deadwood** and **The Bloody Mines**, each opening the same place pop-up as a town (name, picture, description). Today the map has no pins at all. A pin only shows once it has a picture, so none is added until the art arrives. | Harry's picture for each place (and any wording for the description; a place can open with no description, as the towns do) | About an hour for all four once the pictures are in (I can place the pins from the painting, or you can use Pick Marker XY) |
 
 ## Bigger jobs, decided but not started
 
