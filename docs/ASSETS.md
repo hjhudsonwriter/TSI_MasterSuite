@@ -695,3 +695,8 @@ Harry's `SC_Plainsmane` and `SC_Boltback` pictures and videos were turned into t
 | Painting: a frozen, icy coastline | `tools/explorer/assets/temples/first-temple-of-pelagos.webp` | First Temple of Pelagos's pop-up |
 | Painting: a mountain peak at dawn | `tools/explorer/assets/temples/first-temple-of-aurush.webp` | First Temple of Aurush's pop-up |
 
+## The Bolt Isle map (Harry, 11 November 2026)
+
+| Picture | Location | Notes |
+|---|---|---|
+| The Bolt Isle map (2000 x 1500 WebP, kept as sent: the title and anchor badge are in the picture) | `tools/explorer/assets/maps/the_bolt_isle.webp` | The Explorer's eleventh map; also what the players' window shows |

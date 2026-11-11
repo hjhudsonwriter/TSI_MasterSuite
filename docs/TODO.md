@@ -9,7 +9,7 @@ Harry's list of things we have decided to do, but not yet. Newest at the top. Wh
 | **Pin sound** | A small sound effect for the pin (Explorer). One line in `tools/explorer/data/sfx-data.js` once the file is in `tools/explorer/assets/sfx/`. | Harry's sound file | About 20 minutes |
 | **Town-marker sound** | The optional `marker.mp3` played when a town marker is used (skipped so far because no file was supplied). | Harry's sound file | About 20 minutes |
 | **Turn chime** | A short chime when the turn moves on in the Combat Tracker (not built in guide 3 because it was not ticked). | Harry's sound file | About 30 minutes to an hour |
-| **Temple descriptions** | A few lines of text under each First Temple's painting (Pelagos, Telluria, Aurush) in the Explorer's place pop-up and on the TV. | Harry's wording | About 20 minutes |
+| **Temple descriptions** (draft written, parked 11 November 2026: `docs/Temple-descriptions-DRAFT.md` on the branch `claude/temple-descriptions-draft`) | A few lines of text under each First Temple's painting (Pelagos, Telluria, Aurush) in the Explorer's place pop-up and on the TV. | Harry's wording | About 20 minutes |
 
 ## Bigger jobs, decided but not started
 

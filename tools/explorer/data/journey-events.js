@@ -75,6 +75,16 @@ window.TSI_DATA.journeyEvents = {
      in {clan} colours" (shared/data/regions.js, which the DM doc reads too). */
   regions: window.TSI_DATA.regions,
 
+  /* A Region with a pool here draws ONLY the events listed (by id), plus any event whose own where names that map or Region, so a Region with
+     no Clan can be kept to generic events (Harry, 11 November 2026). Every other Region draws as before. The Bolt Isle, a haven for pirates
+     and criminals, gets the bandit events that name no Clan, chief, god or place: T1 The Wardens' Toll (and F1 The Toll-Men Return, its
+     follow-up), T2 The Ambush Sign (only near a river, which this map has none marked for), T3 The Overturned Wagon, and the campfire
+     C2 Bones by Firelight and C3 The Bard's Wager. Left out: everything that names a Clan (T4, T6, C1, C4, C15), a god, a province or a
+     place, and the marsh and mountain events. Bespoke Bolt Isle events can be added later with where: { maps: ['the_bolt_isle'] }. */
+  pools: {
+    the_bolt_isle: ['t1', 't2', 't3', 'f1', 'c2', 'c3']
+  },
+
   events: [
     /* ================= Travel events: anywhere ================= */
     {

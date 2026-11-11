@@ -23,8 +23,8 @@
 window.TSI_DATA = window.TSI_DATA || {};
 
 window.TSI_DATA.explorer = {
-  /* The ten province maps (old MAP_PRESETS), in the old order. Every picture is
-     2048 × 1536 (4:3). province is the event region the map uses. */
+  /* The ten province maps (old MAP_PRESETS), in the old order, then The Bolt Isle (Harry, 11 November 2026). Every picture is
+     4:3: 2048 × 1536, and the Bolt Isle's 2000 × 1500. province is the event region the map uses. */
   maps: [
     { id: 'eastern_province_north', label: 'Eastern Province (North)', src: 'tools/explorer/assets/maps/eastern_province_north.jpg', aspect: 4 / 3, province: 'eastern_province' },
     { id: 'eastern_province_south', label: 'Eastern Province (South)', src: 'tools/explorer/assets/maps/eastern_province_south.jpg', aspect: 4 / 3, province: 'eastern_province' },
@@ -35,10 +35,13 @@ window.TSI_DATA.explorer = {
     { id: 'southern_province_west', label: 'Southern Province (West)', src: 'tools/explorer/assets/maps/southern_province_west.jpg', aspect: 4 / 3, province: 'southern_province' },
     { id: 'the_east_isle', label: 'The East Isle', src: 'tools/explorer/assets/maps/the_east_isle.jpg', aspect: 4 / 3, province: 'the_east_isle' },
     { id: 'the_north_isle', label: 'The North Isle', src: 'tools/explorer/assets/maps/the_north_isle.jpg', aspect: 4 / 3, province: 'the_north_isle' },
-    { id: 'western_province_south', label: 'Western Province (South)', src: 'tools/explorer/assets/maps/western_province_south.jpg', aspect: 4 / 3, province: 'western_province' }
+    { id: 'western_province_south', label: 'Western Province (South)', src: 'tools/explorer/assets/maps/western_province_south.jpg', aspect: 4 / 3, province: 'western_province' },
+    /* A haven for pirates and criminals: no Clan, no god, joined to no other map (so it has no way in or out, no spawns). Its events are the
+       generic ones only (journey-events.js, pools). */
+    { id: 'the_bolt_isle', label: 'The Bolt Isle', src: 'tools/explorer/assets/maps/the_bolt_isle.webp', aspect: 4 / 3, province: 'the_bolt_isle' }
   ],
 
-  /* The seven event regions (old PROVINCES), in the Region list's order. */
+  /* The seven event regions (old PROVINCES), in the Region list's order, then The Bolt Isle (11 November 2026), which has no Clan. */
   provinces: [
     { id: 'northern_province', label: 'Northern Province' },
     { id: 'midland_province', label: 'Midland Province' },
@@ -46,8 +49,15 @@ window.TSI_DATA.explorer = {
     { id: 'southern_province', label: 'Southern Province' },
     { id: 'western_province', label: 'Western Province' },
     { id: 'the_north_isle', label: 'The North Isle' },
-    { id: 'the_east_isle', label: 'The East Isle' }
+    { id: 'the_east_isle', label: 'The East Isle' },
+    { id: 'the_bolt_isle', label: 'The Bolt Isle' }
   ],
+
+  /* A map that no other map leads to (The Bolt Isle, 11 November 2026) has no entry in spawns below, so this says where the party arrives when
+     the DM loads it from any map: Holder's Rest, on the south coast. */
+  landings: {
+    the_bolt_isle: { x: 0.345, y: 0.66 }
+  },
 
   /* Where the party arrives when you load one map from another (old
      MAP_TRANSITION_SPAWNS): spawns[fromMap][toMap] is the party's centre on

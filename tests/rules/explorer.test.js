@@ -29,9 +29,11 @@
 
   group('Explorer: content');
 
-  test('ten maps in seven event regions, five heroes', function (t) {
-    t.equal(D.maps.length, 10);
-    t.equal(D.provinces.length, 7);
+  test('eleven maps in eight event regions, five heroes (the Bolt Isle, 11 November 2026, is the eleventh and the eighth)', function (t) {
+    t.equal(D.maps.length, 11);
+    t.equal(D.provinces.length, 8);
+    t.same(D.maps.filter(function (m) { return m.province === 'the_bolt_isle'; }).map(function (m) { return [m.id, m.label, m.aspect]; }), [['the_bolt_isle', 'The Bolt Isle', 4 / 3]]);
+    t.equal(R.mapProvince(D, 'the_bolt_isle'), 'the_bolt_isle');
     t.same(D.heroes.map(function (h) { return h.title; }), ['Kaelen', 'Umbrys', 'Magnus', 'Elara', 'Charles']);
     t.equal(R.mapProvince(D, 'northern_province_west'), 'northern_province');
     t.equal(R.mapProvince(D, 'the_east_isle'), 'the_east_isle');

@@ -212,13 +212,13 @@ function serve(dir) {
     await page.setViewportSize(H.SIZES.laptop.viewport);
     await H.shot(page, 'p8-01-laptop');
 
-    await check('all ten maps load with no internet', async () => {
+    await check('all eleven maps load with no internet (the Bolt Isle, 11 November 2026, is 2000 wide)', async () => {
       const ids = await page.$$eval('[data-test=map-select] option', os => os.map(o => o.value).filter(Boolean));
-      equal(ids.length, 10);
+      equal(ids.length, 11);
       for (const id of ids) {
         await loadMap(page, id);
         await page.waitForFunction(() => { const i = document.querySelector('.tsi-exp-map'); return i.complete && i.naturalWidth > 0; });
-        equal(await page.evaluate(() => document.querySelector('.tsi-exp-map').naturalWidth), 2048, id);
+        equal(await page.evaluate(() => document.querySelector('.tsi-exp-map').naturalWidth), id === 'the_bolt_isle' ? 2000 : 2048, id);
         assert((await text(page, 'notice')).indexOf('Map loaded: ' + id) === 0, await text(page, 'notice'));
       }
     });
@@ -1195,10 +1195,10 @@ function serve(dir) {
   section('The pin-check page (tests/pin-check.html)');
   {
     const { context, page } = await newPage(browser, 'laptop');
-    await check('it shows all ten maps with all 36 pins, 15 of them marked hidden', async () => {
+    await check('it shows all eleven maps with all 36 pins, 15 of them marked hidden (the Bolt Isle has none yet)', async () => {
       await page.goto(H.fileUrl('tests/pin-check.html'));
       await page.waitForFunction(() => Array.from(document.querySelectorAll('img.pc-picture')).every(i => i.complete && i.naturalWidth > 0));
-      equal(await page.$$eval('img.pc-picture', is => is.length), 10);
+      equal(await page.$$eval('img.pc-picture', is => is.length), 11);
       equal(await page.$$eval('.pc-pin', ps => ps.length), 36);
       equal(await page.$$eval('.pc-pin--hidden', ps => ps.length), 15);
       equal(context.log.errors, []);

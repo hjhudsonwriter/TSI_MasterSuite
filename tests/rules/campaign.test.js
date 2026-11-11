@@ -24,14 +24,15 @@
 
   group('DM doc: the campaign at a glance');
 
-  test('the seven regions are the Explorer\'s seven, with the Bastion\'s Clans and gods', function (t) {
+  test('the seven regions are the Explorer\'s seven, with the Bastion\'s Clans and gods; the Bolt Isle is the eighth, with neither', function (t) {
     t.same(Object.keys(REG), ED.provinces.map(function (p) { return p.id; }), 'the same regions, in the same order');
     ED.provinces.forEach(function (p) { t.equal(REG[p.id].label, p.label, p.id); });
     var clans = T.bastion.clans.map(function (c) { return c.key; }).sort();
-    t.same(Object.keys(REG).map(function (id) { return REG[id].clanKey; }).sort(), clans, 'one region for each of the Bastion\'s seven Clans');
+    t.same(Object.keys(REG).filter(function (id) { return id !== 'the_bolt_isle'; }).map(function (id) { return REG[id].clanKey; }).sort(), clans, 'one region for each of the Bastion\'s seven Clans');
+    t.same(REG.the_bolt_isle, { label: 'The Bolt Isle' }, 'the Bolt Isle (11 November 2026) has no Clan, chief, god or temple');
     var temple = BR.templeGods(bdata);
     var gods = temple.map(function (g) { return g.id; });
-    Object.keys(REG).forEach(function (id) {
+    Object.keys(REG).filter(function (id) { return id !== 'the_bolt_isle'; }).forEach(function (id) {
       var r = REG[id];
       t.equal(T.bastion.clans.filter(function (c) { return c.key === r.clanKey; })[0].name, r.clan, id + ': the Clan\'s name as the Bastion spells it');
       t.ok(gods.indexOf(r.god) >= 0, id + ': a god the Bastion keeps Favour for');

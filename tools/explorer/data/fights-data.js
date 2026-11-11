@@ -79,7 +79,9 @@ window.TSI_DATA.fights = {
       southern_province: 'warm',
       western_province: 'warm',
       the_north_isle: 'cold',
-      the_east_isle: 'misty'
+      the_east_isle: 'misty',
+      /* The Bolt Isle (11 November 2026): dry, scrubby ground like Aurush's lands. Harry can change this one word. */
+      the_bolt_isle: 'warm'
     },
     settings: {
       /* A river across the middle, with a shallow ford of stepping stones where the road crosses; scrub and woods on both banks. */

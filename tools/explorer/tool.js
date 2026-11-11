@@ -346,6 +346,8 @@
       /* A warning when the Region isn't the loaded map's own province. It changes nothing. */
       var regionWarning = el('p', { class: 'tsi-exp-regionwarn', role: 'status', 'data-test': 'region-warning', hidden: true });
       function updateRegionWarning() {
+        /* Loading a map sets the Region (R.loadPreset), so the box follows it (11 November 2026: it used to keep showing the old Region). */
+        provinceSelect.value = state.travel.provinceId || 'northern_province';
         var m = R.regionMismatch(state, DATA);
         regionWarning.hidden = !m;
         regionWarning.textContent = m
