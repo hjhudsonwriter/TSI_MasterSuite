@@ -1070,8 +1070,10 @@
   /* Arriving from a linked map puts the party's centre at the entry point,
      keeping its formation (old 138-178). */
   R.spawnParty = function (state, data, fromId, toId) {
-    if (!fromId || !toId) return false;
-    var entry = data.spawns[fromId] && data.spawns[fromId][toId];
+    if (!toId) return false;
+    /* A map with a landing (the Bolt Isle) places the party there even on the first load; every other map needs a map to come from. */
+    if (!fromId && !(data.landings && data.landings[toId])) return false;
+    var entry = fromId && data.spawns[fromId] && data.spawns[fromId][toId];
     /* A jump between maps that are not neighbours has no entry of its own (Harry, 26 October 2026): use one of the
        entry points the destination map already has, the first listed, so the party never keeps a stale position. */
     if (!entry) {
@@ -1080,6 +1082,8 @@
         return false;
       });
     }
+    /* A map nothing leads to has a landing instead (The Bolt Isle, 11 November 2026). */
+    if (!entry && data.landings && data.landings[toId]) entry = data.landings[toId];
     if (!entry || !state.tokens.length) return false;
     var sx = 0, sy = 0;
     state.tokens.forEach(function (t) { sx += typeof t.x === 'number' ? t.x : 0.5; sy += typeof t.y === 'number' ? t.y : 0.5; });

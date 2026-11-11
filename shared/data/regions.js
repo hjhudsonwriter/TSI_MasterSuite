@@ -9,7 +9,9 @@
    - clanKey: the Clan's key in the Bastion's saves (politicalCapital,
      honourRespectByClan);
    - god: the god's key in the Bastion's saves (favour);
-   - isle: Pelagos' isles, for Explorer follow-ups that need an isle map. */
+   - isle: Pelagos' isles, for Explorer follow-ups that need an isle map.
+   The Bolt Isle (Harry, 11 November 2026) is the eighth, and belongs to no Clan and no god: it has no clan, clanKey, chief, god, godName or
+   temple at all (the DM doc, the Bastion's link and the events all cope with that), and it is not one of Pelagos' isles. */
 window.TSI_DATA = window.TSI_DATA || {};
 
 window.TSI_DATA.regions = {
@@ -19,5 +21,6 @@ window.TSI_DATA.regions = {
   southern_province: { label: 'Southern Province', clan: 'Molten', clanKey: 'molten', chief: 'Callum Molten', god: 'aurush', godName: 'Aurush', temple: 'Temple of Aurush' },
   western_province: { label: 'Western Province', clan: 'Farmer', clanKey: 'farmer', chief: 'Logan Farmer', god: 'aurush', godName: 'Aurush', temple: 'Temple of Aurush' },
   the_north_isle: { label: 'The North Isle', clan: 'Karr', clanKey: 'karr', chief: 'Helga Karr', god: 'pelagos', godName: 'Pelagos', temple: 'Temple of Pelagos', isle: true },
-  the_east_isle: { label: 'The East Isle', clan: 'Rowthorn', clanKey: 'rowthorn', chief: 'Doran Rowthorn', god: 'pelagos', godName: 'Pelagos', temple: 'Temple of Pelagos', isle: true }
+  the_east_isle: { label: 'The East Isle', clan: 'Rowthorn', clanKey: 'rowthorn', chief: 'Doran Rowthorn', god: 'pelagos', godName: 'Pelagos', temple: 'Temple of Pelagos', isle: true },
+  the_bolt_isle: { label: 'The Bolt Isle' }
 };

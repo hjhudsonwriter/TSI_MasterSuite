@@ -363,13 +363,14 @@
         var pc = ba && isObj(ba.politicalCapital) ? ba.politicalCapital[reg.clanKey] : 0;
         var hr = ba && isObj(ba.honourRespectByClan) ? ba.honourRespectByClan[reg.clanKey] : 0;
         var fav = ba && isObj(ba.favour) ? ba.favour[reg.god] : 0;
-        out.clan = {
+        /* A Region with no Clan or no god (the Bolt Isle, 11 November 2026) has no Clan or god card. */
+        out.clan = reg.clanKey ? {
           name: reg.clan, chief: reg.chief,
           politicalCapital: ba ? clampInt(pc, -100, 100, 0) : null,
           honourRespect: ba ? clampInt(hr, -5, 5, 0) : null
-        };
-        out.clanTracked = ba ? C.trackedConsequences(ba, reg.clanKey, day) : [];
-        out.god = { key: reg.god, name: reg.godName, favour: ba ? clampInt(fav, 0, 100, 0) : null };
+        } : null;
+        out.clanTracked = ba && reg.clanKey ? C.trackedConsequences(ba, reg.clanKey, day) : [];
+        out.god = reg.god ? { key: reg.god, name: reg.godName, favour: ba ? clampInt(fav, 0, 100, 0) : null } : null;
       } else {
         out.region = null;
         out.clan = null;

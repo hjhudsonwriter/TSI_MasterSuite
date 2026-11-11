@@ -479,17 +479,18 @@
       where.push(none('Open the Explorer to see where the party is.'));
     } else {
       where.push(el('p', { class: 'tsi-dmdoc__region', 'data-test': 'dmdoc-region', text: sum.region.label }));
-      where.push(el('div', { class: 'tsi-dmdoc__card', 'data-test': 'dmdoc-clan' }, [
+      if (!sum.clan) where.push(el('p', { class: 'tsi-dmdoc__note', 'data-test': 'dmdoc-no-clan', text: sum.region.label + ' belongs to no Clan' + (sum.god ? '' : ' and no god') + ', so there is no Clan standing to show here.' }));
+      if (sum.clan) where.push(el('div', { class: 'tsi-dmdoc__card', 'data-test': 'dmdoc-clan' }, [
         el('p', { class: 'tsi-dmdoc__card-title' }, [el('strong', { text: 'Clan ' + sum.clan.name + '\'s territory' }), el('span', { class: 'tsi-dmdoc__muted', text: ' · ' + sum.clan.chief })]),
         meter('Political Capital', sum.clan.politicalCapital, -100, 100, signed(sum.clan.politicalCapital), 'dmdoc-pc'),
         meter('Honour/Respect', sum.clan.honourRespect, -5, 5, signed(sum.clan.honourRespect), 'dmdoc-hr'),
         trackedList(sum.clanTracked, 'Agreed with Clan ' + sum.clan.name + ' (you run these at the table)', 'dmdoc-tracked')
       ]));
-      where.push(el('div', { class: 'tsi-dmdoc__card tsi-dmdoc__card--' + sum.god.key, 'data-test': 'dmdoc-god' }, [
+      if (sum.god) where.push(el('div', { class: 'tsi-dmdoc__card tsi-dmdoc__card--' + sum.god.key, 'data-test': 'dmdoc-god' }, [
         el('p', { class: 'tsi-dmdoc__card-title' }, [el('strong', { text: sum.god.name + '\'s lands' })]),
         meter('Favour', sum.god.favour, 0, 100, sum.god.favour + '%', 'dmdoc-favour')
       ]));
-      if (!sum.bastionSaved) where.push(none('Open the Bastion to see the Clan\'s and the god\'s standing.'));
+      if (!sum.bastionSaved && (sum.clan || sum.god)) where.push(none('Open the Bastion to see the Clan\'s and the god\'s standing.'));
     }
     if (sum.trackedAnywhere && sum.trackedAnywhere.length) where.push(el('div', { class: 'tsi-dmdoc__card' }, [trackedList(sum.trackedAnywhere, 'Open agreements that name no Clan (you run these at the table)', 'dmdoc-tracked-any')]));
     parts.push(sub('Where the party is', 'dmdoc-where', where));

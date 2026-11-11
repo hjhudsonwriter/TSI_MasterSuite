@@ -270,13 +270,20 @@
         terrain = R.terrainAt(state, hex.q, hex.r);
       }
     }
-    return { region: region, mapId: state.mapPresetId || null, mapKey: mapKey, god: info.god || null, isle: !!info.isle, near: near, terrain: terrain, terrainPainted: painted };
+    /* A Region kept to some events only (the Bolt Isle: defs.pools), or null. */
+    var only = defs.pools && Array.isArray(defs.pools[region]) ? defs.pools[region] : null;
+    return { region: region, mapId: state.mapPresetId || null, mapKey: mapKey, god: info.god || null, isle: !!info.isle, near: near, terrain: terrain, terrainPainted: painted, only: only };
   };
 
   /* lenient: leave the terrain rule out (used when the terrain would leave nothing to draw). */
   J.eligible = function (ev, ctx, lenient) {
     if (!ev || ev.off) return false;
     var w = ev.where || { any: true };
+    /* A Region with its own short list draws only those events, or an event written for that very map or Region. */
+    if (ctx.only) {
+      var named = (Array.isArray(w.maps) && !!ctx.mapId && w.maps.indexOf(ctx.mapId) !== -1) || (Array.isArray(w.provinces) && w.provinces.indexOf(ctx.region) !== -1);
+      if (!named && ctx.only.indexOf(ev.id) === -1) return false;
+    }
     /* terrain: ['road', ...] (Harry, 29 October 2026): only on those painted kinds; 'open' is an unpainted hex. */
     if (Array.isArray(w.terrain)) {
       var onIt = w.terrain.indexOf(ctx.terrain || 'open') !== -1;
